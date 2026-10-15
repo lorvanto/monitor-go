@@ -24,6 +24,7 @@ const env = {
   MONITOR_PUBLIC_URL: "",
   MONITOR_SECURE_COOKIE: "false",
   MONITOR_COLLECT_HOST: "false",
+  MONITOR_TRUSTED_PROXY: "",
 };
 const platform = process.env.MONITOR_PLATFORM;
 if (platform) assert.match(platform, /^linux\/(amd64|arm64)$/);

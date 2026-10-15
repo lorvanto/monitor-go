@@ -29,7 +29,7 @@ UID/GID는 `10001:10001`입니다. Compose는 읽기 전용 루트 파일 시스
 
 ## 설정 및 HTTPS
 
-Compose는 shell 환경 또는 추적하지 않는 `.env`에서 `MONITOR_IMAGE`(`monitor-go:local`), `MONITOR_PORT`(5080), `MONITOR_BIND_ADDRESS`(127.0.0.1), `MONITOR_PUBLIC_URL`(비어 있음), `MONITOR_SECURE_COOKIE`(false), `MONITOR_COLLECT_HOST`(false)를 읽습니다. 이후 명령에도 같은 값을 유지하세요. 상태 검사를 위해 컨테이너 내부 포트는 5080을 유지합니다.
+Compose는 shell 환경 또는 추적하지 않는 `.env`에서 `MONITOR_IMAGE`(`monitor-go:local`), `MONITOR_PORT`(5080), `MONITOR_BIND_ADDRESS`(127.0.0.1), `MONITOR_PUBLIC_URL`(비어 있음), `MONITOR_SECURE_COOKIE`(false), `MONITOR_COLLECT_HOST`(false), `MONITOR_TRUSTED_PROXY`(비어 있음)를 읽습니다. 이후 명령에도 같은 값을 유지하세요. 상태 검사를 위해 컨테이너 내부 포트는 5080을 유지합니다.
 
 원격 브라우저 및 Agent 접근에는 호스트 포트 앞에 신뢰할 수 있는 HTTPS 프록시를 놓고 끝에 슬래시가 없는 외부 오리진을 지정하세요.
 
@@ -102,3 +102,9 @@ node scripts/test-docker.mjs
 Node, Go 및 Alpine 단계를 분리하여 실행 이미지에는 빌드 도구를 포함하지 않습니다. npm/Go 잠금 파일과 버전을 지정한 기반 이미지를 사용합니다. 버전과 용도는 [제삼자 고지](../../THIRD_PARTY_NOTICES.md)를 참고하세요. 인증서와 시간대 데이터는 Alpine에서 제공하며 배포 시 기반 이미지와 OS 패키지를 재검토해야 합니다. `NODE_IMAGE`, `GO_IMAGE`, `RUNTIME_IMAGE`로 검토된 대체 이미지를 지정할 수 있습니다. BuildKit 교차 빌드를 지원하지만 실행 보장에는 대상별 검증이 필요합니다. 레지스트리 push, 릴리스 태그 생성 및 자동 게시는 수행하지 않습니다.
 
 참고: [Docker 볼륨](https://docs.docker.com/engine/storage/volumes/) · [다중 플랫폼 빌드](https://docs.docker.com/build/building/multi-platform/).
+
+## 신뢰할 프록시와 로그인 제한
+
+Compose는 `MONITOR_TRUSTED_PROXY`를 `-trusted-proxy`로 전달합니다. 직접 접속할 때는 비워 두세요. 컨테이너에서 보이는 실제 프록시 CIDR만 지정하고 사설망 전체를 무조건 신뢰하지 마세요. 확인한 프록시 주소가 `172.20.0.2`라면 `MONITOR_TRUSTED_PROXY=172.20.0.2/32`입니다. 호스트에서 컨테이너로 전달하면서 주소가 달라질 수 있으므로 네트워크를 먼저 확인하세요.
+
+`-trusted-proxy`는 쉼표로 구분한 프록시 CIDR 목록이며 기본값은 비어 있습니다(신뢰 없음). 잘못된 CIDR은 시작 오류를 발생시킵니다. 이 프로세스에서 보이는 실제 프록시만 지정하고 프록시가 `X-Forwarded-For`를 덮어쓰거나 안전하게 추가하도록 설정하세요. 서버는 오른쪽부터 확인하여 처음 만나는 신뢰 대상 밖의 주소를 사용합니다. 다른 연결의 헤더는 무시합니다. 로그인 실패만 집계하며 5분당 클라이언트 IP별 30회, 정규화된 사용자 이름별 10회입니다. 성공해도 횟수를 사용하거나 초기화하지 않습니다. 초기 설정은 모든 시도를 집계합니다(IP별 5분당 10회).

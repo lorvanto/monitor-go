@@ -26,5 +26,6 @@ services:
       - -collect-host=${MONITOR_COLLECT_HOST:-false}
       - -public-url=${MONITOR_PUBLIC_URL:-}
       - -secure-cookie=${MONITOR_SECURE_COOKIE:-false}
+      - -trusted-proxy=${MONITOR_TRUSTED_PROXY:-}
 volumes:
   monitor-data:

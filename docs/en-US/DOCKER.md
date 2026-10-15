@@ -29,7 +29,7 @@ Container-local host collection is disabled by default. Install a native Agent o
 
 ## Settings and HTTPS
 
-Compose reads these shell variables (or a local, untracked `.env`): `MONITOR_IMAGE` (default `monitor-go:local`), `MONITOR_PORT` (5080), `MONITOR_BIND_ADDRESS` (127.0.0.1), `MONITOR_PUBLIC_URL` (empty), `MONITOR_SECURE_COOKIE` (false), and `MONITOR_COLLECT_HOST` (false). Preserve these values on later Compose commands. Keep the container port at 5080 for the health check.
+Compose reads these shell variables (or a local, untracked `.env`): `MONITOR_IMAGE` (default `monitor-go:local`), `MONITOR_PORT` (5080), `MONITOR_BIND_ADDRESS` (127.0.0.1), `MONITOR_PUBLIC_URL` (empty), `MONITOR_SECURE_COOKIE` (false), and `MONITOR_COLLECT_HOST` (false), plus `MONITOR_TRUSTED_PROXY` (empty). Preserve these values on later Compose commands. Keep the container port at 5080 for the health check.
 
 For remote browser and Agent access, place a trusted HTTPS proxy in front of the host port and set the exact external origin without a trailing slash:
 
@@ -102,3 +102,9 @@ For an explicit test target, set `MONITOR_PLATFORM=linux/amd64` or `linux/arm64`
 Node, Go and Alpine stages keep build tools out of the runtime. npm/Go locks and versioned base images pin the build inputs; base versions and purposes are recorded in [third-party notices](../../THIRD_PARTY_NOTICES.md). Runtime certificates and time zones come from Alpine. Rebuild and review base/OS packages when deploying. Build arguments `NODE_IMAGE`, `GO_IMAGE` and `RUNTIME_IMAGE` permit reviewed replacements. BuildKit cross-compilation is supported; runtime platforms require separate testing. These commands do not push a registry image, create release tags or publish automatically.
 
 References: [Docker volumes](https://docs.docker.com/engine/storage/volumes/) · [Multi-platform builds](https://docs.docker.com/build/building/multi-platform/).
+
+## Trusted proxies and login limits
+
+Compose passes `MONITOR_TRUSTED_PROXY` to `-trusted-proxy`; leave it empty for direct access. Set it to the actual proxy CIDRs as seen inside the container, not an arbitrary whole private network. For example, a known proxy address `172.20.0.2` uses `MONITOR_TRUSTED_PROXY=172.20.0.2/32`. Host-to-container forwarding may change the peer address: verify your network before enabling trust.
+
+`-trusted-proxy` accepts comma-separated proxy CIDRs and defaults to empty (no trusted proxies). Invalid CIDRs prevent startup. Trust only the actual proxy addresses as seen by this process; the proxy must overwrite or safely append `X-Forwarded-For`. The server walks that header from right to left, stopping at the first untrusted address. Headers from other peers are ignored. Login counts only failures: 30 per client IP and 10 per normalized username per five minutes; successful logins neither consume nor reset those budgets. Setup counts every attempt (10 per IP per five minutes).

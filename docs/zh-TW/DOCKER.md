@@ -29,7 +29,7 @@ MONITOR_PORT=5081 docker compose up -d --build
 
 ## 設定與 HTTPS
 
-Compose 讀取 shell 環境變數或本機未追蹤的 `.env`：`MONITOR_IMAGE`（預設 `monitor-go:local`）、`MONITOR_PORT`（5080）、`MONITOR_BIND_ADDRESS`（127.0.0.1）、`MONITOR_PUBLIC_URL`（空）、`MONITOR_SECURE_COOKIE`（false）、`MONITOR_COLLECT_HOST`（false）。後續 Compose 命令須保持相同設定，容器內部連接埠維持 5080 供健康檢查使用。
+Compose 讀取 shell 環境變數或本機未追蹤的 `.env`：`MONITOR_IMAGE`（預設 `monitor-go:local`）、`MONITOR_PORT`（5080）、`MONITOR_BIND_ADDRESS`（127.0.0.1）、`MONITOR_PUBLIC_URL`（空）、`MONITOR_SECURE_COOKIE`（false）、`MONITOR_COLLECT_HOST`（false）及 `MONITOR_TRUSTED_PROXY`（空）。後續 Compose 命令須保持相同設定，容器內部連接埠維持 5080 供健康檢查使用。
 
 遠端瀏覽器與 Agent 存取應在宿主機連接埠前部署可信的 HTTPS 反向代理，並設定不帶結尾斜線的實際外部來源：
 
@@ -102,3 +102,9 @@ node scripts/test-docker.mjs
 建置分為 Node、Go 和 Alpine 階段，執行映像不包含編譯工具。npm/Go 鎖定檔與版本化基礎映像鎖定建置輸入，版本和用途見 [第三方聲明](../../THIRD_PARTY_NOTICES.md)。執行時憑證與時區資料來自 Alpine，部署時應重新建置並核查基礎映像與系統套件。`NODE_IMAGE`、`GO_IMAGE`、`RUNTIME_IMAGE` 建置參數用於經審查的替換。支援 BuildKit 交叉建置，承諾的執行平台仍需分別實測。這些命令不推送登錄檔、不建立版本標籤，也不自動發佈。
 
 參考: [Docker 磁碟區](https://docs.docker.com/engine/storage/volumes/) · [多平台建置](https://docs.docker.com/build/building/multi-platform/).
+
+## 可信代理與登入限流
+
+Compose 將 `MONITOR_TRUSTED_PROXY` 傳給 `-trusted-proxy`；直接連線時保持空白。依容器實際看到的代理位址設定 CIDR，不要任意信任整個私有網路。例如，已確認代理位址為 `172.20.0.2` 時使用 `MONITOR_TRUSTED_PROXY=172.20.0.2/32`。宿主機至容器的轉送可能改變來源位址，應先確認網路再啟用信任。
+
+`-trusted-proxy` 接受逗號分隔的代理 CIDR，預設留空（不信任代理），無效值會阻止啟動。只填寫本程序實際看到的代理位址；代理必須覆寫或安全追加 `X-Forwarded-For`。伺服器從右向左尋找首個不可信位址，忽略其他來源的轉送標頭。登入只統計失敗：每個用戶端 IP 每 5 分鐘 30 次、每個正規化使用者名稱每 5 分鐘 10 次；成功登入不消耗也不重設計數。初始化對所有嘗試計數（每個 IP 每 5 分鐘 10 次）。

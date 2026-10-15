@@ -136,3 +136,7 @@ There is no multitenancy, external storage adapter, remote command execution, ag
 Historical design proposals and detailed validation records remain in the [Chinese documentation index](../zh-CN/INDEX.md); they are not all implemented product features. Source repository: [lorvanto/monitor-go](https://github.com/lorvanto/monitor-go). Release tags and target-platform commitments remain to be selected. Project-owned code and documentation use [Apache-2.0](../../LICENSE); dependencies retain their own licenses. See [contribution guidance](../../CONTRIBUTING.md), [security policy](../../SECURITY.md), [third-party notices](../../THIRD_PARTY_NOTICES.md) and [release preparation](RELEASING.md).
 
 All current guides use `docs/<locale>/` with English directory and file names. Start from the [documentation hub](../README.md).
+
+## Trusted proxies and login limits
+
+`-trusted-proxy` accepts comma-separated proxy CIDRs and defaults to empty (no trusted proxies). Invalid CIDRs prevent startup. Trust only the actual proxy addresses as seen by this process; the proxy must overwrite or safely append `X-Forwarded-For`. The server walks that header from right to left, stopping at the first untrusted address. Headers from other peers are ignored. Login counts only failures: 30 per client IP and 10 per normalized username per five minutes; successful logins neither consume nor reset those budgets. Setup counts every attempt (10 per IP per five minutes).

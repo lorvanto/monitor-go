@@ -231,3 +231,7 @@ npm --prefix web run check:docs
 項目源碼可獨立構建。原始碼倉庫為 [lorvanto/monitor-go](https://github.com/lorvanto/monitor-go)；發佈步驟、貢獻與安全反饋見 [GitHub 發佈指南](GITHUB.md)。已提供從原始碼建置的 Dockerfile 與 Compose；目前未發佈下載封存檔、預建登錄檔映像或自動發佈流程。
 
 項目自有代碼與文檔採用 [Apache-2.0](../../LICENSE)。第三方依賴、圖標與字體保持各自許可證，詳見 [NOTICE](../../NOTICE) 和 [第三方聲明](../../THIRD_PARTY_NOTICES.md)。
+
+## 可信代理與登入限流
+
+`-trusted-proxy` 接受逗號分隔的代理 CIDR，預設留空（不信任代理），無效值會阻止啟動。只填寫本程序實際看到的代理位址；代理必須覆寫或安全追加 `X-Forwarded-For`。伺服器從右向左尋找首個不可信位址，忽略其他來源的轉送標頭。登入只統計失敗：每個用戶端 IP 每 5 分鐘 30 次、每個正規化使用者名稱每 5 分鐘 10 次；成功登入不消耗也不重設計數。初始化對所有嘗試計數（每個 IP 每 5 分鐘 10 次）。

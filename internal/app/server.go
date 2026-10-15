@@ -13,8 +13,8 @@ import (
 	"io"
 	"io/fs"
 	"log/slog"
-	"net"
 	"net/http"
+	"net/netip"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -25,27 +25,29 @@ import (
 )
 
 type Config struct {
-	Listen, DataDir, PublicURL string
-	SecureCookie               bool
-	Assets                     fs.FS
-	Collect                    bool
+	Listen, DataDir, PublicURL, TrustedProxy string
+	SecureCookie                             bool
+	Assets                                   fs.FS
+	Collect                                  bool
 }
 type Server struct {
-	Store       *Store
-	cfg         Config
-	setupToken  string
-	limitMu     sync.Mutex
-	attempts    map[string]attempt
-	work        sync.WaitGroup
-	collector   hoststats.Collector
-	fileMu      sync.Mutex
-	imageMu     sync.Mutex
-	uploadSlots chan struct{}
-	codeSlots   chan struct{}
+	Store          *Store
+	cfg            Config
+	setupToken     string
+	limitMu        sync.Mutex
+	attempts       map[string]attempt
+	trustedProxies []netip.Prefix
+	work           sync.WaitGroup
+	collector      hoststats.Collector
+	fileMu         sync.Mutex
+	imageMu        sync.Mutex
+	uploadSlots    chan struct{}
+	codeSlots      chan struct{}
 }
 type attempt struct {
-	Count int
-	Until time.Time
+	Count   int
+	Pending int
+	Until   time.Time
 }
 type apiError struct {
 	Status  int
@@ -65,11 +67,15 @@ func randomToken() string {
 }
 func digest(s string) string { b := sha256.Sum256([]byte(s)); return hex.EncodeToString(b[:]) }
 func New(cfg Config) (*Server, error) {
+	proxies, e := parseTrustedProxies(cfg.TrustedProxy)
+	if e != nil {
+		return nil, e
+	}
 	st, e := OpenStore(cfg.DataDir)
 	if e != nil {
 		return nil, e
 	}
-	s := &Server{Store: st, cfg: cfg, attempts: map[string]attempt{}, uploadSlots: make(chan struct{}, 2), codeSlots: make(chan struct{}, 2)}
+	s := &Server{Store: st, cfg: cfg, trustedProxies: proxies, attempts: map[string]attempt{}, uploadSlots: make(chan struct{}, 2), codeSlots: make(chan struct{}, 2)}
 	var count int
 	e = st.DB.QueryRow("SELECT count(*) FROM users").Scan(&count)
 	if e != nil {
@@ -323,32 +329,6 @@ func (s *Server) status(w http.ResponseWriter, r *http.Request, u *User) (any, e
 	var n int
 	e := s.Store.DB.QueryRowContext(r.Context(), "SELECT count(*) FROM users").Scan(&n)
 	return map[string]any{"initialized": n > 0, "version": "0.4.0", "storage": "SQLite"}, e
-}
-func (s *Server) allowedLogin(r *http.Request) bool { return s.allowedRequest(r, "login:", 10) }
-func (s *Server) allowedRequest(r *http.Request, prefix string, limit int) bool {
-	host, _, _ := net.SplitHostPort(r.RemoteAddr)
-	host = prefix + host
-	s.limitMu.Lock()
-	defer s.limitMu.Unlock()
-	t := time.Now()
-	for k, a := range s.attempts {
-		if t.After(a.Until) {
-			delete(s.attempts, k)
-		}
-	}
-	a := s.attempts[host]
-	if a.Count >= limit {
-		return false
-	}
-	if len(s.attempts) > 10000 {
-		return false
-	}
-	if a.Count == 0 {
-		a.Until = t.Add(5 * time.Minute)
-	}
-	a.Count++
-	s.attempts[host] = a
-	return true
 }
 func actor(u *User) string {
 	if u == nil {

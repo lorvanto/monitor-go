@@ -19,8 +19,9 @@ func main() {
 	public := flag.String("public-url", "", "浏览器访问的完整来源，例如 https://monitor.example.com")
 	secure := flag.Bool("secure-cookie", false, "HTTPS 部署时启用 Secure Cookie")
 	collect := flag.Bool("collect-host", true, "采集运行服务的本机指标")
+	trustedProxy := flag.String("trusted-proxy", "", "Comma-separated trusted proxy CIDRs for X-Forwarded-For; empty trusts none")
 	flag.Parse()
-	s, e := app.New(app.Config{Listen: *listen, DataDir: *data, PublicURL: *public, SecureCookie: *secure, Collect: *collect, Assets: web.Assets()})
+	s, e := app.New(app.Config{Listen: *listen, DataDir: *data, PublicURL: *public, TrustedProxy: *trustedProxy, SecureCookie: *secure, Collect: *collect, Assets: web.Assets()})
 	if e != nil {
 		slog.Error("启动失败", "error", e)
 		os.Exit(1)

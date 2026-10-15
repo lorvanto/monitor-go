@@ -74,7 +74,7 @@ func (s *Server) session(w http.ResponseWriter, id int64) (any, error) {
 	return map[string]any{"csrf": csrf}, nil
 }
 func (s *Server) setup(w http.ResponseWriter, r *http.Request, u *User) (any, error) {
-	if !s.allowedLogin(r) {
+	if !s.allowedRequest(r, "setup:", setupLimit) {
 		return nil, &apiError{429, "请求过于频繁，请 5 分钟后再试"}
 	}
 	var in struct {
@@ -123,9 +123,6 @@ func (s *Server) setup(w http.ResponseWriter, r *http.Request, u *User) (any, er
 	return s.session(w, id)
 }
 func (s *Server) login(w http.ResponseWriter, r *http.Request, u *User) (any, error) {
-	if !s.allowedLogin(r) {
-		return nil, &apiError{429, "登录尝试过多，请 5 分钟后再试"}
-	}
 	var in struct {
 		Username string `json:"username"`
 		Password string `json:"password"`
@@ -133,6 +130,13 @@ func (s *Server) login(w http.ResponseWriter, r *http.Request, u *User) (any, er
 	if e := decode(r, &in); e != nil {
 		return nil, e
 	}
+	in.Username = strings.ToLower(strings.TrimSpace(in.Username))
+	finish, allowed := s.beginLogin(r, in.Username)
+	if !allowed {
+		return nil, &apiError{429, "登录尝试过多，请 5 分钟后再试"}
+	}
+	failed := false
+	defer func() { finish(failed) }()
 	var id int64
 	var hash string
 	e := s.Store.DB.QueryRowContext(r.Context(), "SELECT id,password_hash FROM users WHERE username=? AND enabled=1", strings.ToLower(strings.TrimSpace(in.Username))).Scan(&id, &hash)
@@ -140,6 +144,7 @@ func (s *Server) login(w http.ResponseWriter, r *http.Request, u *User) (any, er
 		return nil, e
 	}
 	if e != nil || bcrypt.CompareHashAndPassword([]byte(hash), []byte(in.Password)) != nil {
+		failed = true
 		return nil, &apiError{401, "用户名或密码不正确"}
 	}
 	return s.session(w, id)

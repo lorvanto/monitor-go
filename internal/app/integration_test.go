@@ -330,13 +330,13 @@ func TestOriginLimitAndExpiredSession(t *testing.T) {
 	for i := 0; i < 10; i++ {
 		r := httptest.NewRequest("POST", "/", nil)
 		r.RemoteAddr = "192.0.2.1:10"
-		if !s.allowedLogin(r) {
+		if !s.allowedRequest(r, "setup:", setupLimit) {
 			t.Fatal("early throttle")
 		}
 	}
 	r := httptest.NewRequest("POST", "/", nil)
 	r.RemoteAddr = "192.0.2.1:10"
-	if s.allowedLogin(r) {
+	if s.allowedRequest(r, "setup:", setupLimit) {
 		t.Fatal("login not limited")
 	}
 }

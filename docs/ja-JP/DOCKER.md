@@ -29,7 +29,7 @@ UID/GIDは`10001:10001`です。Composeではルートファイルシステム�
 
 ## 設定とHTTPS
 
-Composeはshell環境または追跡しない`.env`から`MONITOR_IMAGE`（`monitor-go:local`）、`MONITOR_PORT`（5080）、`MONITOR_BIND_ADDRESS`（127.0.0.1）、`MONITOR_PUBLIC_URL`（空）、`MONITOR_SECURE_COOKIE`（false）、`MONITOR_COLLECT_HOST`（false）を読みます。以降のコマンドでも同じ設定を使います。ヘルスチェック用の内部ポートは5080を保持します。
+Composeはshell環境または追跡しない`.env`から`MONITOR_IMAGE`（`monitor-go:local`）、`MONITOR_PORT`（5080）、`MONITOR_BIND_ADDRESS`（127.0.0.1）、`MONITOR_PUBLIC_URL`（空）、`MONITOR_SECURE_COOKIE`（false）、`MONITOR_COLLECT_HOST`（false）、`MONITOR_TRUSTED_PROXY`（空）を読みます。以降のコマンドでも同じ設定を使います。ヘルスチェック用の内部ポートは5080を保持します。
 
 リモートのブラウザー／Agentには、ホストポートの前に信頼されたHTTPSプロキシを置き、末尾スラッシュなしの外部オリジンを設定します。
 
@@ -102,3 +102,9 @@ node scripts/test-docker.mjs
 Node、Go、Alpineの段階を分離し、実行イメージにビルドツールを含めません。npm／Goのロックファイルと版を指定した基礎イメージを使います。版と用途は[第三者表示](../../THIRD_PARTY_NOTICES.md)を参照してください。証明書とタイムゾーンはAlpine由来で、配備時に基礎イメージとOSパッケージを再確認します。`NODE_IMAGE`、`GO_IMAGE`、`RUNTIME_IMAGE`でレビュー済みの代替を指定できます。BuildKitのクロスビルドに対応しますが、実行保証には対象別の検証が必要です。レジストリーへのpush、タグ作成、自動公開は行いません。
 
 参考: [Dockerボリューム](https://docs.docker.com/engine/storage/volumes/) · [複数プラットフォームのビルド](https://docs.docker.com/build/building/multi-platform/).
+
+## 信頼するプロキシとログイン制限
+
+Compose は `MONITOR_TRUSTED_PROXY` を `-trusted-proxy` に渡します。直接接続では空のままにしてください。コンテナから見える実際のプロキシ CIDR だけを指定し、プライベートネットワーク全体を安易に信頼しないでください。確認済みのプロキシが `172.20.0.2` の場合は `MONITOR_TRUSTED_PROXY=172.20.0.2/32` です。ホストからコンテナへの転送で接続元が変わる場合があるため、先にネットワークを確認してください。
+
+`-trusted-proxy` はカンマ区切りのプロキシ CIDR を受け取り、既定は空（信頼なし）です。不正な CIDR は起動エラーになります。このプロセスから見える実際のプロキシのみを指定し、プロキシで `X-Forwarded-For` を上書きするか安全に追記してください。サーバーは右から左へ解析し、最初の信頼対象外のアドレスを使います。他の接続元のヘッダーは無視します。ログインの失敗だけを集計し、5 分間にクライアント IP ごとに 30 回、正規化したユーザー名ごとに 10 回までです。成功しても回数を消費・リセットしません。初期設定ではすべての試行を集計します（IP ごとに 5 分間で 10 回）。

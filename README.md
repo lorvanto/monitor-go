@@ -102,6 +102,8 @@ Start an isolated backend and frontend with the commands in [CONTRIBUTING.md](CO
 | `third_party/licenses` | Preserved direct-dependency license and attribution texts |
 | `Dockerfile`, `compose.yaml` | Source-built container, health check and persistent volume |
 
+Login limits count failed attempts per client IP and username. Configure `-trusted-proxy` only for known reverse proxies; see the [deployment guide](docs/en-US/README.md#trusted-proxies-and-login-limits).
+
 ## Documentation and community
 
 [User guides](docs/README.md) · [Contributing](CONTRIBUTING.md) · [Collaboration guidelines](AGENTS.md) · [Support](SUPPORT.md) · [Security](SECURITY.md) · [Changelog](CHANGELOG.md) · [Roadmap](ROADMAP.md) · [Release preparation](docs/en-US/RELEASING.md)
