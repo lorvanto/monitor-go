@@ -38,6 +38,13 @@ The running application in **English**, the default language on first use, with 
 | [![English HTTP, TCP, SSL, MySQL and Redis service checks](docs/assets/screenshots/service-checks.jpg)](docs/assets/screenshots/service-checks.jpg) | [![English file manager with folders and synthetic operational documents](docs/assets/screenshots/files.jpg)](docs/assets/screenshots/files.jpg) |
 | Targets, status, response time and recent check results. | Shared folders, uploads, downloads, image styles and trash. |
 
+| Applications and keys | Package management |
+|---|---|
+| [![English applications and keys page with scoped access and valid or revoked demo keys](docs/assets/screenshots/applications.jpg)](docs/assets/screenshots/applications.jpg) | [![English package management page with platform variants and draft, published and withdrawn demo releases](docs/assets/screenshots/packages.jpg)](docs/assets/screenshots/packages.jpg) |
+| Application identities, masked key prefixes, API scopes and key status. | Versions, platform and architecture variants, release states and download records. |
+
+The application keys and package versions shown here are synthetic examples; they do not provide working credentials or announce Monitor Go releases.
+
 | Roles and permissions | Code generator |
 |---|---|
 | [![English role editor with permissions grouped by business module](docs/assets/screenshots/permissions.jpg)](docs/assets/screenshots/permissions.jpg) | [![English QR code generator with a generated project URL and export controls](docs/assets/screenshots/code-generator.jpg)](docs/assets/screenshots/code-generator.jpg) |
