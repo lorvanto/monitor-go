@@ -4,6 +4,12 @@ User-visible changes belong here. Entries under **Unreleased** describe the curr
 
 ## Unreleased
 
+### Japanese, Korean and Traditional Chinese audit
+
+- Standardize Japanese check/administrator terms, Korean Agent enrollment wording and Traditional Chinese sign-in, keys, archive and network terms across catalogs and current guides.
+- Add an in-dialog language selector; preserve unsaved fields, selections and typed deletion confirmations while switching languages, without submitting or reloading forms.
+- Translate malformed API/package-upload errors and make unknown-route errors reactive. Add mixed-language catalog guards and page, dialog, draft and five-language HTTP regressions. No dependency or schema change.
+
 ### English UI and form validation
 
 - Localize native field-validation bubbles, stored errors and transient notices across setup, sign-in and dialogs, including in-flight responses and language switches without resubmission. Preserve typed drafts and translate untouched default editor names.

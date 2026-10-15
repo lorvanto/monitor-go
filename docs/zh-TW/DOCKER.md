@@ -2,7 +2,7 @@
 
 [English](../en-US/DOCKER.md) · [简体中文](../zh-CN/DOCKER.md) · [日本語](../ja-JP/DOCKER.md) · [한국어](../ko-KR/DOCKER.md) · **繁體中文** · [Documentation](../README.md)
 
-使用 Docker Engine / Docker Desktop 的 Linux 容器模式、BuildKit 及 Docker Compose v2.20 或更新版本。映像檔從目前原始碼建置，`monitor-go:local` 是本機標籤，並非已發佈的登錄檔映像。透過 Docker 建置與執行時，宿主機無須安裝 Go 或 Node.js。
+使用 Docker Engine / Docker Desktop 的 Linux 容器模式、BuildKit 及 Docker Compose v2.20 或更新版本。映像檔從目前原始碼建置，`monitor-go:local` 是本機標籤，並非已發佈的登入檔映像。透過 Docker 建置與執行時，宿主機無須安裝 Go 或 Node.js。
 
 
 `make docker-build` 會注入 Git 衍生版本。直接使用 Compose 時可傳入 `MONITOR_VERSION`，未指定則顯示 `0.4.0-dev`。直接建置可用 `docker build --build-arg VERSION="$(git describe --tags --always --dirty 2>/dev/null || printf 0.4.0-dev)" -t monitor-go:local .`。Git 歷史不進入 Docker 建置內容。
@@ -80,7 +80,7 @@ MONITOR_PORT=5081 docker compose -p monitor-go-restore up -d --no-build
 
 ## 升級與回復舊版
 
-升級前先完成並驗證停機備份，再更新審查過的原始碼並重新建置：
+升級前先完成並驗證停機備份，再更新審查過的原始碼並重新增置：
 
 ```sh
 git pull --ff-only
@@ -102,7 +102,7 @@ node scripts/test-docker.mjs
 
 指定測試架構時設定 `MONITOR_PLATFORM=linux/amd64` 或 `linux/arm64`，並使用獨立的 `MONITOR_IMAGE` 標籤。執行非本機架構需要 Docker 引擎支援對應模擬器；交叉建置本身不等於執行驗證。
 
-建置分為 Node、Go 和 Alpine 階段，執行映像不包含編譯工具。npm/Go 鎖定檔與版本化基礎映像鎖定建置輸入，版本和用途見 [第三方聲明](../../THIRD_PARTY_NOTICES.md)。執行時憑證與時區資料來自 Alpine，部署時應重新建置並核查基礎映像與系統套件。`NODE_IMAGE`、`GO_IMAGE`、`RUNTIME_IMAGE` 建置參數用於經審查的替換。支援 BuildKit 交叉建置，承諾的執行平台仍需分別實測。這些命令不推送登錄檔、不建立版本標籤，也不自動發佈。
+建置分為 Node、Go 和 Alpine 階段，執行映像不包含編譯工具。npm/Go 鎖定檔與版本化基礎映像鎖定建置輸入，版本和用途見 [第三方聲明](../../THIRD_PARTY_NOTICES.md)。執行時憑證與時區資料來自 Alpine，部署時應重新增置並核查基礎映像與系統套件。`NODE_IMAGE`、`GO_IMAGE`、`RUNTIME_IMAGE` 建置參數用於經審查的替換。支援 BuildKit 交叉建置，承諾的執行平台仍需分別實測。這些命令不推送登入檔、不建立版本標籤，也不自動發佈。
 
 參考: [Docker 磁碟區](https://docs.docker.com/engine/storage/volumes/) · [多平台建置](https://docs.docker.com/build/building/multi-platform/).
 
@@ -114,7 +114,7 @@ Compose 將 `MONITOR_TRUSTED_PROXY` 傳給 `-trusted-proxy`；直接連線時保
 
 ## 線上備份與還原
 
-執行命令時服務可繼續運行。輸出目錄必須不存在，父目錄必須已存在。命令唯讀開啟來源資料庫，不取得執行個體鎖、不執行移轉（支援結構版本 3 至目前版本），產生一致的 SQLite 快照並複製主密鑰與快照引用的全部物件，包括回收桶檔案。快照之後的新上傳不納入備份。遺失物件會重試；仍遺失、損壞或變更時以非零狀態結束並保留 BACKUP_INCOMPLETE，不能還原該目錄。完成清單記錄 UTC 時間、建置/結構版本、物件數量及 SHA-256。初始化碼、鎖、暫存檔與圖片快取不複製。
+執行命令時服務可繼續運行。輸出目錄必須不存在，父目錄必須已存在。命令唯讀開啟來源資料庫，不取得執行個體鎖、不執行移轉（支援結構版本 3 至目前版本），產生一致的 SQLite 快照並複製主金鑰與快照引用的全部物件，包括回收桶檔案。快照之後的新上傳不納入備份。遺失物件會重試；仍遺失、損壞或變更時以非零狀態結束並保留 BACKUP_INCOMPLETE，不能還原該目錄。完成清單記錄 UTC 時間、建置/結構版本、物件數量及 SHA-256。初始化碼、鎖、暫存檔與圖片快取不複製。
 
 容器命令先在資料卷中產生新快照，隨後應立即複製到獨立儲存。每次使用唯一目錄名稱。範例封存檔可按下方新資料卷還原流程操作。
 

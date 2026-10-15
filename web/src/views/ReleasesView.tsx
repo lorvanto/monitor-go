@@ -2,6 +2,7 @@ import { apiLink } from "../lib/apiLinks";
 import {
   errorMessage,
   LocalizedError,
+  message,
   notice,
   responseMessage,
   type DisplayMessage,
@@ -281,11 +282,18 @@ export default function ReleasesView() {
         const v = JSON.parse(request.responseText);
         if (request.status !== 200)
           throw new LocalizedError(responseMessage(v.error, "上传失败"));
+        if (typeof v?.data?.id !== "string")
+          throw new LocalizedError(message("上传响应异常"));
         selectFile(v.data);
         notify(notice("安装文件已上传"));
         loadFiles();
       } catch (e) {
-        store.setState({ error: errorMessage(e) });
+        store.setState({
+          error:
+            e instanceof LocalizedError
+              ? errorMessage(e)
+              : notice("上传响应异常"),
+        });
       } finally {
         store.setState({ uploading: false });
         xhr.current = undefined;

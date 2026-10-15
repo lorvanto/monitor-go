@@ -221,3 +221,7 @@ On an Apple M1 / Go 1.26.9 / real WAL file, 500 targets × 1,440 results, four c
 ## Form and error language
 
 Setup, sign-in, dialogs, browser field-validation messages and transient notices follow the selected interface language, including after switching languages without submitting again. Untouched default names in open editors also follow the language; typed names and other unsaved input are preserved. New checks with an empty group display a localized default group. Existing group names and historical records remain literal.
+
+## Language switching inside dialogs
+
+Every shared dialog includes a language selector, so you can switch without closing the editor. Typed names, notes, passwords, checkbox and dropdown selections remain intact. A deletion confirmation remains valid in the language used when it was typed; the server still receives the fixed `DELETE` token. Malformed API/upload responses use translated errors, and unknown-route errors carry the same translation key as other API failures.

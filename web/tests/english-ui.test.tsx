@@ -244,3 +244,21 @@ it("distinguishes all groups, the localized default and literal user group names
   expect(groupQuery(groupOption(""))).toBe("&ungrouped=1");
   expect(groupQuery(groupOption("group:"))).toBe("&group=group%3A");
 });
+
+it.each(["null", "[]", "{}", '"proxy failure"'])(
+  "keeps malformed API envelopes localized across languages (%s)",
+  async (raw) => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => new Response(raw, { status: 200 })),
+    );
+    const error = await api("/status").catch((e) => e);
+    render(<div role="alert">{errorMessage(error)}</div>);
+    for (const locale of locales) {
+      await act(() => setLocale(locale.code));
+      expect(screen.getByRole("alert").textContent).toBe(
+        t("服务返回异常，请稍后重试"),
+      );
+    }
+  },
+);

@@ -312,7 +312,7 @@ func (s *Server) Handler() http.Handler {
 		output(w, 200, map[string]string{"status": "ok"})
 	})
 	mux.HandleFunc("/api/", func(w http.ResponseWriter, r *http.Request) {
-		output(w, 404, map[string]any{"error": map[string]string{"message": locales.Text(requestLocale(w, r), "接口不存在")}})
+		output(w, 404, map[string]any{"error": map[string]any{"message": locales.Text(requestLocale(w, r), "接口不存在"), "key": "接口不存在", "args": nil}})
 	})
 	if s.static != nil {
 		mux.Handle("/", s.static)

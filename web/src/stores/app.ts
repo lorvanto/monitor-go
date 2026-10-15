@@ -273,6 +273,13 @@ export async function api<T>(
     throw new APIError(response.status, message("服务返回异常，请稍后重试"));
   }
   if (session !== sessionVersion) throw new SessionChangedError();
+  if (
+    !json ||
+    typeof json !== "object" ||
+    Array.isArray(json) ||
+    (response.ok && !Object.hasOwn(json, "data"))
+  )
+    throw new APIError(response.status, message("服务返回异常，请稍后重试"));
   if (!response.ok) {
     if (response.status === 401 && path !== "/auth/login") clearSession();
     throw new APIError(response.status, responseMessage(json.error));

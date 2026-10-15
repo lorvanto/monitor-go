@@ -108,7 +108,7 @@ export default function FilesView() {
     modalError: "" as DisplayMessage,
     nameEdited: false,
     styleNameEdited: false,
-    form: { name: "", parentId: "1", confirm: "" },
+    form: { name: "", parentId: "1", confirm: "", confirmPhrase: "" },
     styleForm: {
       name: "",
       width: 320,
@@ -299,7 +299,9 @@ export default function FilesView() {
             : item?.parentId || store.getState().parent,
       },
     }));
-    store.setState((current) => ({ form: { ...current.form, confirm: "" } }));
+    store.setState((current) => ({
+      form: { ...current.form, confirm: "", confirmPhrase: t("永久删除") },
+    }));
     store.setState({ modalError: "" });
   }
   function openStyle(item?: Style) {
@@ -325,7 +327,8 @@ export default function FilesView() {
     const styleTarget = store.getState().styleTarget;
     if (
       store.getState().mode === "purge" &&
-      store.getState().form.confirm !== t("永久删除")
+      (!store.getState().form.confirm ||
+        store.getState().form.confirm !== store.getState().form.confirmPhrase)
     )
       return;
     store.setState({ busy: true });
@@ -1269,7 +1272,8 @@ export default function FilesView() {
                 disabled={
                   viewState.busy ||
                   (viewState.mode === "purge" &&
-                    viewState.form.confirm !== t("永久删除"))
+                    (!viewState.form.confirm ||
+                      viewState.form.confirm !== viewState.form.confirmPhrase))
                 }
                 className={classNames(
                   "btn",
@@ -1473,6 +1477,8 @@ export default function FilesView() {
                         form: {
                           ...current.form,
                           confirm: event.currentTarget.value,
+                          // Remember the language in which the user typed confirmation.
+                          confirmPhrase: t("永久删除"),
                         },
                       }));
                     }}

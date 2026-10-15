@@ -82,13 +82,20 @@ func TestEveryAPIErrorHasEnglishTranslation(t *testing.T) {
 	}
 }
 
-func TestEnglishUIErrorHTTPContract(t *testing.T) {
+func TestUIErrorHTTPContract(t *testing.T) {
+	for _, language := range locales.Supported {
+		t.Run(language, func(t *testing.T) { testUIErrorHTTPContract(t, language) })
+	}
+}
+
+func testUIErrorHTTPContract(t *testing.T, language string) {
 	s, ts, c := fixture(t)
 	for _, tc := range []struct {
 		method, path, body, key string
 		status                  int
 	}{
 		{"POST", "/auth/login", `{"username":"missing","password":"incorrect"}`, "用户名或密码不正确", 401},
+		{"GET", "/missing-route", "", "接口不存在", 404},
 		{"POST", "/roles", `{}`, "请填写有效的角色名称和说明", 422},
 		{"POST", "/users", `{}`, "姓名不能为空或超过 80 字节", 422},
 		{"POST", "/applications", `{}`, "请填写名称、3–48 位小写应用标识及不超过 1000 字节的说明", 422},
@@ -97,15 +104,15 @@ func TestEnglishUIErrorHTTPContract(t *testing.T) {
 		{"POST", "/files/folders", `{"name":"","parentId":"1"}`, "名称为 1–200 字节，不能包含路径分隔符或控制字符", 422},
 		{"POST", "/monitors", `{}`, "检测名称、地址或分组长度不正确", 422},
 		{"POST", "/menus", `{}`, "菜单名称长度为 1–120 字节", 422},
-		{"GET", "/files/999999/download?lang=en-US", "", "记录不存在", 404},
-		{"GET", "/releases/999999/download?lang=en-US", "", "记录不存在", 404},
+		{"GET", "/files/999999/download?lang=" + language, "", "记录不存在", 404},
+		{"GET", "/releases/999999/download?lang=" + language, "", "记录不存在", 404},
 		{"POST", "/tools/codes", `{"kind":"ean13","content":"1","width":512,"height":160,"level":"M"}`, "请输入 %d 位数字（自动校验）或 %d 位完整编码", 422},
 	} {
 		t.Run(tc.path, func(t *testing.T) {
 			req, _ := http.NewRequest(tc.method, ts.URL+"/api/v1"+tc.path, strings.NewReader(tc.body))
 			req.Header.Set("Content-Type", "application/json")
 			req.Header.Set("X-CSRF-Token", c.csrf)
-			req.Header.Set("Accept-Language", "en-US")
+			req.Header.Set("Accept-Language", language)
 			if strings.Contains(tc.path, "?lang=") {
 				req.Header.Set("Accept-Language", "zh-CN")
 			}
@@ -124,12 +131,12 @@ func TestEnglishUIErrorHTTPContract(t *testing.T) {
 			if err := json.Unmarshal(raw, &body); err != nil {
 				t.Fatal(err)
 			}
-			expected := locales.Text("en-US", tc.key)
+			expected := locales.Text(language, tc.key)
 			if len(body.Error.Args) > 0 {
 				expected = strings.ReplaceAll(expected, "%d", "%v")
-				expected = locales.Format("en-US", expected, body.Error.Args...)
+				expected = locales.Format(language, expected, body.Error.Args...)
 			}
-			if res.StatusCode != tc.status || res.Header.Get("Content-Language") != "en-US" || body.Error.Key != tc.key || body.Error.Message != expected {
+			if res.StatusCode != tc.status || res.Header.Get("Content-Language") != language || body.Error.Key != tc.key || body.Error.Message != expected {
 				t.Fatalf("status=%d body=%s expected=%s", res.StatusCode, raw, expected)
 			}
 		})
@@ -144,14 +151,14 @@ func TestEnglishUIErrorHTTPContract(t *testing.T) {
 	defer setup.Close()
 	req, _ := http.NewRequest("POST", setup.URL+"/api/v1/setup", strings.NewReader(`{"token":"invalid"}`))
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Accept-Language", "en-US")
+	req.Header.Set("Accept-Language", language)
 	res, err := http.DefaultClient.Do(req)
 	if err != nil {
 		t.Fatal(err)
 	}
 	raw, _ := io.ReadAll(res.Body)
 	res.Body.Close()
-	if res.StatusCode != 403 || !bytes.Contains(raw, []byte(locales.Text("en-US", "初始化码不正确"))) {
+	if res.StatusCode != 403 || !bytes.Contains(raw, []byte(locales.Text(language, "初始化码不正确"))) {
 		t.Fatalf("setup: %d %s", res.StatusCode, raw)
 	}
 	if _, err := os.Stat(filepath.Join(fresh.Store.Dir, "setup-token")); err != nil {
@@ -160,14 +167,14 @@ func TestEnglishUIErrorHTTPContract(t *testing.T) {
 	// An internal error stays generic and does not expose the underlying SQL error.
 	mustSQL(t, s, "DROP TABLE applications")
 	req, _ = http.NewRequest("GET", ts.URL+"/api/v1/applications", nil)
-	req.Header.Set("Accept-Language", "en-US")
+	req.Header.Set("Accept-Language", language)
 	res, err = c.c.Do(req)
 	if err != nil {
 		t.Fatal(err)
 	}
 	raw, _ = io.ReadAll(res.Body)
 	res.Body.Close()
-	if res.StatusCode != 500 || !bytes.Contains(raw, []byte(locales.Text("en-US", "操作失败，请稍后重试"))) || bytes.Contains(raw, []byte("no such table")) {
+	if res.StatusCode != 500 || !bytes.Contains(raw, []byte(locales.Text(language, "操作失败，请稍后重试"))) || bytes.Contains(raw, []byte("no such table")) {
 		t.Fatalf("500: %d %s", res.StatusCode, raw)
 	}
 }

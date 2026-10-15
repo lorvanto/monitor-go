@@ -1536,6 +1536,7 @@
     align-items: flex-start;
     justify-content: space-between;
     gap: 16px;
+    flex-wrap: wrap;
     padding: 18px 20px 14px;
     border-bottom: 1px solid var(--rule);
   }
@@ -1551,6 +1552,15 @@
   }
   .modal-head .icon-btn {
     margin: -5px -8px 0 0;
+  }
+  .modal-controls {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-left: auto;
+  }
+  .modal-controls .language-select {
+    margin: 0;
   }
   .modal-body {
     display: grid;

@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import { t, useI18n } from "../i18n";
 import { classNames } from "../lib/react";
 import Icon from "./Icon";
+import LanguageSelect from "./LanguageSelect";
 let openCount = 0;
 let previousOverflow = "";
 interface Props {
@@ -103,9 +104,17 @@ export default function Modal({
             <h2 id={titleId}>{title}</h2>
             {subtitle && <p>{subtitle}</p>}
           </div>
-          <button className="icon-btn" aria-label={t("关闭")} onClick={onClose}>
-            <Icon name="X" size={18} />
-          </button>
+          <div className="modal-controls">
+            <LanguageSelect />
+            <button
+              type="button"
+              className="icon-btn"
+              aria-label={t("关闭")}
+              onClick={onClose}
+            >
+              <Icon name="X" size={18} />
+            </button>
+          </div>
         </header>
         <div className="modal-body">{children}</div>
         {footer && <footer className="modal-foot">{footer}</footer>}

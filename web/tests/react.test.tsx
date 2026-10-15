@@ -23,6 +23,8 @@ import ApplicationsView from "../src/views/ApplicationsView";
 import ReleasesView from "../src/views/ReleasesView";
 import CodesView from "../src/views/CodesView";
 import Modal from "../src/components/Modal";
+import AgentAccess from "../src/components/AgentAccess";
+import NotificationsPanel from "../src/components/NotificationsPanel";
 import LineChart from "../src/components/LineChart";
 import { api, appStore, navigate, type User } from "../src/stores/app";
 import { setLocale, locales, t } from "../src/i18n";
@@ -170,7 +172,7 @@ it("modal traps focus, restores it, and closes only the upper dialog", () => {
   expect(document.body.style.overflow).toBe("hidden");
   fireEvent.keyDown(document, { key: "Tab" });
   expect(document.activeElement).toBe(
-    within(screen.getByRole("dialog", { name: "Inner" })).getByRole("button"),
+    within(screen.getByRole("dialog", { name: "Inner" })).getByRole("combobox"),
   );
   fireEvent.keyDown(document, { key: "Escape" });
   expect(screen.queryByRole("dialog", { name: "Inner" })).toBeNull();
@@ -1343,8 +1345,10 @@ function englishDialogFixtures() {
   appStore.setState({ data: { ...appStore.getState().data, roles } });
 }
 function assertEnglishDialog(dialog: HTMLElement) {
+  const copy = dialog.cloneNode(true) as HTMLElement;
+  copy.querySelectorAll("option[lang]").forEach((option) => option.remove());
   const text = [
-    dialog.textContent,
+    copy.textContent,
     ...Array.from(
       dialog.querySelectorAll<HTMLInputElement | HTMLTextAreaElement>(
         "input, textarea",
@@ -1490,4 +1494,270 @@ it("filters the default monitor group separately from all and explicitly named g
     (screen.getByRole("combobox", { name: t("分组") }) as HTMLSelectElement)
       .value,
   ).toBe("group:");
+});
+
+// Exercise the actual in-dialog language control, not only the locale store.
+async function switchDialogLanguage(dialog: HTMLElement, code: string) {
+  fireEvent.change(
+    within(dialog).getByRole("combobox", { name: t("界面语言") }),
+    {
+      target: { value: code },
+    },
+  );
+  await waitFor(() => expect(document.documentElement.lang).toBe(code));
+}
+function draftFields(root: HTMLElement) {
+  return Array.from(
+    root.querySelectorAll<
+      HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
+    >("input, select, textarea"),
+  ).filter(
+    (field) =>
+      !field.closest(".language-select") &&
+      field.type !== "file" &&
+      field.type !== "hidden",
+  );
+}
+function fieldValues(fields: ReturnType<typeof draftFields>) {
+  return fields.map((field) => ({
+    type: field.type,
+    value: field.value,
+    checked: field instanceof HTMLInputElement ? field.checked : undefined,
+  }));
+}
+it.each([
+  [MonitorsView, "新增检测"],
+  [FilesView, "新建文件夹"],
+  [FilesView, "新增样式"],
+  [RolesView, "新建角色"],
+  [RolesView, "添加成员"],
+  [MenusView, "新增菜单"],
+  [ApplicationsView, "创建应用"],
+  [ApplicationsView, "创建密钥"],
+  [ReleasesView, "新建版本"],
+  [AgentAccess, "接入远程主机"],
+  [() => <NotificationsPanel mode="channels" />, "添加渠道"],
+] as const)(
+  "keeps every draft field through Japanese, Korean and Traditional Chinese dialog switches (%#)",
+  async (Page, key) => {
+    englishDialogFixtures();
+    fixtures["/applications/1/keys"].scopes = [
+      {
+        key: "monitor:read",
+        name: "检测状态",
+        description: "读取全部检测目标和最近状态，不包含访问凭据",
+      },
+    ];
+    render(<Page />);
+    await act(async () => {});
+    if (key === "新增样式")
+      fireEvent.click(screen.getByRole("button", { name: /Image styles/ }));
+    fireEvent.click(screen.getAllByRole("button", { name: t(key) })[0]);
+    const dialog = await screen.findByRole("dialog");
+    for (const [index, field] of draftFields(dialog).entries()) {
+      if (
+        field.disabled ||
+        (field instanceof HTMLInputElement && field.readOnly)
+      )
+        continue;
+      if (field.type === "checkbox") fireEvent.click(field);
+      else if (field.type === "radio" || field instanceof HTMLSelectElement)
+        continue;
+      else
+        fireEvent.change(field, {
+          target: {
+            value:
+              field.type === "number" ? "42" : `草稿 / 下書き / 초안 ${index}`,
+          },
+        });
+    }
+    const fields = draftFields(dialog);
+    const expected = fieldValues(fields);
+    const requestCount = requests.length;
+    for (const code of ["ja-JP", "ko-KR", "zh-TW", "en-US"]) {
+      await switchDialogLanguage(dialog, code);
+      expect(screen.getByRole("dialog")).toBe(dialog);
+      expect(draftFields(dialog)).toEqual(fields);
+      expect(fieldValues(fields)).toEqual(expected);
+      expect(
+        within(dialog).getByRole("button", { name: t("关闭") }),
+      ).toBeTruthy();
+    }
+    // Switching must not save, submit, or reload the draft.
+    expect(requests.length).toBe(requestCount);
+  },
+);
+
+it("keeps SMTP credentials, recipients and transport selections when the dialog language changes", async () => {
+  render(<NotificationsPanel mode="channels" />);
+  await act(async () => {});
+  fireEvent.click(screen.getAllByRole("button", { name: t("添加渠道") })[0]);
+  const dialog = screen.getByRole("dialog");
+  fireEvent.change(within(dialog).getByLabelText(t("通知方式")), {
+    target: { value: "smtp" },
+  });
+  for (const [label, value] of [
+    ["渠道名称", "值班通知 / 当番 / 당직"],
+    ["SMTP 主机", "smtp.example.com"],
+    ["端口", "587"],
+    ["连接安全", "starttls"],
+    ["登录账号", "reviewer"],
+    ["密码或授权码", "unsaved-secret-2026"],
+    ["发件邮箱", "sender@example.com"],
+  ] as const)
+    fireEvent.change(within(dialog).getByLabelText(t(label)), {
+      target: { value },
+    });
+  fireEvent.change(
+    within(dialog).getByLabelText(t("收件邮箱"), { exact: false }),
+    { target: { value: "first@example.com\nsecond@example.com" } },
+  );
+  const fields = draftFields(dialog),
+    expected = fieldValues(fields);
+  for (const code of ["ja-JP", "ko-KR", "zh-TW"]) {
+    await switchDialogLanguage(dialog, code);
+    expect(fieldValues(draftFields(dialog))).toEqual(expected);
+  }
+  fireEvent.click(within(dialog).getByRole("button", { name: t("保存渠道") }));
+  await waitFor(() =>
+    expect(
+      requests.find(
+        (r) => r.path === "/notification-channels" && r.method === "POST",
+      )?.body,
+    ).toMatchObject({
+      kind: "smtp",
+      config: {
+        port: 587,
+        security: "starttls",
+        secret: "unsaved-secret-2026",
+        to: ["first@example.com", "second@example.com"],
+      },
+    }),
+  );
+});
+
+it.each([
+  "<html>Proxy error</html>",
+  "null",
+  '{"data":null}',
+  '{"error":{"key":"上传失败","message":"旧文案"}}',
+])(
+  "localizes malformed or failed package upload responses while retaining the version draft (%#)",
+  async (responseText) => {
+    englishDialogFixtures();
+    let xhr!: { onload: () => void };
+    vi.stubGlobal(
+      "XMLHttpRequest",
+      class {
+        constructor() {
+          xhr = this;
+        }
+        upload = {};
+        onload = () => {};
+        status = responseText.includes('"error"') ? 422 : 200;
+        responseText = responseText;
+        open() {}
+        send() {}
+        abort() {}
+        setRequestHeader() {}
+      },
+    );
+    render(<ReleasesView />);
+    await act(async () => {});
+    fireEvent.click(screen.getByRole("button", { name: t("新建版本") }));
+    const dialog = screen.getByRole("dialog");
+    const version = within(dialog).getByLabelText(
+      t("版本号"),
+    ) as HTMLInputElement;
+    fireEvent.change(version, { target: { value: "2.3.4" } });
+    await act(async () => {});
+    const input = dialog.querySelector('input[type="file"]')!;
+    fireEvent.change(input, {
+      target: { files: [new File(["binary"], "package.zip")] },
+    });
+    act(() => xhr.onload());
+    for (const code of ["ja-JP", "ko-KR", "zh-TW"]) {
+      await switchDialogLanguage(dialog, code);
+      expect(within(dialog).getByRole("alert").textContent).toBe(
+        t(responseText.includes('"error"') ? "上传失败" : "上传响应异常"),
+      );
+      expect(version.value).toBe("2.3.4");
+    }
+  },
+);
+
+it("retains a typed deletion confirmation across languages and still rejects arbitrary text", async () => {
+  englishDialogFixtures();
+  fixtures["/files"].items[0].deletedAt = Date.now();
+  fixtures["/files"].items[0].trashRoot = "2";
+  render(<FilesView />);
+  await act(async () => {});
+  fireEvent.click(screen.getByRole("button", { name: /Trash/ }));
+  await act(async () => {});
+  fireEvent.click(screen.getByRole("button", { name: t("永久删除") }));
+  const dialog = screen.getByRole("dialog");
+  const input = within(dialog).getByLabelText(
+    t("输入“永久删除”以确认"),
+  ) as HTMLInputElement;
+  const confirm = () =>
+    within(dialog).getByRole("button", {
+      name: t("永久删除"),
+    }) as HTMLButtonElement;
+  expect(confirm().disabled).toBe(true);
+  await switchDialogLanguage(dialog, "ja-JP");
+  const phrase = t("永久删除");
+  fireEvent.change(input, { target: { value: phrase } });
+  for (const code of ["ko-KR", "zh-TW", "en-US"]) {
+    await switchDialogLanguage(dialog, code);
+    expect(input.value).toBe(phrase);
+    expect(confirm().disabled).toBe(false);
+  }
+  fireEvent.change(input, { target: { value: "arbitrary" } });
+  expect(confirm().disabled).toBe(true);
+  fireEvent.submit(input.closest("form")!);
+  expect(requests.some((r) => r.path.endsWith("/purge"))).toBe(false);
+  fireEvent.change(input, { target: { value: t("永久删除") } });
+  fireEvent.click(confirm());
+  await waitFor(() =>
+    expect(requests.find((r) => r.path.endsWith("/purge"))?.body).toMatchObject(
+      { confirm: "DELETE", version: 1 },
+    ),
+  );
+});
+
+// Seed provenance mirrors the live API; literal user/historical content is not translated.
+describe.each(["ja-JP", "ko-KR", "zh-TW"])("%s system text audit", (code) => {
+  it.each(Object.entries(pages))(
+    "checks %s labels, choices and placeholders",
+    async (_name, Page) => {
+      englishDialogFixtures();
+      for (const user of fixtures["/users"]) user.name = "Fixture user";
+      fixtures["/audit"] = { items: [], hasMore: false };
+      await setLocale(code);
+      render(<Page />);
+      await act(async () => {});
+      const copy = document.body.cloneNode(true) as HTMLElement;
+      copy.querySelectorAll("option[lang]").forEach((el) => el.remove());
+      const text = [
+        copy.textContent,
+        ...Array.from(
+          copy.querySelectorAll("[placeholder], [title], [aria-label]"),
+        ).flatMap((el) => [
+          el.getAttribute("placeholder"),
+          el.getAttribute("title"),
+          el.getAttribute("aria-label"),
+        ]),
+      ].join("\n");
+      if (code === "ko-KR")
+        expect(text).not.toMatch(
+          /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}]/u,
+        );
+      if (code === "ja-JP")
+        expect(text).not.toMatch(/[\p{Script=Hangul}这请页输检测账户]/u);
+      if (code === "zh-TW")
+        expect(text).not.toMatch(
+          /[\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}这请页输检测账户]/u,
+        );
+    },
+  );
 });
