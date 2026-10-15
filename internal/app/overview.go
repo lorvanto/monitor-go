@@ -44,17 +44,18 @@ func (s *Server) overview(w http.ResponseWriter, r *http.Request, u *User) (any,
 		out["uptime"] = uptime
 	}
 	if u.Can("audit:read") {
-		rows, e := s.Store.DB.QueryContext(r.Context(), "SELECT at,actor,action || ' · ' || resource FROM audit_logs ORDER BY id DESC LIMIT 8")
+		rows, e := s.Store.DB.QueryContext(r.Context(), "SELECT at,actor,action,resource FROM audit_logs ORDER BY id DESC LIMIT 8")
 		if e != nil {
 			return nil, e
 		}
 		activities := []Activity{}
 		for rows.Next() {
 			var a Activity
-			if e = rows.Scan(&a.At, &a.Actor, &a.Message); e != nil {
+			if e = rows.Scan(&a.At, &a.Actor, &a.Action, &a.Resource); e != nil {
 				rows.Close()
 				return nil, e
 			}
+			a.Message = a.Action + " · " + a.Resource
 			activities = append(activities, a)
 		}
 		e = rows.Err()

@@ -19,6 +19,7 @@ import (
 )
 
 type ImageStyle struct {
+	NameKey string `json:"nameKey,omitempty"`
 	ID      string `json:"id"`
 	Name    string `json:"name"`
 	Width   int    `json:"width"`
@@ -38,6 +39,9 @@ func (s *Server) listImageStyles(w http.ResponseWriter, r *http.Request, u *User
 		var v ImageStyle
 		if e = rows.Scan(&v.ID, &v.Name, &v.Width, &v.Height, &v.Fit, &v.Version); e != nil {
 			return nil, e
+		}
+		if v.Version == 1 && (v.ID == "1" && v.Name == "列表缩略图" || v.ID == "2" && v.Name == "文档插图") {
+			v.NameKey = v.Name
 		}
 		items = append(items, v)
 	}

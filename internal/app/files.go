@@ -19,31 +19,38 @@ import (
 )
 
 type FileEntry struct {
-	ID        string `json:"id"`
-	ParentID  string `json:"parentId"`
-	Kind      string `json:"kind"`
-	Name      string `json:"name"`
-	MIME      string `json:"mime"`
-	Size      int64  `json:"size"`
-	SHA256    string `json:"sha256"`
-	Width     int    `json:"width"`
-	Height    int    `json:"height"`
-	CreatedAt int64  `json:"createdAt"`
-	UpdatedAt int64  `json:"updatedAt"`
-	Version   int    `json:"version"`
-	DeletedAt int64  `json:"deletedAt"`
-	TrashRoot string `json:"trashRoot"`
-	ObjectKey string `json:"-"`
-	Creator   string `json:"creator"`
+	ID         string `json:"id"`
+	ParentID   string `json:"parentId"`
+	Kind       string `json:"kind"`
+	Name       string `json:"name"`
+	NameKey    string `json:"nameKey,omitempty"`
+	MIME       string `json:"mime"`
+	Size       int64  `json:"size"`
+	SHA256     string `json:"sha256"`
+	Width      int    `json:"width"`
+	Height     int    `json:"height"`
+	CreatedAt  int64  `json:"createdAt"`
+	UpdatedAt  int64  `json:"updatedAt"`
+	Version    int    `json:"version"`
+	DeletedAt  int64  `json:"deletedAt"`
+	TrashRoot  string `json:"trashRoot"`
+	ObjectKey  string `json:"-"`
+	Creator    string `json:"creator"`
+	CreatorKey string `json:"creatorKey,omitempty"`
 }
 
-const fileColumns = "f.id,coalesce(CAST(f.parent_id AS TEXT),''),f.kind,f.name,f.mime,f.size,f.sha256,f.width,f.height,f.created_at,f.updated_at,f.version,coalesce(f.deleted_at,0),coalesce(CAST(f.trash_root AS TEXT),''),f.object_key,coalesce(u.display_name,'系统')"
+const fileColumns = "f.id,coalesce(CAST(f.parent_id AS TEXT),''),f.kind,f.name,f.mime,f.size,f.sha256,f.width,f.height,f.created_at,f.updated_at,f.version,coalesce(f.deleted_at,0),coalesce(CAST(f.trash_root AS TEXT),''),f.object_key,coalesce(u.display_name,'系统'),CASE WHEN f.created_by IS NULL THEN '系统' ELSE '' END"
 
 type scanner interface{ Scan(...any) error }
 
 func scanFile(row scanner) (FileEntry, error) {
 	var f FileEntry
-	e := row.Scan(&f.ID, &f.ParentID, &f.Kind, &f.Name, &f.MIME, &f.Size, &f.SHA256, &f.Width, &f.Height, &f.CreatedAt, &f.UpdatedAt, &f.Version, &f.DeletedAt, &f.TrashRoot, &f.ObjectKey, &f.Creator)
+	e := row.Scan(&f.ID, &f.ParentID, &f.Kind, &f.Name, &f.MIME, &f.Size, &f.SHA256, &f.Width, &f.Height, &f.CreatedAt, &f.UpdatedAt, &f.Version, &f.DeletedAt, &f.TrashRoot, &f.ObjectKey, &f.Creator, &f.CreatorKey)
+	if f.Kind == "folder" && f.CreatedAt == 0 && f.Version == 1 {
+		if f.ID == "1" && f.Name == "全部文件" || f.ID == "2" && f.Name == "未分类" {
+			f.NameKey = f.Name
+		}
+	}
 	return f, e
 }
 func readFile(q rowQuery, id any) (FileEntry, error) {

@@ -185,3 +185,7 @@ mkdir -p backups
 ```
 
 To restore, stop the service, replace the entire data directory with a complete backup, and start a binary supporting at least its schema version. Keep the old directory until verification succeeds. Restore offline only; do not merge files into a running installation. Treat backups as private credentials and copy them to independent storage. Cold backups remain supported.
+
+Untouched seeded folder names (including paths in settings and package selection), role names/descriptions, image style names and the local-host alias follow the selected interface language. Renamed values remain literal; the server supplies explicit translation keys so a custom name matching a default is not translated by its text alone. Stored historical records remain unchanged.
+
+Fixed audit action labels are localized at display time; actor names, resource text and original stored audit rows are preserved.

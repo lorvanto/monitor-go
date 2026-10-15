@@ -20,6 +20,15 @@ func (s *Server) roles() ([]Role, error) {
 			rows.Close()
 			return nil, e
 		}
+		// Seed role IDs cannot be deleted or renamed through the application.
+		names := map[int64]string{1: "超级管理员", 2: "运维工程师", 3: "只读成员"}
+		descriptions := map[int64]string{1: "管理平台全部功能", 2: "维护主机、检测目标和告警", 3: "查看监控状态和历史数据"}
+		if names[r.ID] == r.Name {
+			r.NameKey = r.Name
+		}
+		if descriptions[r.ID] == r.Description {
+			r.DescriptionKey = r.Description
+		}
 		out = append(out, r)
 	}
 	e = rows.Err()

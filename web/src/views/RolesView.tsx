@@ -1,3 +1,4 @@
+import { resourceName } from "../lib/resourceLabels";
 import { useEffect, useState } from "react";
 import { createStore, useStore } from "zustand";
 import Icon from "../components/Icon";
@@ -133,8 +134,8 @@ export default function RolesView() {
     appStore.getState().data.permissions.flatMap((g) => g.items).length;
   const roleNames = (u: User) =>
     u.roles
-      .map(
-        (id) => appStore.getState().data.roles.find((r) => r.id === id)?.name,
+      .map((id) =>
+        resourceName(appStore.getState().data.roles.find((r) => r.id === id)),
       )
       .filter(Boolean)
       .join("、");
@@ -261,7 +262,7 @@ export default function RolesView() {
                       className="muted"
                     ></Icon>
                     <span className="list-text">
-                      <strong>{r.name}</strong>
+                      <strong>{resourceName(r)}</strong>
                       <small>
                         {t("{p0} 位成员，{p1} 项权限", {
                           p0: r.members,
@@ -285,12 +286,16 @@ export default function RolesView() {
             <div className="role-detail-head">
               <div>
                 <h2>
-                  {role.name}
+                  {resourceName(role)}
                   {role.builtin ? (
                     <span className="tag">{t("内置角色，不可修改")}</span>
                   ) : null}
                 </h2>
-                <p>{role.description || t("尚未填写角色说明")}</p>
+                <p>
+                  {(role.descriptionKey
+                    ? metadataLabel(role.descriptionKey)
+                    : role.description) || t("尚未填写角色说明")}
+                </p>
               </div>
             </div>
             <nav aria-label={t("角色内容")} className="tabs">
@@ -588,7 +593,7 @@ export default function RolesView() {
         <Modal
           title={t("确认授予敏感权限")}
           subtitle={t("「{p0}」的 {p1} 位成员将获得以下权限", {
-            p0: role.name,
+            p0: resourceName(role),
             p1: role.members,
           })}
           onClose={() => {
@@ -765,7 +770,7 @@ export default function RolesView() {
                           });
                         }}
                       />
-                      {r.name}
+                      {resourceName(r)}
                     </label>
                   ))}
                 </>

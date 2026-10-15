@@ -83,13 +83,15 @@ func (u *User) Can(p string) bool {
 }
 
 type Role struct {
-	ID          int64    `json:"id,string"`
-	Name        string   `json:"name"`
-	Description string   `json:"description"`
-	Builtin     bool     `json:"builtin"`
-	Version     int      `json:"version"`
-	Members     int      `json:"members"`
-	Permissions []string `json:"permissions"`
+	NameKey        string   `json:"nameKey,omitempty"`
+	DescriptionKey string   `json:"descriptionKey,omitempty"`
+	ID             int64    `json:"id,string"`
+	Name           string   `json:"name"`
+	Description    string   `json:"description"`
+	Builtin        bool     `json:"builtin"`
+	Version        int      `json:"version"`
+	Members        int      `json:"members"`
+	Permissions    []string `json:"permissions"`
 }
 type Monitor struct {
 	ID        int64         `json:"id,string"`
@@ -143,11 +145,14 @@ type Alert struct {
 	Activity     []Activity `json:"activity"`
 }
 type Activity struct {
-	At      int64  `json:"at"`
-	Actor   string `json:"actor"`
-	Message string `json:"message"`
+	Action   string `json:"action,omitempty"`
+	Resource string `json:"resource,omitempty"`
+	At       int64  `json:"at"`
+	Actor    string `json:"actor"`
+	Message  string `json:"message"`
 }
 type Host struct {
+	AliasKey          string          `json:"aliasKey,omitempty"`
 	Source            string          `json:"source"`
 	Status            string          `json:"status"`
 	AgentEnabled      bool            `json:"agentEnabled"`

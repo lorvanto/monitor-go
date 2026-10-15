@@ -1,7 +1,7 @@
 import { Fragment, useEffect, useRef, useState } from "react";
 import { createStore, useStore } from "zustand";
 import Icon from "../components/Icon";
-import { t, useI18n } from "../i18n";
+import { metadataLabel, t, useI18n } from "../i18n";
 import { classNames } from "../lib/react";
 import { api, dateTime, useApp } from "../stores/app";
 interface Entry {
@@ -211,7 +211,7 @@ export default function AuditView() {
                           </span>
                         </td>
                         <td>
-                          <strong>{item.action}</strong>
+                          <strong>{metadataLabel(item.action)}</strong>
                         </td>
                         <td className="audit-resource">
                           <span title={item.resource} className="ellipsis">

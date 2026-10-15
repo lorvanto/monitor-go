@@ -1,3 +1,4 @@
+import { resourceName } from "../lib/resourceLabels";
 import { useEffect, useState } from "react";
 import { createStore, useStore } from "zustand";
 import Icon from "../components/Icon";
@@ -53,7 +54,12 @@ export default function SettingsView() {
       version: 0,
     } as Settings,
     info: undefined as Info | undefined,
-    folders: [] as { id: string; name: string; parentId: string }[],
+    folders: [] as {
+      id: string;
+      name: string;
+      parentId: string;
+      nameKey?: string;
+    }[],
     error: "",
     busy: false,
     clear: false,
@@ -93,7 +99,7 @@ export default function SettingsView() {
     for (let i = 0; id && i < 18; i++) {
       const f = store.getState().folders.find((v) => v.id === id);
       if (!f) break;
-      parts.unshift(f.name);
+      parts.unshift(resourceName(f));
       id = f.parentId;
     }
     return parts.join(" / ");

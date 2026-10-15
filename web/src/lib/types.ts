@@ -52,6 +52,8 @@ export interface Monitor {
   history: CheckResult[];
 }
 export interface Activity {
+  action?: string;
+  resource?: string;
   at: number;
   actor: string;
   message: string;
@@ -73,6 +75,8 @@ export interface Alert {
   activity: Activity[];
 }
 export interface Role {
+  nameKey?: string;
+  descriptionKey?: string;
   id: string;
   name: string;
   description: string;
@@ -99,6 +103,7 @@ export interface PermissionGroup {
   items: { key: string; label: string; sensitive?: boolean }[];
 }
 export interface Host {
+  aliasKey?: string;
   source: "local" | "agent";
   status: "online" | "offline" | "pending" | "revoked";
   agentEnabled: boolean;

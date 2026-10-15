@@ -1,3 +1,4 @@
+import { hostName } from "../lib/resourceLabels";
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { createStore, useStore } from "zustand";
 import Icon from "../components/Icon";
@@ -5,7 +6,7 @@ import LineChart from "../components/LineChart";
 import SignalTrace from "../components/SignalTrace";
 import StatusBadge from "../components/StatusBadge";
 import StatusGlyph from "../components/StatusGlyph";
-import { i18nStore, localizedLabels, t, useI18n } from "../i18n";
+import { i18nStore, localizedLabels, metadataLabel, t, useI18n } from "../i18n";
 import { readings, stamp } from "../lib/chart";
 import { classNames } from "../lib/react";
 import { severityRank, toneOf, type Tone } from "../lib/status";
@@ -725,7 +726,7 @@ export default function OverviewView() {
                       {hostRows.map((h) => (
                         <button
                           key={h.id}
-                          aria-label={`${h.alias || h.hostname}，${hostState[h.status]}，${usage(
+                          aria-label={`${hostName(h)}，${hostState[h.status]}，${usage(
                             h,
                           )
                             .map((u) => `${u.label} ${percent(u.value)}`)
@@ -737,7 +738,7 @@ export default function OverviewView() {
                         >
                           <StatusGlyph tone={toneOf(h.status)}></StatusGlyph>
                           <span className="board-name">
-                            <strong>{h.alias || h.hostname}</strong>
+                            <strong>{hostName(h)}</strong>
                             <small>
                               {hostState[h.status]}{" "}
                               {h.status === "online"
@@ -800,8 +801,17 @@ export default function OverviewView() {
                       {viewState.summary.activity.slice(0, 6).map((a) => (
                         <li key={a.at + a.message}>
                           <time>{stamp(a.at)}</time>
-                          <p title={a.message} className="ellipsis">
-                            {a.message}
+                          <p
+                            title={
+                              a.action
+                                ? `${metadataLabel(a.action)} · ${a.resource || ""}`
+                                : a.message
+                            }
+                            className="ellipsis"
+                          >
+                            {a.action
+                              ? `${metadataLabel(a.action)} · ${a.resource || ""}`
+                              : a.message}
                           </p>
                           <span className="log-actor">{a.actor}</span>
                         </li>

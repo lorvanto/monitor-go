@@ -1187,5 +1187,15 @@
   "主机阈值为 0–100%，持续时长为 1–60 分钟": "Host thresholds must be 0–100% and duration 1–60 minutes",
   "主机 CPU 使用率需要关注": "Host CPU usage needs attention",
   "主机内存使用率需要关注": "Host memory usage needs attention",
-  "主机指标告警已关闭": "Host metric alert disabled"
+  "主机指标告警已关闭": "Host metric alert disabled",
+  "超级管理员": "Super administrator",
+  "运维工程师": "Operations engineer",
+  "只读成员": "Read-only member",
+  "管理平台全部功能": "Manage all platform features",
+  "维护主机、检测目标和告警": "Maintain hosts, checks and alerts",
+  "查看监控状态和历史数据": "View monitoring status and history",
+  "列表缩略图": "List thumbnail",
+  "文档插图": "Document illustration",
+  "本机": "Local server",
+  "系统": "System"
 }

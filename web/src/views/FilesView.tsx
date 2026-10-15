@@ -1,3 +1,4 @@
+import { resourceName } from "../lib/resourceLabels";
 import {
   Fragment,
   useEffect,
@@ -24,6 +25,7 @@ interface Entry {
   parentId: string;
   kind: "file" | "folder";
   name: string;
+  nameKey?: string;
   mime: string;
   size: number;
   sha256: string;
@@ -35,10 +37,12 @@ interface Entry {
   deletedAt: number;
   trashRoot: string;
   creator: string;
+  creatorKey?: string;
 }
 interface Style {
   id: string;
   name: string;
+  nameKey?: string;
   width: number;
   height: number;
   fit: string;
@@ -269,7 +273,7 @@ export default function FilesView() {
     store.setState({ mode: action });
     store.setState({ target: item });
     store.setState((current) => ({
-      form: { ...current.form, name: item?.name || "" },
+      form: { ...current.form, name: resourceName(item) },
     }));
     store.setState((current) => ({
       form: {
@@ -292,7 +296,7 @@ export default function FilesView() {
         ...store.getState().styleForm,
         ...(item
           ? {
-              name: item.name,
+              name: resourceName(item),
               width: item.width,
               height: item.height,
               fit: item.fit,
@@ -641,7 +645,7 @@ export default function FilesView() {
                 }}
               >
                 <Icon name="FolderOpen" size={15}></Icon>
-                <span title={f.name}>{f.name}</span>
+                <span title={resourceName(f)}>{resourceName(f)}</span>
               </button>
             ))}
           </>
@@ -732,7 +736,7 @@ export default function FilesView() {
                                 openFolder(f.id);
                               }}
                             >
-                              {f.name}
+                              {resourceName(f)}
                             </button>
                           </Fragment>
                         ))}
@@ -820,7 +824,7 @@ export default function FilesView() {
                               aria-label={
                                 (f.kind === "folder"
                                   ? t("打开 ")
-                                  : t("预览 ")) + f.name
+                                  : t("预览 ")) + resourceName(f)
                               }
                               className="file-thumb"
                               onClick={() => {
@@ -832,7 +836,7 @@ export default function FilesView() {
                               can("file:read") ? (
                                 <img
                                   src={`/api/v1/files/${f.id}/image?size=thumb`}
-                                  alt={f.name}
+                                  alt={resourceName(f)}
                                   loading="lazy"
                                 />
                               ) : (
@@ -850,7 +854,9 @@ export default function FilesView() {
                               <span className="tag">{ext(f)}</span>
                             </button>
                             <div className="file-info">
-                              <strong title={f.name}>{f.name}</strong>
+                              <strong title={resourceName(f)}>
+                                {resourceName(f)}
+                              </strong>
                               <small>
                                 {f.kind === "folder"
                                   ? t("文件夹")
@@ -886,7 +892,9 @@ export default function FilesView() {
                                   ) : null}
                                   {can("file:manage") ? (
                                     <button
-                                      aria-label={t("移入回收站 ") + f.name}
+                                      aria-label={
+                                        t("移入回收站 ") + resourceName(f)
+                                      }
                                       title={t("移入回收站")}
                                       className="icon-btn sm"
                                       onClick={() => {
@@ -966,13 +974,15 @@ export default function FilesView() {
                                             : "FileText"
                                       }
                                     ></Icon>
-                                    <span title={f.name}>{f.name}</span>
+                                    <span title={resourceName(f)}>
+                                      {resourceName(f)}
+                                    </span>
                                   </button>
                                 </td>
                                 <td className="num">
                                   {f.kind === "folder" ? "—" : bytes(f.size)}
                                 </td>
-                                <td>{f.creator}</td>
+                                <td>{f.creatorKey ? t("系统") : f.creator}</td>
                                 <td className="tnum nowrap muted">
                                   {dateTime(
                                     viewState.section === "trash"
@@ -1138,7 +1148,7 @@ export default function FilesView() {
                             }
                           ></i>
                         </div>
-                        <strong>{preset.name}</strong>
+                        <strong>{resourceName(preset)}</strong>
                         <small>
                           {preset.width}
                           {" × "}
@@ -1283,7 +1293,7 @@ export default function FilesView() {
                         .filter((v) => v.id !== viewState.target?.id)
                         .map((f) => (
                           <option key={f.id} value={f.id}>
-                            {"　".repeat(f.depth) + f.name}
+                            {"　".repeat(f.depth) + resourceName(f)}
                           </option>
                         ))}
                     </>
@@ -1390,7 +1400,7 @@ export default function FilesView() {
               <>
                 <p>
                   {t("把“{p0}”移入回收站？{p1}之后可以在回收站中恢复。", {
-                    p0: viewState.target?.name,
+                    p0: resourceName(viewState.target),
                     p1:
                       viewState.target?.kind === "folder"
                         ? t("其中的文件和文件夹会一起移入。")
@@ -1402,7 +1412,7 @@ export default function FilesView() {
               <>
                 <p>
                   {t("“{p0}”以及同一次删除的内容会被永久移除，无法恢复。", {
-                    p0: viewState.target?.name,
+                    p0: resourceName(viewState.target),
                   })}
                 </p>
                 <label className="field">
@@ -1425,7 +1435,7 @@ export default function FilesView() {
             ) : (
               <p>
                 {t("归档“{p0}”后不再提供这个样式，原图不受影响。", {
-                  p0: viewState.styleTarget?.name,
+                  p0: resourceName(viewState.styleTarget),
                 })}
               </p>
             )}
@@ -1495,7 +1505,7 @@ export default function FilesView() {
                     <>
                       {viewState.styles.map((style) => (
                         <option key={style.id} value={style.id}>
-                          {style.name}
+                          {resourceName(style)}
                           {"，"}
                           {style.width}
                           {" × "}
@@ -1548,7 +1558,11 @@ export default function FilesView() {
           <dl className="kv">
             <div>
               <dt>{t("上传者")}</dt>
-              <dd>{viewState.preview.file.creator}</dd>
+              <dd>
+                {viewState.preview.file.creatorKey
+                  ? t("系统")
+                  : viewState.preview.file.creator}
+              </dd>
             </div>
             <div>
               <dt>{t("上传时间")}</dt>

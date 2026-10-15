@@ -4,6 +4,11 @@ User-visible changes belong here. Entries under **Unreleased** describe the curr
 
 ## Unreleased
 
+### Default resource localization
+
+- Localize untouched seeded folders and full selector paths, roles/descriptions, image styles and local-host labels in all five languages. Translate fixed audit action labels at display time. Preserve custom names and stored historical data; do not infer translation from arbitrary display text.
+
+
 ### Online backup
 
 - Add a read-only `monitor backup` command that snapshots SQLite without the service lock or migrations, verifies each referenced object, and records hashes and versions. Failed backups retain an incomplete marker and cannot be opened as an installation. Restore only while stopped.

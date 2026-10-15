@@ -1,3 +1,4 @@
+import { hostName } from "../lib/resourceLabels";
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { createStore, useStore } from "zustand";
 import AgentAccess from "../components/AgentAccess";
@@ -60,17 +61,14 @@ export default function HostView() {
   const getHostList = () =>
     [...appStore.getState().data.hosts]
       .filter((h) =>
-        `${h.alias} ${h.hostname} ${h.inventory.ips.join(" ")}`
+        `${hostName(h)} ${h.hostname} ${h.inventory.ips.join(" ")}`
           .toLowerCase()
           .includes(store.getState().hostQuery.trim().toLowerCase()),
       )
       .sort(
         (a, b) =>
           hostRank(a) - hostRank(b) ||
-          (a.alias || a.hostname).localeCompare(
-            b.alias || b.hostname,
-            i18nStore.getState().locale,
-          ),
+          hostName(a).localeCompare(hostName(b), i18nStore.getState().locale),
       );
   const getWarning = () =>
     appStore
@@ -83,7 +81,7 @@ export default function HostView() {
       );
   function startEdit() {
     if (!getHost()) return;
-    store.setState({ draft: getHost().alias });
+    store.setState({ draft: hostName(getHost()) });
     store.setState({ editTarget: getHost() });
     store.setState({ edit: true });
   }
@@ -196,7 +194,7 @@ export default function HostView() {
                 >
                   <StatusGlyph tone={toneOf(h.status)}></StatusGlyph>
                   <span className="list-text">
-                    <strong>{h.alias || h.hostname}</strong>
+                    <strong>{hostName(h)}</strong>
                     <small>
                       {h.source === "agent" ? t("远程 Agent") : t("服务器本机")}
                     </small>
@@ -227,7 +225,7 @@ export default function HostView() {
                 <>
                   {hostList.map((h) => (
                     <option key={h.id} value={h.id}>
-                      {h.alias || h.hostname}
+                      {hostName(h)}
                       {"（"}
                       {stateLabel[h.status]}
                       {"） "}
@@ -268,7 +266,7 @@ export default function HostView() {
               <header className="page-head">
                 <div className="page-title">
                   <h1>
-                    {host.alias || host.hostname}
+                    {hostName(host)}
                     <StatusBadge
                       status={host.status}
                       label={stateLabel[host.status]}
@@ -630,7 +628,12 @@ export default function HostView() {
                       [t("CPU 型号"), host.inventory.cpu || t("未提供")],
                       [t("逻辑核心"), host.inventory.cores],
                       [t("启动时间"), dateTime(host.inventory.bootTime * 1000)],
-                      [t("采集来源"), host.inventory.source],
+                      [
+                        t("采集来源"),
+                        host.source === "agent"
+                          ? t("远程 Agent")
+                          : t("服务器本机"),
+                      ],
                       [
                         t("Agent 版本"),
                         host.source === "agent"

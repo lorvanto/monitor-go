@@ -67,6 +67,9 @@ func (s *Server) hosts(ctx context.Context) ([]Host, error) {
 		if e = rows.Scan(&h.ID, &h.Hostname, &h.Alias, &inv, &snap, &h.LastSeen, &h.Version, &h.Source, &h.AgentEnabled, &h.AgentVersion, &h.EnrolledAt, &h.EnrollmentExpires); e != nil {
 			return nil, e
 		}
+		if h.ID == 1 && h.Source == "local" && h.Version == 1 && h.Alias == "本机" {
+			h.AliasKey = "本机"
+		}
 		h.Status = "online"
 		if h.Source == "agent" && !h.AgentEnabled {
 			h.Status = "revoked"

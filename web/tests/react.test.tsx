@@ -979,3 +979,97 @@ it("shows the injected build version verbatim without adding a duplicate prefix"
     ).toBeTruthy(),
   );
 });
+
+it("translates seeded folder paths in all languages while preserving settings drafts and custom names", async () => {
+  fixtures["/files/tree"].items = [
+    { id: "1", parentId: "", name: "全部文件", nameKey: "全部文件" },
+    { id: "2", parentId: "1", name: "未分类", nameKey: "未分类" },
+    { id: "3", parentId: "1", name: "自定义目录" },
+  ];
+  render(<SettingsView />);
+  await screen.findByRole("option", { name: "All files / Uncategorized" });
+  const threshold = screen.getByLabelText(t("CPU 阈值（%）"));
+  fireEvent.change(threshold, { target: { value: "77" } });
+  for (const locale of locales) {
+    await act(() => setLocale(locale.code));
+    expect(
+      screen.getByRole("option", { name: `${t("全部文件")} / ${t("未分类")}` }),
+    ).toBeTruthy();
+    expect(
+      screen.getByRole("option", { name: `${t("全部文件")} / 自定义目录` }),
+    ).toBeTruthy();
+    expect((threshold as HTMLInputElement).value).toBe("77");
+  }
+});
+
+it("translates seeded roles and descriptions without translating identical custom labels", async () => {
+  const roles = structuredClone(fixtures["/roles"]);
+  roles[0] = {
+    ...roles[0],
+    name: "超级管理员",
+    nameKey: "超级管理员",
+    description: "管理平台全部功能",
+    descriptionKey: "管理平台全部功能",
+  };
+  roles[1] = {
+    ...roles[1],
+    name: "超级管理员",
+    nameKey: "",
+    descriptionKey: "",
+  };
+  appStore.setState({ data: { ...appStore.getState().data, roles } });
+  render(<RolesView />);
+  fireEvent.click(screen.getByRole("button", { name: /Super administrator/ }));
+  for (const locale of locales) {
+    await act(() => setLocale(locale.code));
+    expect(screen.getAllByText(t("超级管理员")).length).toBeGreaterThan(0);
+    expect(screen.getAllByText("超级管理员").length).toBeGreaterThan(0);
+    expect(screen.getByText(t("管理平台全部功能"))).toBeTruthy();
+  }
+});
+
+it("renders seeded file and image style names in English", async () => {
+  fixtures["/files/tree"].items.forEach((f: any) => {
+    if (["1", "2"].includes(f.id)) f.nameKey = f.name;
+  });
+  fixtures["/image-styles"] = [
+    {
+      id: "1",
+      name: "列表缩略图",
+      nameKey: "列表缩略图",
+      width: 320,
+      height: 240,
+      fit: "cover",
+      version: 1,
+    },
+  ];
+  render(<FilesView />);
+  await screen.findByRole("button", { name: /Image styles/ });
+  fireEvent.click(screen.getByRole("button", { name: /Image styles/ }));
+  expect(await screen.findByText("List thumbnail")).toBeTruthy();
+  expect(screen.queryByText("列表缩略图")).toBeNull();
+});
+
+it("localizes fixed audit action labels while retaining actor and resource text", async () => {
+  fixtures["/audit"] = {
+    items: [
+      {
+        id: "1",
+        at: 1,
+        actor: "自定义成员",
+        action: "创建首个管理员",
+        resource: "自定义资源",
+        requestId: "",
+        method: "POST",
+        path: "/api/v1/setup",
+      },
+    ],
+    more: false,
+  };
+  render(<AuditView />);
+  expect(
+    await screen.findByText("Create the first administrator"),
+  ).toBeTruthy();
+  expect(screen.getByText("自定义成员")).toBeTruthy();
+  expect(screen.getByText("自定义资源")).toBeTruthy();
+});

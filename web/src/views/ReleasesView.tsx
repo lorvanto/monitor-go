@@ -1,3 +1,4 @@
+import { resourceName } from "../lib/resourceLabels";
 import { useEffect, useRef, useState } from "react";
 import { createStore, useStore } from "zustand";
 import Icon from "../components/Icon";
@@ -22,6 +23,7 @@ import {
   useApp,
 } from "../stores/app";
 interface FileEntry {
+  nameKey?: string;
   id: string;
   parentId: string;
   name: string;
@@ -120,12 +122,12 @@ export default function ReleasesView() {
     load();
   }
   function folderLabel(f: FileEntry) {
-    const parts = [f.name];
+    const parts = [resourceName(f)];
     let id = f.parentId;
     for (let i = 0; id && i < 17; i++) {
       const parent = store.getState().folders.find((v) => v.id === id);
       if (!parent) break;
-      parts.unshift(parent.name);
+      parts.unshift(resourceName(parent));
       id = parent.parentId;
     }
     return parts.join(" / ");
@@ -957,7 +959,7 @@ export default function ReleasesView() {
                               }}
                             >
                               <Icon name="FileText" size={15}></Icon>
-                              <span>{f.name}</span>
+                              <span>{resourceName(f)}</span>
                               <small>{bytes(f.size)}</small>
                               {viewState.form.fileId === f.id ? (
                                 <Icon name="Check" size={15}></Icon>
