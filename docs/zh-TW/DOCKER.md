@@ -4,6 +4,9 @@
 
 使用 Docker Engine / Docker Desktop 的 Linux 容器模式、BuildKit 及 Docker Compose v2.20 或更新版本。映像檔從目前原始碼建置，`monitor-go:local` 是本機標籤，並非已發佈的登錄檔映像。透過 Docker 建置與執行時，宿主機無須安裝 Go 或 Node.js。
 
+
+`make docker-build` 會注入 Git 衍生版本。直接使用 Compose 時可傳入 `MONITOR_VERSION`，未指定則顯示 `0.4.0-dev`。直接建置可用 `docker build --build-arg VERSION="$(git describe --tags --always --dirty 2>/dev/null || printf 0.4.0-dev)" -t monitor-go:local .`。Git 歷史不進入 Docker 建置內容。
+
 ## 建置與初始化
 
 ```sh

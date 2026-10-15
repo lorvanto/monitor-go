@@ -47,7 +47,7 @@ npm --prefix web run format:check
 | T7 | 前端按页加载与接口查询合并 | 性能 | P2 | 否 | 已完成 |
 | T8 | 静态资源缓存与压缩 | 性能 | P2 | 否 | 已完成 |
 | T9 | 在线备份命令 | 功能 / 运维 | P2 | 否 | 待实施 |
-| T10 | 统一版本号与 CI 工作流 | 工程 | P2 | 否 | 待实施 |
+| T10 | 统一版本号与 CI 工作流 | 工程 | P2 | 否 | 已完成 |
 | T11 | Agent 与主机采集测试 | 工程 | P3 | 否 | 待实施 |
 | T12 | 历史数据汇总与长期可用率 | 功能 | P3 | 是 | 待实施 |
 | T13 | 数据库只读连接池 | 性能 | P3 | 否 | 待评估 |
@@ -448,6 +448,15 @@ SELECT id FROM jobs WHERE state='queued' ORDER BY id LIMIT 1
 - `make build` 后，`./bin/monitor` 的 `/api/v1/status` 和系统信息页显示注入的版本号。
 - 检测请求和 Webhook 请求的 User-Agent 一致，有测试断言。
 - 工作流 YAML 语法正确；本地按工作流的同样步骤执行一遍并全部通过。
+
+
+### 实施记录（2026-10-15）
+
+- 分支：`codex/t10-build-version-ci`。`internal/buildinfo.Version` 默认 `0.4.0-dev`，Make 使用 Git 描述注入，支持显式 VERSION；Docker/Compose 支持构建参数，Git 历史仍排除在构建上下文外。服务端、Agent 上报与三个出站请求共用版本/UA；两个二进制支持 `-version`，系统页原样显示版本。
+- 新增 push/PR CI：Go 取 go.mod、Node 22、三项官方 Action 固定提交，并记录其版本和 MIT 许可证。YAML 语法和步骤检查通过；工作流尚未在远端运行，不据此宣称 CI 成功。
+- 本地 Node `22.23.2` 运行 `make test` 通过（完整 Go race 约 257 秒、go vet、前端构建/测试）；补充版本显示测试后 124 项 React 测试、7 项脚本测试、格式与 gofmt 检查通过，`make build` 成功。
+- `make build` 后实际服务端口 `61993` 的 status、system 与两个 `-version` 均为 `563e38b-dirty`；浏览器系统页显示相同值。此字符串仅记录验证时的未提交工作区构建。
+- Docker Compose 配置检查与 `linux/arm64` 一次性数据卷验证通过，端口 `61476`；镜像注入 `t10-build-verification` 并验证系统接口相同，持久化、重建及冷备份恢复通过。
 
 ---
 

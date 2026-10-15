@@ -18,6 +18,7 @@ await new Promise((resolve) => listener.close(resolve));
 const base = `http://127.0.0.1:${port}`;
 const env = {
   ...process.env,
+  MONITOR_VERSION: process.env.MONITOR_VERSION || "0.4.0-dev",
   MONITOR_IMAGE: process.env.MONITOR_IMAGE || "monitor-go:local",
   MONITOR_PORT: String(port),
   MONITOR_BIND_ADDRESS: "127.0.0.1",
@@ -143,6 +144,7 @@ try {
   const system = await request("/system");
   assert.equal(system.database, "SQLite");
   assert.equal(system.schema, 6);
+  assert.equal(system.version, env.MONITOR_VERSION);
   if (platform) assert.equal(system.platform, platform.replace("/", " / "));
   assert.deepEqual(await request("/hosts"), []);
   const folder = await request("/files/folders", {

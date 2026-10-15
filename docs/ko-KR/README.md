@@ -2,7 +2,7 @@
 
 [English](../en-US/README.md) · [简体中文](../zh-CN/README.md) · [日本語](../ja-JP/README.md) · **한국어** · [繁體中文](../zh-TW/README.md) · [Documentation](../README.md)
 
-> 상태: 공개 전 개발 기준은 `0.4.0`, SQLite 스키마는 `6`입니다. 이미 배포된 릴리스를 뜻하지 않습니다. 명령 예시는 POSIX 셸용이며 Windows에서는 WSL을 사용할 수 있습니다.
+> 상태: 공개 전 개발 기준은 `0.4.0-dev`, SQLite 스키마는 `6`입니다. 이미 배포된 릴리스를 뜻하지 않습니다. 명령 예시는 POSIX 셸용이며 Windows에서는 WSL을 사용할 수 있습니다.
 
 스키마 5는 대기 중인 작업의 부분 인덱스를 추가하여 완료된 작업 이력을 전체 검색하지 않도록 합니다. 작업 보존 기간은 7일로 유지합니다. 업그레이드 전 서비스를 중지하고 전체 데이터 디렉터리를 백업하세요. 이전 실행 파일은 스키마 6을 읽을 수 없으며 롤백에는 전체 백업이 필요합니다.
 
@@ -166,3 +166,9 @@ npm --prefix web run format:check
 ## 정적 리소스 캐시
 
 서버 시작 시 Go 표준 라이브러리로 강한 ETag와 gzip 표현을 준비합니다. `/assets/`의 해시 포함 파일은 `public, max-age=31536000, immutable`, HTML 등 해시 없는 파일은 `no-cache`와 조건부 검증을 사용합니다. gzip 선택은 제외 및 우선순위를 따르며 `Vary: Accept-Encoding`과 압축 전후 서로 다른 ETag를 반환합니다. 조건부 GET/HEAD가 일치하면 304를 반환하고 바이트 범위 및 기존 보안 헤더를 유지합니다. 외부 압축 서비스는 필요하지 않습니다.
+
+## 빌드 버전과 CI
+
+서버, Agent 보고와 발신 User-Agent는 `internal/buildinfo.Version`을 공유합니다. 직접 `go build`하면 `0.4.0-dev`를 사용하고, `make build`는 `git describe --tags --always --dirty`를 주입하며 Git 정보가 없으면 기본값을 사용합니다. `make build VERSION=0.4.0-dev`로 명시할 수 있으며 두 실행 파일은 `-version`을 지원합니다. 프런트엔드 패키지는 개발 기준 버전을 사용하고 시스템 설정에는 실제 서버 빌드를 표시합니다. GitHub CI는 push와 pull request에서 실행되도록 설정했으며 go.mod의 Go, Node 22, 커밋 고정 Action으로 race 테스트, 타입 검사, 빌드와 포맷 검사를 수행합니다. 설정 파일 자체가 원격 실행 성공이나 릴리스 게시를 의미하지는 않습니다.
+
+`make docker-build`는 Git 기반 버전을 주입합니다. Compose를 직접 쓸 때는 `MONITOR_VERSION`을 지정하며 생략하면 `0.4.0-dev`를 표시합니다. 직접 빌드할 때는 `docker build --build-arg VERSION="$(git describe --tags --always --dirty 2>/dev/null || printf 0.4.0-dev)" -t monitor-go:local .`을 사용할 수 있습니다. Git 이력은 Docker 빌드 컨텍스트에 포함하지 않습니다.

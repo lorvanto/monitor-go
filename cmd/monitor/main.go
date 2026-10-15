@@ -3,7 +3,9 @@ package main
 import (
 	"context"
 	"flag"
+	"fmt"
 	"github.com/lorvanto/monitor-go/internal/app"
+	"github.com/lorvanto/monitor-go/internal/buildinfo"
 	"github.com/lorvanto/monitor-go/web"
 	"log/slog"
 	"net/http"
@@ -20,7 +22,12 @@ func main() {
 	secure := flag.Bool("secure-cookie", false, "HTTPS 部署时启用 Secure Cookie")
 	collect := flag.Bool("collect-host", true, "采集运行服务的本机指标")
 	trustedProxy := flag.String("trusted-proxy", "", "Comma-separated trusted proxy CIDRs for X-Forwarded-For; empty trusts none")
+	version := flag.Bool("version", false, "Print application version and exit")
 	flag.Parse()
+	if *version {
+		fmt.Println(buildinfo.Version)
+		return
+	}
 	s, e := app.New(app.Config{Listen: *listen, DataDir: *data, PublicURL: *public, TrustedProxy: *trustedProxy, SecureCookie: *secure, Collect: *collect, Assets: web.Assets()})
 	if e != nil {
 		slog.Error("启动失败", "error", e)

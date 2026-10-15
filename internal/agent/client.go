@@ -11,6 +11,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/gofrs/flock"
+	"github.com/lorvanto/monitor-go/internal/buildinfo"
 	"github.com/lorvanto/monitor-go/internal/hoststats"
 	"io"
 	"log/slog"
@@ -161,7 +162,7 @@ func Send(ctx context.Context, client *http.Client, c Config, path string, body 
 		return e
 	}
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("User-Agent", "MonitorGoAgent/0.2.0")
+	req.Header.Set("User-Agent", buildinfo.UserAgent())
 	if authenticated {
 		req.Header.Set("Authorization", "Bearer "+c.Credential)
 	}

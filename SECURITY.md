@@ -2,7 +2,7 @@
 
 ## Supported versions
 
-The current development baseline reports application version `0.4.0` and SQLite schema version `6`. It is a pre-release development state, not evidence of a published GitHub release. Security fixes currently target the current development code. No older release branch, support period or response-time SLA is promised.
+The current development baseline reports application version `0.4.0-dev` and SQLite schema version `6`. It is a pre-release development state, not evidence of a published GitHub release. Security fixes currently target the current development code. No older release branch, support period or response-time SLA is promised.
 
 ## Reporting a vulnerability
 

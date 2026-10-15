@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/lorvanto/monitor-go/internal/buildinfo"
 	"github.com/lorvanto/monitor-go/internal/hoststats"
 	"github.com/lorvanto/monitor-go/locales"
 	"io"
@@ -332,7 +333,7 @@ func (s *Server) Wait() { s.work.Wait() }
 func (s *Server) status(w http.ResponseWriter, r *http.Request, u *User) (any, error) {
 	var n int
 	e := s.Store.DB.QueryRowContext(r.Context(), "SELECT count(*) FROM users").Scan(&n)
-	return map[string]any{"initialized": n > 0, "version": "0.4.0", "storage": "SQLite"}, e
+	return map[string]any{"initialized": n > 0, "version": buildinfo.Version, "storage": "SQLite"}, e
 }
 func actor(u *User) string {
 	if u == nil {

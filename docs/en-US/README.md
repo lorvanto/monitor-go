@@ -2,7 +2,7 @@
 
 **English** · [简体中文](../zh-CN/README.md) · [日本語](../ja-JP/README.md) · [한국어](../ko-KR/README.md) · [繁體中文](../zh-TW/README.md) · [Documentation](../README.md)
 
-> Status: pre-release development baseline `0.4.0`, SQLite schema `6`; no published release is implied. Examples use a POSIX shell; Windows developers can use WSL.
+> Status: pre-release development baseline `0.4.0-dev`, SQLite schema `6`; no published release is implied. Examples use a POSIX shell; Windows developers can use WSL.
 
 Schema 5 adds a partial index for queued scheduler jobs, avoiding scans of completed-job history. Job retention remains seven days. Stop the service and back up the complete data directory before upgrading; older binaries cannot read schema 6, and rollback requires that backup.
 
@@ -168,3 +168,9 @@ The 10-second visible-page refresh loads hosts/checks/incidents only where neede
 ## Static asset caching
 
 The server prepares strong ETags and gzip representations at startup using the Go standard library. Hashed files under `/assets/` use `public, max-age=31536000, immutable`; HTML and other unhashed files use `no-cache` and conditional validation. Gzip negotiation respects exclusions and quality preferences, with `Vary: Accept-Encoding` and distinct validators for compressed/uncompressed bytes. Conditional GET/HEAD returns 304 when appropriate; byte ranges and existing security headers remain supported. No external compression service is required.
+
+## Build versions and CI
+
+Server, Agent reports and outbound User-Agent headers share `internal/buildinfo.Version`. Direct `go build` uses `0.4.0-dev`; `make build` injects `git describe --tags --always --dirty`, falling back to that default without Git metadata. Use `make build VERSION=0.4.0-dev` to select a value explicitly. Both binaries support `-version`. The frontend package uses the development baseline; the System settings page reports the actual server build. GitHub CI is configured for push and pull requests, using Go from `go.mod`, Node 22, pinned Action commits, race tests, type checks, build and formatting checks. A workflow file does not establish a passing remote run or a published release.
+
+`make docker-build` injects the Git-derived version. With plain Compose, supply `MONITOR_VERSION` explicitly; without it, the image reports `0.4.0-dev`. For direct builds use `docker build --build-arg VERSION="$(git describe --tags --always --dirty 2>/dev/null || printf 0.4.0-dev)" -t monitor-go:local .`. Git history stays outside the Docker build context.

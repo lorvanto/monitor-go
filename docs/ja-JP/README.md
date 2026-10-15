@@ -2,7 +2,7 @@
 
 [English](../en-US/README.md) · [简体中文](../zh-CN/README.md) · **日本語** · [한국어](../ko-KR/README.md) · [繁體中文](../zh-TW/README.md) · [Documentation](../README.md)
 
-> 状態：公開前の開発基準は `0.4.0`、SQLiteスキーマは `6` です。公開済みリリースを意味しません。コマンド例はPOSIXシェル用です。WindowsではWSLを利用できます。
+> 状態：公開前の開発基準は `0.4.0-dev`、SQLiteスキーマは `6` です。公開済みリリースを意味しません。コマンド例はPOSIXシェル用です。WindowsではWSLを利用できます。
 
 スキーマ5では待機中のジョブ用の部分インデックスを追加し、完了済みジョブ履歴の全走査を避けます。ジョブの保存期間は7日のままです。更新前に停止してデータディレクトリ全体をバックアップしてください。旧バイナリはスキーマ6を読めず、ロールバックには完全バックアップが必要です。
 
@@ -166,3 +166,9 @@ npm --prefix web run format:check
 ## 静的リソースのキャッシュ
 
 起動時にGo標準ライブラリで強いETagとgzip表現を準備します。`/assets/`内のハッシュ付きファイルには`public, max-age=31536000, immutable`を、HTMLなどハッシュのないファイルには`no-cache`と条件付き検証を使用します。gzipの選択は除外と優先度に従い、`Vary: Accept-Encoding`および圧縮前後で異なるETagを返します。条件付きGET/HEADが一致すると304を返し、バイト範囲と既存のセキュリティヘッダーも維持します。外部の圧縮サービスは不要です。
+
+## ビルドバージョンとCI
+
+サーバー、Agent報告と送信User-Agentは`internal/buildinfo.Version`を共有します。直接の`go build`は`0.4.0-dev`、`make build`は`git describe --tags --always --dirty`を注入し、Git情報がなければ既定値に戻ります。`make build VERSION=0.4.0-dev`で明示指定でき、両バイナリの`-version`で確認できます。フロントエンドのパッケージは開発基準を使い、システム設定には実際のサーバービルドを表示します。GitHub CIはpushとpull requestで起動し、go.modのGo、Node 22、コミット固定のActionを使ってraceテスト、型検査、ビルドと書式検査を実行します。設定ファイルの存在はリモート実行の成功やリリース公開を意味しません。
+
+`make docker-build`はGit由来のバージョンを注入します。Composeを直接使う場合は`MONITOR_VERSION`を指定でき、省略時は`0.4.0-dev`です。直接ビルドする場合は`docker build --build-arg VERSION="$(git describe --tags --always --dirty 2>/dev/null || printf 0.4.0-dev)" -t monitor-go:local .`を使えます。Git履歴はDockerビルドコンテキストに含めません。

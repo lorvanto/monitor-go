@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/go-sql-driver/mysql"
+	"github.com/lorvanto/monitor-go/internal/buildinfo"
 	"io"
 	"net"
 	"net/http"
@@ -76,7 +77,7 @@ func probe(ctx context.Context, m Monitor, password string) CheckResult {
 			err = e
 			break
 		}
-		req.Header.Set("User-Agent", "MonitorGo/0.1")
+		req.Header.Set("User-Agent", buildinfo.UserAgent())
 		resp, e := client.Do(req)
 		if e != nil {
 			err = e

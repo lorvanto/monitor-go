@@ -1,8 +1,14 @@
 # Changelog
 
-User-visible changes belong here. Entries under **Unreleased** describe the current development tree; they are not published releases. Application version `0.4.0` and schema version `6` currently identify the implementation baseline. A maintainer will create a dated release entry only when an actual tag and release are published.
+User-visible changes belong here. Entries under **Unreleased** describe the current development tree; they are not published releases. Application version `0.4.0-dev` and schema version `6` currently identify the implementation baseline. A maintainer will create a dated release entry only when an actual tag and release are published.
 
 ## Unreleased
+
+### Build metadata and continuous integration
+
+- Share one injectable build version across server status, system details, Agent reports and all outbound User-Agent headers. Add `-version` to both binaries and version build arguments for Make/Docker/Compose.
+- Add a push/PR workflow with pinned official Action commits, Go from go.mod and Node 22, running tests, builds and formatting checks. Remote execution is verified separately from this configuration.
+
 
 ### Static asset caching
 

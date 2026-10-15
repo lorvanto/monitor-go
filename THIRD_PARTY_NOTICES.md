@@ -49,3 +49,13 @@ These direct-dependency tables are not an exhaustive manifest of every transitiv
 4. Update this inventory and copied texts when a dependency changes. Verify the final archive, not only this source tree.
 
 In particular, the MySQL driver carries MPL-2.0 terms, fonts carry OFL-1.1 terms, and the SQLite module includes additional bundled-component notices. The project's Apache-2.0 selection does not replace those terms. No claim of a completed binary-distribution license audit is made by this inventory.
+
+## CI-only actions
+
+These official GitHub Actions run in CI and are not bundled into the application:
+
+| Action | Version / pinned commit | Purpose | License |
+|---|---|---|---|
+| [actions/checkout](https://github.com/actions/checkout) | v7.0.1 / `3d3c42e5aac5ba805825da76410c181273ba90b1` | Check out workflow source | MIT |
+| [actions/setup-go](https://github.com/actions/setup-go) | v7.0.0 / `b7ad1dad31e06c5925ef5d2fc7ad053ef454303e` | Install Go and cache modules | MIT |
+| [actions/setup-node](https://github.com/actions/setup-node) | v7.1.0 / `949feb2413d6458794dcd2491c4babbbce0c15c1` | Install Node.js and cache npm downloads | MIT |

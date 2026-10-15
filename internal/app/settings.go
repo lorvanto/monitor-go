@@ -2,6 +2,7 @@ package app
 
 import (
 	"database/sql"
+	"github.com/lorvanto/monitor-go/internal/buildinfo"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -113,7 +114,7 @@ func (s *Server) systemInfo(w http.ResponseWriter, r *http.Request, u *User) (an
 			dbSize += info.Size()
 		}
 	}
-	return map[string]any{"version": "0.4.0", "goVersion": runtime.Version(), "platform": runtime.GOOS + " / " + runtime.GOARCH, "database": "SQLite", "schema": schema, "databaseSize": dbSize, "files": files, "folders": folders, "storageUsed": size, "pendingGC": pending}, nil
+	return map[string]any{"version": buildinfo.Version, "goVersion": runtime.Version(), "platform": runtime.GOOS + " / " + runtime.GOARCH, "database": "SQLite", "schema": schema, "databaseSize": dbSize, "files": files, "folders": folders, "storageUsed": size, "pendingGC": pending}, nil
 }
 func (s *Server) listAudit(w http.ResponseWriter, r *http.Request, u *User) (any, error) {
 	q := r.URL.Query()

@@ -10,6 +10,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/lorvanto/monitor-go/internal/buildinfo"
 	"io"
 	"net/http"
 	"net/url"
@@ -92,7 +93,7 @@ func webhookRequest(ctx context.Context, c channelConfig, p notificationPayload,
 		return nil, err
 	}
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("User-Agent", "MonitorGo/0.2.0")
+	req.Header.Set("User-Agent", buildinfo.UserAgent())
 	req.Header.Set("X-MonitorGo-Delivery-ID", p.DeliveryID)
 	if format == "generic" {
 		timestamp := strconv.FormatInt(at.Unix(), 10)

@@ -969,3 +969,13 @@ it("keeps threshold drafts across languages and submits zero to disable an alert
   );
   await act(async () => {});
 });
+
+it("shows the injected build version verbatim without adding a duplicate prefix", async () => {
+  fixtures["/system"].version = "v0.4.0-12-gabcdef1";
+  render(<SettingsView />);
+  await waitFor(() =>
+    expect(
+      screen.getByText("v0.4.0-12-gabcdef1", { exact: true }),
+    ).toBeTruthy(),
+  );
+});

@@ -408,10 +408,7 @@ export default function SettingsView() {
               <dl className="kv rows panel-body">
                 <div>
                   <dt>{t("应用版本")}</dt>
-                  <dd>
-                    {"v"}
-                    {viewState.info.version}
-                  </dd>
+                  <dd>{viewState.info.version}</dd>
                 </div>
                 <div>
                   <dt>{t("运行环境")}</dt>

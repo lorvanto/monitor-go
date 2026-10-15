@@ -2,6 +2,7 @@ package hoststats
 
 import (
 	"context"
+	"github.com/lorvanto/monitor-go/internal/buildinfo"
 	"github.com/shirou/gopsutil/v4/cpu"
 	"github.com/shirou/gopsutil/v4/disk"
 	"github.com/shirou/gopsutil/v4/host"
@@ -141,5 +142,5 @@ func (c *Collector) Collect(ctx context.Context) (Report, error) {
 		snap.Errors = append(snap.Errors, "网络流量不可用")
 	}
 
-	return Report{Protocol: 1, AgentVersion: "0.2.0", CollectedAt: time.Now().UnixMilli(), Hostname: info.Hostname, Inventory: inv, Snapshot: snap}, nil
+	return Report{Protocol: 1, AgentVersion: buildinfo.Version, CollectedAt: time.Now().UnixMilli(), Hostname: info.Hostname, Inventory: inv, Snapshot: snap}, nil
 }

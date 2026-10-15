@@ -20,11 +20,12 @@ COPY internal ./internal
 COPY locales ./locales
 COPY web/embed.go ./web/embed.go
 COPY --from=frontend /src/web/dist ./web/dist
+ARG VERSION=0.4.0-dev
 ARG TARGETOS
 ARG TARGETARCH
 RUN --mount=type=cache,target=/go/pkg/mod \
     --mount=type=cache,target=/root/.cache/go-build \
-    GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build -trimpath -o /out/monitor ./cmd/monitor
+    GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build -trimpath -ldflags "-X github.com/lorvanto/monitor-go/internal/buildinfo.Version=${VERSION}" -o /out/monitor ./cmd/monitor
 
 FROM ${RUNTIME_IMAGE} AS runtime
 RUN apk add --no-cache ca-certificates tzdata \
@@ -36,7 +37,9 @@ RUN apk add --no-cache ca-certificates tzdata \
 COPY --from=build /out/monitor /usr/local/bin/monitor
 COPY LICENSE NOTICE THIRD_PARTY_NOTICES.md /usr/share/monitor-go/
 COPY third_party/licenses /usr/share/monitor-go/third_party/licenses
-LABEL org.opencontainers.image.title="Monitor Go" \
+ARG VERSION=0.4.0-dev
+LABEL org.opencontainers.image.version="${VERSION}" \
+      org.opencontainers.image.title="Monitor Go" \
       org.opencontainers.image.description="Self-hosted Go monitoring with embedded React and SQLite" \
       org.opencontainers.image.source="https://github.com/lorvanto/monitor-go" \
       org.opencontainers.image.licenses="Apache-2.0"

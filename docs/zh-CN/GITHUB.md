@@ -4,7 +4,7 @@
 
 ## 已确定与待完成事项
 
-公开源码仓库为 [lorvanto/monitor-go](https://github.com/lorvanto/monitor-go)。当前显示名称为 Monitor Go，应用版本为 `0.4.0`，SQLite 结构版本为 `6`。这两个版本号表示开发基线，不代表已发布 GitHub Release。项目代码与文档采用 [Apache-2.0](../../LICENSE)，第三方依赖保留原许可证。
+公开源码仓库为 [lorvanto/monitor-go](https://github.com/lorvanto/monitor-go)。当前显示名称为 Monitor Go，应用版本为 `0.4.0-dev`，SQLite 结构版本为 `6`。这两个版本号表示开发基线，不代表已发布 GitHub Release。项目代码与文档采用 [Apache-2.0](../../LICENSE)，第三方依赖保留原许可证。
 
 当前 Go module 与内部导入已统一为 `github.com/lorvanto/monitor-go`。源码推送与版本发布分开管理；当前不包含 GitHub Release 标签或下载资产。
 

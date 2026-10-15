@@ -4,6 +4,9 @@
 
 Use Linux containers with Docker Engine / Docker Desktop, BuildKit and Docker Compose v2.20 or newer. Build from this checkout; `monitor-go:local` is a local tag, not a published registry image. No host Go or Node.js installation is needed to build and run the application through Docker.
 
+
+`make docker-build` injects the Git-derived version. With plain Compose, supply `MONITOR_VERSION` explicitly; without it, the image reports `0.4.0-dev`. For direct builds use `docker build --build-arg VERSION="$(git describe --tags --always --dirty 2>/dev/null || printf 0.4.0-dev)" -t monitor-go:local .`. Git history stays outside the Docker build context.
+
 ## Build and initialize
 
 ```sh

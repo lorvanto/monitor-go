@@ -262,3 +262,9 @@ Webhook 格式支援通用、釘釘、飛書和企業微信，舊渠道預設沿
 ## 靜態資源快取
 
 伺服器啟動時使用 Go 標準函式庫預先產生強 ETag 和 gzip 內容。`/assets/` 下帶雜湊的檔案使用 `public, max-age=31536000, immutable`，HTML 和其他無雜湊檔案使用 `no-cache` 並協商驗證。gzip 協商遵守停用和權重偏好，回應帶 `Vary: Accept-Encoding`，壓縮與原始內容使用不同 ETag。條件 GET/HEAD 在符合時回傳 304，保留位元組範圍與原有安全回應標頭，不需外部壓縮服務。
+
+## 建置版本與 CI
+
+伺服器、Agent 回報及外送請求 User-Agent 統一使用 `internal/buildinfo.Version`。直接 `go build` 預設為 `0.4.0-dev`；`make build` 注入 `git describe --tags --always --dirty`，沒有 Git 資訊時回退至預設值。可用 `make build VERSION=0.4.0-dev` 明確指定。兩個執行檔皆支援 `-version`。前端套件使用開發基線，系統設定顯示實際伺服器建置版本。GitHub CI 設定為 push 和 pull request 觸發，使用 go.mod 中的 Go、Node 22、固定提交的 Action，執行 race 測試、型別檢查、建置和格式檢查。工作流程檔案不代表遠端已執行成功或已發布版本。
+
+`make docker-build` 會注入 Git 衍生版本。直接使用 Compose 時可傳入 `MONITOR_VERSION`，未指定則顯示 `0.4.0-dev`。直接建置可用 `docker build --build-arg VERSION="$(git describe --tags --always --dirty 2>/dev/null || printf 0.4.0-dev)" -t monitor-go:local .`。Git 歷史不進入 Docker 建置內容。

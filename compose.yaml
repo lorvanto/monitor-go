@@ -6,6 +6,8 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      args:
+        VERSION: ${MONITOR_VERSION:-0.4.0-dev}
     restart: unless-stopped
     init: true
     ports:
