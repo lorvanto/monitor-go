@@ -2,9 +2,9 @@
 
 **English** · [简体中文](../zh-CN/README.md) · [日本語](../ja-JP/README.md) · [한국어](../ko-KR/README.md) · [繁體中文](../zh-TW/README.md) · [Documentation](../README.md)
 
-> Status: pre-release development baseline `0.4.0-dev`, SQLite schema `7`; no published release is implied. Examples use a POSIX shell; Windows developers can use WSL.
+> Status: pre-release development baseline `0.4.0-dev`, SQLite schema `8`; no published release is implied. Examples use a POSIX shell; Windows developers can use WSL.
 
-Schema 5 adds a partial index for queued scheduler jobs, avoiding scans of completed-job history. Job retention remains seven days. Stop the service and back up the complete data directory before upgrading; older binaries cannot read schema 7, and rollback requires that backup.
+Schema 5 adds a partial index for queued scheduler jobs, avoiding scans of completed-job history. Job retention remains seven days. Stop the service and back up the complete data directory before upgrading; older binaries cannot read schema 8, and rollback requires that backup.
 
 See the [English interface screenshots](../../README.md#screenshots) for a feature tour using synthetic demonstration data. English is the default language on first use.
 
@@ -127,7 +127,7 @@ npm --prefix web run format:check
 
 Stop the service cleanly, then back up the entire data directory: SQLite and any companion files, `master.key`, and original `uploads/` files. Copying only a live `monitor.db` is not a complete backup. Restore the whole directory with a compatible server version.
 
-Database versions 1 → 2 → 3 → 4 → 5 → 6 → 7 migrate transactionally. Older binaries cannot directly read schema 7; rollback requires the entire pre-upgrade backup. New permissions are not silently assigned to custom roles. This internationalization change requires no new schema migration.
+Database versions 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 migrate transactionally. Older binaries cannot directly read schema 8; rollback requires the entire pre-upgrade backup. New permissions are not silently assigned to custom roles. This internationalization change requires no new schema migration.
 
 ## Current limits
 
@@ -157,7 +157,7 @@ Generic keeps its existing JSON and signature-header contract. Chat formats requ
 
 ## Host alert thresholds
 
-System settings provides installation-wide CPU, memory and disk thresholds (defaults: 90%, 90%, 85%) and a sustained duration of 1–60 minutes (default: 5). Set an individual threshold to 0 to disable that metric alert. Schema 6 adds these validated settings; stop the service and back up the whole data directory before upgrading. Older binaries cannot read schema 7.
+System settings provides installation-wide CPU, memory and disk thresholds (defaults: 90%, 90%, 85%) and a sustained duration of 1–60 minutes (default: 5). Set an individual threshold to 0 to disable that metric alert. Schema 6 adds these validated settings; stop the service and back up the whole data directory before upgrading. Older binaries cannot read schema 8.
 
 Local and remote hosts use the same rules. CPU/memory must stay at or above the threshold throughout the duration: samples must cover the whole window, including a sample at or before its start, with no missing values or gaps over 45 seconds. Insufficient data does not open an alert or resolve an existing one. The latest valid reading below the threshold resolves it. Disk alerts use the latest available disk readings immediately. Disabling a threshold resolves that metric's incident on the next report; settings changes also take effect on the next report. The 90-second remote-host offline rule is unchanged. Per-host overrides are not implemented.
 
@@ -199,3 +199,11 @@ Create and edit HTTP checks with an optional UTF-8 response keyword (up to 1024 
 Network/server failures use a linear delay of 5 seconds per consecutive failure, capped at 60 seconds; a successful report restores the normal 15-second interval. HTTP 401/403, and 409 during enrollment, stop the Agent because credentials are invalid or enrollment conflicts. Re-enroll with a new configuration instead of endlessly retrying revoked access. Automated tests use local HTTP/TLS servers and injected collectors/clocks, covering credential persistence, reports, retry cap/reset, redirects, private CAs, partition filtering (up to 16 usable unique mounts), partial metric errors and network counter/time resets.
 
 HTTP latency incidents use a response-time title; SSL certificate warnings keep their certificate-specific title.
+
+## Long-term availability and retention
+
+Schema 8 adds hourly check summaries (total/good counts and average/maximum latency), transactional consumed-row markers and an index for pending rows. At startup and each hourly maintenance run, closed hours are accumulated before raw data is removed. Repeated runs and late results do not double-count; a failed rollup preserves raw rows. Settings default to 7 days of raw host/check metrics (1–30 configurable) and 90 days of check summaries (90–730 configurable). Cleanup is batched and aligned to UTC hours, so raw retention can exceed the requested duration by an hour plus the maintenance backlog. There is no host summary table. Stop and back up before upgrading; older binaries cannot read schema 8.
+
+Overview and Service checks offer 30/90-day availability. GET /api/v1/monitors/availability?hours=720 or 2160 requires monitor:read. Overview accepts the same ranges. Results combine hourly summaries and unconsumed raw rows in one SQLite snapshot, weighted by actual check count. Healthy and warning checks count as available, matching the existing 24-hour definition. Windows start at a UTC hour boundary; the current partial hour is included. Missing samples are not inferred as successes, so no history yields null/“—”. Previously deleted history cannot be reconstructed.
+
+For capacity estimates, raw check rows ≈ targets × (86400 / intervalSeconds) × rawDays; summary rows ≤ targets × 24 × summaryDays. Host raw rows ≈ hosts × 5760 × rawDays. Measure bytes per row including indexes on a disposable database with representative details; use (page_count − freelist_count) × page_size to compare used-page growth. Add WAL headroom, uploads and backup copies separately. Deletion makes pages reusable and does not necessarily shrink the file; these formulas are estimates, not capacity guarantees.

@@ -14,6 +14,8 @@ import {
   useApp,
 } from "../stores/app";
 interface Settings {
+  rawRetentionDays: number;
+  summaryRetentionDays: number;
   instanceName: string;
   useDefaultName: boolean;
   uploadLimitMB: number;
@@ -47,6 +49,8 @@ export default function SettingsView() {
       storageLimitMB: 1024,
       defaultFolder: "2",
       auditDays: 90,
+      rawRetentionDays: 7,
+      summaryRetentionDays: 90,
       hostCPUPercent: 90,
       hostMemoryPercent: 90,
       hostDiskPercent: 85,
@@ -363,6 +367,58 @@ export default function SettingsView() {
                     />
                   </label>
                 ))}
+              </div>
+            </section>
+            <section className="settings-section">
+              <div>
+                <h2>{t("指标保留策略")}</h2>
+                <p>
+                  {t(
+                    "每小时先汇总已结束时段，再清理过期原始指标。缩短保留期会删除更早的数据。",
+                  )}
+                </p>
+              </div>
+              <div className="form-grid">
+                <label className="field">
+                  {t("原始指标保留天数")}
+                  <input
+                    type="number"
+                    min="1"
+                    max="30"
+                    required
+                    value={viewState.form.rawRetentionDays}
+                    onChange={(event) =>
+                      store.setState((current) => ({
+                        form: {
+                          ...current.form,
+                          rawRetentionDays: Number(event.currentTarget.value),
+                        },
+                      }))
+                    }
+                  />
+                  <small>{t("1–30 天")}</small>
+                </label>
+                <label className="field">
+                  {t("小时汇总保留天数")}
+                  <input
+                    type="number"
+                    min="90"
+                    max="730"
+                    required
+                    value={viewState.form.summaryRetentionDays}
+                    onChange={(event) =>
+                      store.setState((current) => ({
+                        form: {
+                          ...current.form,
+                          summaryRetentionDays: Number(
+                            event.currentTarget.value,
+                          ),
+                        },
+                      }))
+                    }
+                  />
+                  <small>{t("90–730 天")}</small>
+                </label>
               </div>
             </section>
             <section className="settings-section">

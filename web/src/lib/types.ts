@@ -154,6 +154,9 @@ export interface HostMetric {
   netOut: number | null;
 }
 export interface Overview {
+  from?: number;
+  to?: number;
+  hours?: number;
   at: number;
   points: Point[];
   activity: Activity[];

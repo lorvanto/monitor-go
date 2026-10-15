@@ -1,8 +1,15 @@
 # Changelog
 
-User-visible changes belong here. Entries under **Unreleased** describe the current development tree; they are not published releases. Application version `0.4.0-dev` and schema version `7` currently identify the implementation baseline. A maintainer will create a dated release entry only when an actual tag and release are published.
+User-visible changes belong here. Entries under **Unreleased** describe the current development tree; they are not published releases. Application version `0.4.0-dev` and schema version `8` currently identify the implementation baseline. A maintainer will create a dated release entry only when an actual tag and release are published.
 
 ## Unreleased
+
+### Hourly history and long-term availability
+
+- Schema 8 adds transactional hourly rollups and pending-row tracking, including idempotent reruns and late results. Raw host/check retention defaults to 7 days (1–30 configurable), check summaries to 90 days (90–730 configurable). Roll up before cleanup; no host summary table is added.
+- Add permission-checked 30/90-day availability and overview ranges, weighted by actual checks, with hourly UTC boundaries and explicit no-data values. Existing deleted history is not reconstructed.
+- Stop the service and back up the complete data directory before upgrading; older binaries cannot read schema 8.
+
 
 ### Agent and collector regression coverage
 
@@ -14,7 +21,7 @@ User-visible changes belong here. Entries under **Unreleased** describe the curr
 
 - Use response-time incident titles for HTTP latency warnings; retain certificate titles for SSL warnings.
 - Schema 7 adds bounded response keyword matching, inverse matching and latency warnings to HTTP check creation/editing. Connection/status and keyword failures take precedence; details flag the 1 MiB inspection limit without exposing response bodies.
-- Stop the service and back up the full data directory before upgrading. Older binaries cannot read schema 7. Optional custom headers and method selection are not implemented.
+- Stop the service and back up the full data directory before upgrading. Older binaries cannot read schema 8. Optional custom headers and method selection are not implemented.
 
 
 ### Default resource localization
@@ -47,7 +54,7 @@ User-visible changes belong here. Entries under **Unreleased** describe the curr
 ### Configurable host thresholds
 
 - Schema 6 adds global CPU, memory, disk and sustained-duration settings. Local and remote hosts share continuous-window validation, recovery and disable rules. Settings retain authorization, optimistic locking and audit records.
-- Stop the service and back up the complete data directory before upgrading; older binaries cannot read schema 7.
+- Stop the service and back up the complete data directory before upgrading; older binaries cannot read schema 8.
 
 
 ### Available in the initial baseline
@@ -108,7 +115,7 @@ User-visible changes belong here. Entries under **Unreleased** describe the curr
 
 ### Upgrade considerations
 
-- SQLite migrations support schema versions 1 → 2 → 3 → 4 → 5 → 6 → 7. Stop the service and back up the entire data directory before upgrading. Older binaries cannot read schema 7 directly; rollback requires the complete pre-upgrade backup.
+- SQLite migrations support schema versions 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8. Stop the service and back up the entire data directory before upgrading. Older binaries cannot read schema 8 directly; rollback requires the complete pre-upgrade backup.
 - The React client and locale changes require no new database migration. Rebuild and restart the Go binary to serve the updated assets. Browser API and upload calls carry `Accept-Language`; status codes and machine-readable fields remain stable. Missing language headers preserve the original Chinese API behavior.
 - Built-in navigation may include an optional `nameKey` for presentation. Custom names remain literal. Permanent file deletion uses the fixed `DELETE` wire token while accepting the legacy Chinese confirmation value.
 

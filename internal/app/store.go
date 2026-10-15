@@ -40,7 +40,10 @@ var migration6 string
 //go:embed migration7.sql
 var migration7 string
 
-const currentSchemaVersion = 7
+//go:embed migration8.sql
+var migration8 string
+
+const currentSchemaVersion = 8
 
 type Store struct {
 	DB    *sql.DB
@@ -115,7 +118,7 @@ func OpenStore(dir string) (*Store, error) {
 		return nil, err
 	}
 	for version >= 1 && version < currentSchemaVersion {
-		migrations := []string{migration2, migration3, migration4, migration5, migration6, migration7}
+		migrations := []string{migration2, migration3, migration4, migration5, migration6, migration7, migration8}
 		tx, e := db.Begin()
 		if e != nil {
 			return nil, e

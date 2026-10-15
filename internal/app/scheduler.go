@@ -16,6 +16,9 @@ func (s *Server) scheduler(ctx context.Context) {
 	defer workers.Wait()
 	s.cleanupUploadResidue(ctx)
 	s.collectPurgedFiles(ctx)
+	if err := s.rollupChecks(ctx, now()); err != nil {
+		slog.Error("Metric rollup failed", "error", err)
+	}
 	slots := make(chan struct{}, 4)
 	tick := time.NewTicker(time.Second)
 	defer tick.Stop()
@@ -149,20 +152,28 @@ func (s *Server) execute(ctx context.Context, job int64) error {
 func (s *Server) cleanup(ctx context.Context) {
 	s.cleanupUploadResidue(ctx)
 	s.collectPurgedFiles(ctx)
-	var auditDays int
-	if e := s.Store.DB.QueryRowContext(ctx, "SELECT audit_days FROM system_settings WHERE id=1").Scan(&auditDays); e != nil {
+	settings, err := readSettings(s.Store.DB)
+	if err != nil {
 		return
 	}
+	at := now()
+	if err = s.rollupChecks(ctx, at); err != nil {
+		slog.Error("Metric rollup failed; keeping raw data", "error", err)
+		return
+	}
+	rawCutoff := (at - int64(settings.RawRetentionDays)*86400000) / hourMillis * hourMillis
+	summaryCutoff := (at - int64(settings.SummaryRetentionDays)*86400000) / hourMillis * hourMillis
 	deadline := time.Now().Add(10 * time.Second)
 	queries := []struct {
 		sql    string
 		cutoff int64
 	}{
-		{"DELETE FROM audit_logs WHERE id IN (SELECT id FROM audit_logs WHERE at < ? LIMIT 5000)", now() - int64(auditDays)*86400000},
+		{"DELETE FROM audit_logs WHERE id IN (SELECT id FROM audit_logs WHERE at < ? LIMIT 5000)", now() - int64(settings.AuditDays)*86400000},
 		{"DELETE FROM notification_deliveries WHERE id IN (SELECT id FROM notification_deliveries WHERE finished_at < ? AND state NOT IN ('queued','sending') LIMIT 5000)", now() - 30*86400000},
 		{"DELETE FROM sessions WHERE token_hash IN (SELECT token_hash FROM sessions WHERE expires_at < ? LIMIT 5000)", now()},
-		{"DELETE FROM host_samples WHERE id IN (SELECT id FROM host_samples WHERE at < ? LIMIT 5000)", now() - 7*86400000},
-		{"DELETE FROM check_results WHERE id IN (SELECT id FROM check_results WHERE at < ? LIMIT 5000)", now() - 7*86400000},
+		{"DELETE FROM host_samples WHERE id IN (SELECT id FROM host_samples WHERE at < ? LIMIT 5000)", rawCutoff},
+		{"DELETE FROM check_results WHERE id IN (SELECT id FROM check_results WHERE rolled_up=1 AND at < ? LIMIT 5000)", rawCutoff},
+		{"DELETE FROM check_hourly WHERE rowid IN (SELECT rowid FROM check_hourly WHERE hour < ? LIMIT 5000)", summaryCutoff},
 		{"DELETE FROM jobs WHERE id IN (SELECT id FROM jobs WHERE finished_at < ? AND state NOT IN ('queued','running') LIMIT 5000)", now() - 7*86400000},
 	}
 	for _, q := range queries {

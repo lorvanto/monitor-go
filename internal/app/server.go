@@ -276,6 +276,7 @@ func (s *Server) Handler() http.Handler {
 	add("GET /api/v1/hosts", "host:read", false, s.listHosts)
 	add("PATCH /api/v1/hosts/{id}", "host:update", false, s.updateHost)
 	add("GET /api/v1/hosts/{id}/metrics", "host:read", false, s.hostMetrics)
+	add("GET /api/v1/monitors/availability", "monitor:read", false, s.monitorAvailability)
 	add("GET /api/v1/monitors", "monitor:read", false, s.listMonitors)
 	add("POST /api/v1/monitors", "monitor:update", false, s.createMonitor)
 	add("PATCH /api/v1/monitors/{id}", "monitor:update", false, s.updateMonitor)

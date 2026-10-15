@@ -1203,5 +1203,19 @@
   "耗时警告阈值（毫秒）": "Response-time warning threshold (ms)",
   "留空不检查；最多 1024 字节，仅匹配响应体前 1 MiB，区分大小写。": "Leave blank to skip. Up to 1024 bytes; case-sensitive matching in the first 1 MiB of the body only.",
   "0 表示关闭。连接、状态码或关键字失败优先于耗时警告。": "0 disables this warning. Connection, status and keyword failures take priority over response-time warnings.",
-  "HTTP 关键字最多 1024 字节；耗时警告阈值为 0–30000 毫秒": "HTTP keywords are limited to 1024 bytes; response-time warnings must be 0–30000 ms."
+  "HTTP 关键字最多 1024 字节；耗时警告阈值为 0–30000 毫秒": "HTTP keywords are limited to 1024 bytes; response-time warnings must be 0–30000 ms.",
+  "长期可用率仅支持 30 天或 90 天": "Long-term availability supports 30 or 90 days only.",
+  "原始指标保留 1–30 天，汇总保留 90–730 天": "Raw metrics must be kept for 1–30 days and summaries for 90–730 days.",
+  "指标保留策略": "Metric retention",
+  "每小时先汇总已结束时段，再清理过期原始指标。缩短保留期会删除更早的数据。": "Closed hours are summarized before expired raw metrics are removed each hour. Shortening retention deletes older data.",
+  "原始指标保留天数": "Raw metric retention (days)",
+  "小时汇总保留天数": "Hourly summary retention (days)",
+  "1–30 天": "1–30 days",
+  "90–730 天": "90–730 days",
+  "可用率周期": "Availability period",
+  "{p0} 天可用率": "{p0}-day availability",
+  "30 天": "30 days",
+  "90 天": "90 days",
+  "所选时段平均": "Selected-period average",
+  "长期可用率按实际检测次数加权，窗口起点按 UTC 整点对齐；无采样显示“—”，不会补算为正常。": "Long-term availability is weighted by actual checks, with a UTC hour-aligned start. No samples show “—”; gaps are never counted as healthy."
 }

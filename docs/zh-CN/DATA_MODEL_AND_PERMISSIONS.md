@@ -4,9 +4,9 @@
 
 本方案基于内置 SQLite 文件数据库，面向一套安装内的多人协作。业务资源共享，用户和角色控制操作范围。表名、字段和表拆分属于建议，实施迁移前进一步确定类型与索引。
 
-## 当前结构版本 6 实现
+## 当前结构版本 8 实现
 
-实际迁移源见 `internal/app/schema.sql`、`migration2.sql`、`migration3.sql`、`migration4.sql`、`migration5.sql` 和 `migration6.sql`。结构版本 6 的 `system_settings` 增加 `host_cpu_percent`、`host_memory_percent`、`host_disk_percent`（0–100，0 关闭）及 `host_alert_minutes`（1–60），由本机和远程主机共用。以下表为本轮已实现，其余完整产品表设计仍是规划。
+实际迁移源见 `internal/app/schema.sql`、`migration2.sql`、`migration3.sql`、`migration4.sql`、`migration5.sql`、`migration6.sql`、`migration7.sql` 和 `migration8.sql`。结构版本 6 的 `system_settings` 增加 `host_cpu_percent`、`host_memory_percent`、`host_disk_percent`（0–100，0 关闭）及 `host_alert_minutes`（1–60），由本机和远程主机共用。结构版本 7 新增 HTTP 关键字、反向匹配和耗时警告规则；结构版本 8 新增检测小时汇总、原始行消费标记及指标保留期。以下表为已实现，其余完整产品表设计仍是规划。
 
 | 表 | 本轮实际职责 |
 |---|---|
@@ -16,7 +16,8 @@
 | `menus` | 自引用导航树、分组/页面/外链、内置标记、展示权限、排序、版本和软删除 |
 | `files` | 统一目录与文件元数据、随机对象键、SHA-256、尺寸、创建人、版本、回收批次与永久删除墓碑 |
 | `image_styles` | 名称、宽高、contain/cover、版本与软归档 |
-| `system_settings` | 单行强类型实例配置：名称、上传上限、存储配额、默认目录、审计天数、版本 |
+| `system_settings` | 单行强类型实例配置：名称、上传上限、存储配额、默认目录、审计天数、主机阈值、原始/汇总指标保留天数、版本 |
+| `check_hourly` | 按检测目标与 UTC 小时累计样本数、成功数、平均/最大耗时；与原始行消费标记在同一事务更新 |
 | `audit_logs` | 在原日志上增加服务端请求编号、HTTP 方法、接口路径与时间索引 |
 
 根目录使用固定记录（id=1），避免空父级绕过目录内唯一约束；默认上传目录为 id=2。有效文件/目录名称通过 `WHERE deleted_at IS NULL AND purged_at IS NULL` 的部分唯一索引约束。磁盘对象路径与用户文件名无关，单次上传最终入库时在事务内重新检查目录及配额。回收站按 `trash_root` 恢复一个完整删除批次，物理回收完成后清空对象键，保留元数据墓碑。
@@ -69,6 +70,7 @@ v3 新增 9 项权限，v4 再新增 7 项，现共 27 项。文件资源是实�
 | `api_keys` | client_id、key_prefix、secret_hash、scopes_json、expires_at、revoked_at | 明文只在创建时展示；权限范围必须来自注册表 |
 | `app_releases` | client_id、name、version、platform、file_id、download_url、download_count | file_id 与外部下载地址按规则择一，保留安装包管理能力 |
 | `settings` | key、value_json、schema_version、updated_by | 固定键与校验规则；公开配置和密钥配置分开 |
+| `check_hourly` | 按检测目标与 UTC 小时累计样本数、成功数、平均/最大耗时；与原始行消费标记在同一事务更新 |
 | `audit_logs` | actor_type、actor_id、action、resource_type、resource_id、result、request_id、metadata_json | 记录审计摘要，敏感值不入日志 |
 
 文件树与实际磁盘目录解耦，重命名或移动只更新元数据。真实对象读取必须先经过文件授权。用户上传的 HTML 等主动内容默认按附件下载，公开分享须有明确设置。

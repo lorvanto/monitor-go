@@ -10,7 +10,7 @@
 | Repository name and URL | [lorvanto/monitor-go](https://github.com/lorvanto/monitor-go), public |
 | Display name | Monitor Go |
 | Project license | [Apache-2.0](../../LICENSE) |
-| Application/schema baseline | `0.4.0-dev` / schema `7`; not a published release |
+| Application/schema baseline | `0.4.0-dev` / schema `8`; not a published release |
 | Go module | `github.com/lorvanto/monitor-go` |
 | Release targets, tag and date | To be selected after target-specific validation |
 | Publishing automation | Not configured; the files in `.github/` are report/review templates |

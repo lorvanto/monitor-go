@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createStore, useStore } from "zustand";
 import Icon from "../components/Icon";
 import Modal from "../components/Modal";
@@ -26,6 +26,9 @@ import {
 export default function MonitorsView() {
   const initialState = {
     query: "",
+    availabilityPeriod: "24h",
+    availability: {} as Record<string, number | null>,
+    availabilityError: "",
     type: "",
     group: "",
     tab: "all",
@@ -60,6 +63,48 @@ export default function MonitorsView() {
   const viewState = useStore(store);
   const appState = useApp();
   useI18n();
+  const availabilitySequence = useRef(0);
+  useEffect(() => {
+    const request = ++availabilitySequence.current;
+    let active = true;
+    if (viewState.availabilityPeriod !== "24h" && can("monitor:read")) {
+      const selectedHours = viewState.availabilityPeriod === "30d" ? 720 : 2160;
+      void api<{ items: { monitorId: string; uptime: number | null }[] }>(
+        `/monitors/availability?hours=${selectedHours}`,
+      )
+        .then((result) => {
+          if (active && request === availabilitySequence.current)
+            store.setState({
+              availability: Object.fromEntries(
+                result.items.map((item) => [item.monitorId, item.uptime]),
+              ),
+              availabilityError: "",
+            });
+        })
+        .catch((error) => {
+          if (active && request === availabilitySequence.current)
+            store.setState({
+              availability: {},
+              availabilityError: (error as Error).message,
+            });
+        });
+    }
+    return () => {
+      active = false;
+    };
+  }, [viewState.availabilityPeriod, appState.updatedAt, appState.user]);
+  function uptime(m: Monitor) {
+    return viewState.availabilityPeriod === "24h"
+      ? m.uptime
+      : (viewState.availability[m.id] ?? null);
+  }
+  const availabilityLabel =
+    viewState.availabilityPeriod === "24h"
+      ? t("24 小时可用率")
+      : t("{p0} 天可用率", {
+          p0: viewState.availabilityPeriod === "30d" ? 30 : 90,
+        });
+
   useEffect(() => {
     appStore.setState({ createMonitorRequested: false, activeMonitor: "" });
   }, [store]);
@@ -337,6 +382,11 @@ export default function MonitorsView() {
           ) : null}
         </div>
       </header>
+      {viewState.availabilityError ? (
+        <p role="alert" className="error">
+          {viewState.availabilityError}
+        </p>
+      ) : null}
       <section className="panel">
         <div className="toolbar">
           <div role="group" aria-label={t("按状态筛选")} className="seg">
@@ -378,6 +428,21 @@ export default function MonitorsView() {
               </button>
             ) : null}
           </label>
+          <select
+            aria-label={t("可用率周期")}
+            value={viewState.availabilityPeriod}
+            onChange={(event) =>
+              store.setState({
+                availabilityPeriod: event.currentTarget.value,
+                availability: {},
+                availabilityError: "",
+              })
+            }
+          >
+            <option value="24h">{t("24 小时可用率")}</option>
+            <option value="30d">{t("{p0} 天可用率", { p0: 30 })}</option>
+            <option value="90d">{t("{p0} 天可用率", { p0: 90 })}</option>
+          </select>
           <select
             aria-label={t("检测类型")}
             value={viewState.type}
@@ -464,7 +529,7 @@ export default function MonitorsView() {
                   <th>{t("状态")}</th>
                   <th className="num">{t("响应")}</th>
                   <th>{t("最近 32 次结果")}</th>
-                  <th className="num">{t("24 小时可用率")}</th>
+                  <th className="num">{availabilityLabel}</th>
                   <th>{t("最近检测")}</th>
                   <th className="actions">
                     <span className="sr-only">{t("操作")}</span>
@@ -527,7 +592,7 @@ export default function MonitorsView() {
                         <SignalTrace history={m.history}></SignalTrace>
                       </td>
                       <td className="num c-uptime">
-                        {m.uptime == null ? "—" : number(m.uptime, 2) + "%"}
+                        {uptime(m) == null ? "—" : number(uptime(m), 2) + "%"}
                       </td>
                       <td className="nowrap muted c-last">
                         {relative(m.checkedAt)}
@@ -655,9 +720,13 @@ export default function MonitorsView() {
       </section>
       <p className="note page-note">
         <Icon name="Info" size={14}></Icon>
-        {t(
-          "可用率按近 24 小时的成功次数计算，尚无检测时显示“—”。暂停检测不会把未恢复的告警标记为正常。",
-        )}
+        {viewState.availabilityPeriod === "24h"
+          ? t(
+              "可用率按近 24 小时的成功次数计算，尚无检测时显示“—”。暂停检测不会把未恢复的告警标记为正常。",
+            )
+          : t(
+              "长期可用率按实际检测次数加权，窗口起点按 UTC 整点对齐；无采样显示“—”，不会补算为正常。",
+            )}
       </p>
       {viewState.creating ? (
         <Modal
@@ -1147,9 +1216,9 @@ export default function MonitorsView() {
               <dd className="num">{latencyParts(detail.latency).join(" ")}</dd>
             </div>
             <div>
-              <dt>{t("24 小时可用率")}</dt>
+              <dt>{availabilityLabel}</dt>
               <dd className="num">
-                {detail.uptime == null ? "—" : number(detail.uptime, 2) + "%"}
+                {uptime(detail) == null ? "—" : number(uptime(detail), 2) + "%"}
               </dd>
             </div>
             <div>

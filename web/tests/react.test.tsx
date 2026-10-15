@@ -1123,3 +1123,105 @@ it("edits HTTP keyword and latency rules while preserving drafts across five lan
     }),
   );
 });
+
+it("loads 30/90-day availability on the check page and keeps missing history empty", async () => {
+  const monitor = { ...editableMonitor(), uptime: 100 };
+  appStore.setState({
+    data: { ...appStore.getState().data, monitors: [monitor] },
+  });
+  fixtures["/monitors/availability"] = {
+    items: [{ monitorId: monitor.id, uptime: 93.75 }],
+  };
+  render(<MonitorsView />);
+  const period = screen.getByLabelText(t("可用率周期"));
+  fireEvent.change(period, { target: { value: "30d" } });
+  expect(await screen.findByText("93.75%")).toBeTruthy();
+  expect(
+    screen.getByRole("columnheader", { name: "30-day availability" }),
+  ).toBeTruthy();
+  expect(
+    vi
+      .mocked(fetch)
+      .mock.calls.some(([url]) =>
+        String(url).includes("/monitors/availability?hours=720"),
+      ),
+  ).toBe(true);
+  fixtures["/monitors/availability"] = { items: [] };
+  fireEvent.change(period, { target: { value: "90d" } });
+  await waitFor(() =>
+    expect(
+      vi
+        .mocked(fetch)
+        .mock.calls.some(([url]) =>
+          String(url).includes("/monitors/availability?hours=2160"),
+        ),
+    ).toBe(true),
+  );
+  expect(
+    screen.getByRole("columnheader", { name: "90-day availability" }),
+  ).toBeTruthy();
+  expect(screen.queryByText("93.75%")).toBeNull();
+  expect(screen.queryByText("100.00%")).toBeNull();
+});
+
+it("uses the selected long range for overview totals and chart requests", async () => {
+  const monitor = editableMonitor();
+  appStore.setState({
+    data: { ...appStore.getState().data, monitors: [monitor] },
+  });
+  fixtures["/overview"] = {
+    at: Date.now(),
+    points: [],
+    activity: [],
+    samples: 20,
+    uptime: 75,
+    latency: 10,
+  };
+  render(<OverviewView />);
+  fireEvent.click(screen.getByRole("button", { name: t("30 天") }));
+  await waitFor(() =>
+    expect(
+      vi
+        .mocked(fetch)
+        .mock.calls.some(([url]) =>
+          String(url).includes("/overview?hours=720"),
+        ),
+    ).toBe(true),
+  );
+  expect(await screen.findByText("30-day availability")).toBeTruthy();
+  fireEvent.click(screen.getByRole("button", { name: t("90 天") }));
+  await waitFor(() =>
+    expect(
+      vi
+        .mocked(fetch)
+        .mock.calls.some(([url]) =>
+          String(url).includes("/overview?hours=2160"),
+        ),
+    ).toBe(true),
+  );
+  expect(await screen.findByText("90-day availability")).toBeTruthy();
+});
+
+it("saves metric retention and preserves its draft through language switches", async () => {
+  render(<SettingsView />);
+  const raw = await screen.findByLabelText(t("原始指标保留天数"), {
+    exact: false,
+  });
+  await waitFor(() => expect((raw as HTMLInputElement).disabled).toBe(false));
+  fireEvent.change(raw, { target: { value: "3" } });
+  fireEvent.change(
+    screen.getByLabelText(t("小时汇总保留天数"), { exact: false }),
+    { target: { value: "180" } },
+  );
+  for (const locale of locales) {
+    await act(() => setLocale(locale.code));
+    expect((raw as HTMLInputElement).value).toBe("3");
+  }
+  fireEvent.click(screen.getByRole("button", { name: t("保存设置") }));
+  await waitFor(() =>
+    expect(
+      requests.find((r) => r.method === "PATCH" && r.path === "/settings")
+        ?.body,
+    ).toMatchObject({ rawRetentionDays: 3, summaryRetentionDays: 180 }),
+  );
+});

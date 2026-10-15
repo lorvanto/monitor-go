@@ -21,17 +21,19 @@ func auditRequest(tx *sql.Tx, r *http.Request, actor, action, resource string) e
 }
 
 type Settings struct {
-	HostCPUPercent    int    `json:"hostCPUPercent"`
-	HostMemoryPercent int    `json:"hostMemoryPercent"`
-	HostDiskPercent   int    `json:"hostDiskPercent"`
-	HostAlertMinutes  int    `json:"hostAlertMinutes"`
-	InstanceName      string `json:"instanceName"`
-	UseDefaultName    bool   `json:"useDefaultName"`
-	UploadLimitMB     int64  `json:"uploadLimitMB"`
-	StorageLimitMB    int64  `json:"storageLimitMB"`
-	DefaultFolder     string `json:"defaultFolder"`
-	AuditDays         int    `json:"auditDays"`
-	Version           int    `json:"version"`
+	RawRetentionDays     int    `json:"rawRetentionDays"`
+	SummaryRetentionDays int    `json:"summaryRetentionDays"`
+	HostCPUPercent       int    `json:"hostCPUPercent"`
+	HostMemoryPercent    int    `json:"hostMemoryPercent"`
+	HostDiskPercent      int    `json:"hostDiskPercent"`
+	HostAlertMinutes     int    `json:"hostAlertMinutes"`
+	InstanceName         string `json:"instanceName"`
+	UseDefaultName       bool   `json:"useDefaultName"`
+	UploadLimitMB        int64  `json:"uploadLimitMB"`
+	StorageLimitMB       int64  `json:"storageLimitMB"`
+	DefaultFolder        string `json:"defaultFolder"`
+	AuditDays            int    `json:"auditDays"`
+	Version              int    `json:"version"`
 }
 type rowQuery interface{ QueryRow(string, ...any) *sql.Row }
 
@@ -43,7 +45,7 @@ func defaultInstanceName(name string, version int) bool {
 
 func readSettings(q rowQuery) (Settings, error) {
 	var v Settings
-	e := q.QueryRow("SELECT instance_name,upload_limit_mb,storage_limit_mb,CAST(default_folder AS TEXT),audit_days,version,host_cpu_percent,host_memory_percent,host_disk_percent,host_alert_minutes FROM system_settings WHERE id=1").Scan(&v.InstanceName, &v.UploadLimitMB, &v.StorageLimitMB, &v.DefaultFolder, &v.AuditDays, &v.Version, &v.HostCPUPercent, &v.HostMemoryPercent, &v.HostDiskPercent, &v.HostAlertMinutes)
+	e := q.QueryRow("SELECT instance_name,upload_limit_mb,storage_limit_mb,CAST(default_folder AS TEXT),audit_days,version,host_cpu_percent,host_memory_percent,host_disk_percent,host_alert_minutes,raw_retention_days,summary_retention_days FROM system_settings WHERE id=1").Scan(&v.InstanceName, &v.UploadLimitMB, &v.StorageLimitMB, &v.DefaultFolder, &v.AuditDays, &v.Version, &v.HostCPUPercent, &v.HostMemoryPercent, &v.HostDiskPercent, &v.HostAlertMinutes, &v.RawRetentionDays, &v.SummaryRetentionDays)
 	v.UseDefaultName = defaultInstanceName(v.InstanceName, v.Version)
 	if v.UseDefaultName {
 		v.InstanceName = ""
@@ -71,6 +73,9 @@ func (s *Server) saveSettings(w http.ResponseWriter, r *http.Request, u *User) (
 	if in.HostCPUPercent < 0 || in.HostCPUPercent > 100 || in.HostMemoryPercent < 0 || in.HostMemoryPercent > 100 || in.HostDiskPercent < 0 || in.HostDiskPercent > 100 || in.HostAlertMinutes < 1 || in.HostAlertMinutes > 60 {
 		return nil, bad("主机阈值为 0–100%，持续时长为 1–60 分钟")
 	}
+	if in.RawRetentionDays < 1 || in.RawRetentionDays > 30 || in.SummaryRetentionDays < 90 || in.SummaryRetentionDays > 730 {
+		return nil, bad("原始指标保留 1–30 天，汇总保留 90–730 天")
+	}
 	e := s.Store.write(r.Context(), func(tx *sql.Tx) error {
 		old, e := readSettings(tx)
 		if e != nil {
@@ -93,7 +98,7 @@ func (s *Server) saveSettings(w http.ResponseWriter, r *http.Request, u *User) (
 		if used > in.StorageLimitMB*1048576 {
 			return bad("存储配额不能小于当前占用（含回收站）")
 		}
-		_, e = tx.Exec("UPDATE system_settings SET instance_name=?,upload_limit_mb=?,storage_limit_mb=?,default_folder=?,audit_days=?,host_cpu_percent=?,host_memory_percent=?,host_disk_percent=?,host_alert_minutes=?,version=version+1 WHERE id=1", in.InstanceName, in.UploadLimitMB, in.StorageLimitMB, in.DefaultFolder, in.AuditDays, in.HostCPUPercent, in.HostMemoryPercent, in.HostDiskPercent, in.HostAlertMinutes)
+		_, e = tx.Exec("UPDATE system_settings SET instance_name=?,upload_limit_mb=?,storage_limit_mb=?,default_folder=?,audit_days=?,host_cpu_percent=?,host_memory_percent=?,host_disk_percent=?,host_alert_minutes=?,raw_retention_days=?,summary_retention_days=?,version=version+1 WHERE id=1", in.InstanceName, in.UploadLimitMB, in.StorageLimitMB, in.DefaultFolder, in.AuditDays, in.HostCPUPercent, in.HostMemoryPercent, in.HostDiskPercent, in.HostAlertMinutes, in.RawRetentionDays, in.SummaryRetentionDays)
 		if e != nil {
 			return e
 		}

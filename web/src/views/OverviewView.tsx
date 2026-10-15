@@ -242,12 +242,16 @@ export default function OverviewView() {
     void (async () => {
       const request = ++sequence.current;
       try {
-        // 可用率固定按近 24 小时计算；选择分组时另取一份不分组的数据给读数条使用。
+        // Short-range availability stays at 24 hours; long ranges use hourly summaries.
         const [v, all] = await Promise.all([
           api<Overview>(
             `/overview?hours=${hours(store.getState().period)}&group=${encodeURIComponent(store.getState().scope)}`,
           ),
-          store.getState().scope ? api<Overview>("/overview?hours=1") : null,
+          store.getState().scope
+            ? api<Overview>(
+                `/overview?hours=${hours(store.getState().period) >= 720 ? hours(store.getState().period) : 1}`,
+              )
+            : null,
         ]);
         if (request === sequence.current) {
           store.setState({ summary: v });
@@ -395,7 +399,11 @@ export default function OverviewView() {
             </span>
           </div>
           <div className="readout-item">
-            <span className="readout-label">{t("24 小时可用率")}</span>
+            <span className="readout-label">
+              {hours(viewState.period) >= 720
+                ? t("{p0} 天可用率", { p0: hours(viewState.period) / 24 })
+                : t("24 小时可用率")}
+            </span>
             <span className="readout-value">
               {number(totals.uptime, 2)}
               {totals.uptime != null ? <small>{"%"}</small> : null}
@@ -458,6 +466,8 @@ export default function OverviewView() {
                         { value: "1h", label: t("1 小时") },
                         { value: "24h", label: t("24 小时") },
                         { value: "7d", label: t("7 天") },
+                        { value: "30d", label: t("30 天") },
+                        { value: "90d", label: t("90 天") },
                       ].map((p) => (
                         <button
                           key={p.value}
@@ -466,7 +476,11 @@ export default function OverviewView() {
                             active: viewState.period === p.value,
                           })}
                           onClick={() => {
-                            store.setState({ period: p.value });
+                            store.setState({
+                              period: p.value,
+                              summary: { at: 0, points: [], activity: [] },
+                              overall: null,
+                            });
                           }}
                         >
                           {p.label}
@@ -541,7 +555,7 @@ export default function OverviewView() {
                         { label: t("区间最高"), value: latency?.max },
                         { label: t("区间最低"), value: latency?.min },
                         {
-                          label: t("24 小时平均"),
+                          label: t("所选时段平均"),
                           value: viewState.summary.latency,
                         },
                       ].map((item) => (

@@ -301,6 +301,10 @@ func rangeHours(r *http.Request) int64 {
 		return 1
 	case "168":
 		return 168
+	case "720":
+		return 720
+	case "2160":
+		return 2160
 	default:
 		return 24
 	}

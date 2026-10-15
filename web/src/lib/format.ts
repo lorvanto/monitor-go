@@ -55,5 +55,13 @@ export function bytes(value: number | null | undefined) {
 }
 
 export function hours(period: string) {
-  return period === "1h" ? 1 : period === "7d" ? 168 : 24;
+  return period === "1h"
+    ? 1
+    : period === "7d"
+      ? 168
+      : period === "30d"
+        ? 720
+        : period === "90d"
+          ? 2160
+          : 24;
 }

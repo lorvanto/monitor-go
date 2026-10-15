@@ -4,7 +4,7 @@ A self-hosted monitoring and operations platform built with **Go**, **React 19**
 
 [English guide](docs/en-US/README.md) · [简体中文](docs/zh-CN/README.md) · [日本語](docs/ja-JP/README.md) · [한국어](docs/ko-KR/README.md) · [繁體中文](docs/zh-TW/README.md)
 
-**Status:** pre-release development baseline `0.4.0-dev`, database schema `7`. Public release assets and supported target-platform commitments are still being prepared. See [known limitations](docs/en-US/README.md) and the [roadmap](ROADMAP.md).
+**Status:** pre-release development baseline `0.4.0-dev`, database schema `8`. Public release assets and supported target-platform commitments are still being prepared. See [known limitations](docs/en-US/README.md) and the [roadmap](ROADMAP.md).
 
 ## Features
 
