@@ -68,6 +68,11 @@ export default function OverviewView() {
     const failed = count("failed"),
       warning = count("warning"),
       problems = failed + getOffline();
+    const incompleteDisks = appStore
+      .getState()
+      .data.hosts.filter(
+        (h) => h.status === "online" && h.snapshot.diskIncomplete,
+      ).length;
     const facts: {
       tone: Tone;
       text: string;
@@ -98,6 +103,11 @@ export default function OverviewView() {
       facts.push({
         tone: "ok",
         text: t("{p0} 台主机在线", { p0: getOnline() }),
+      });
+    if (incompleteDisks)
+      facts.push({
+        tone: "warn",
+        text: t("{p0} 台主机磁盘采样不完整", { p0: incompleteDisks }),
       });
     if (count("paused"))
       facts.push({
@@ -138,6 +148,12 @@ export default function OverviewView() {
       return {
         tone: "warn" as Tone,
         title: t("{p0} 条告警尚未恢复", { p0: getAppView().openAlerts.length }),
+        facts,
+      };
+    if (incompleteDisks)
+      return {
+        tone: "warn" as Tone,
+        title: t("{p0} 台主机磁盘采样不完整", { p0: incompleteDisks }),
         facts,
       };
     if (
@@ -212,7 +228,15 @@ export default function OverviewView() {
         value: pending ? null : h.snapshot.memory,
         warn: false,
       },
-      { label: t("磁盘"), value: disk, warn: disk != null && disk >= 85 },
+      {
+        label: t("磁盘"),
+        value: disk,
+        incomplete: h.status === "online" && h.snapshot.diskIncomplete,
+        warn:
+          disk != null &&
+          (h.diskAlertPercent ?? 85) > 0 &&
+          disk >= (h.diskAlertPercent ?? 85),
+      },
     ];
   };
   const hostState: Record<Host["status"], string> = localizedLabels({
@@ -778,6 +802,9 @@ export default function OverviewView() {
                                 })}
                               >
                                 <span>{percent(u.value)}</span>
+                                {u.incomplete ? (
+                                  <small>{t("磁盘采样不完整")}</small>
+                                ) : null}
                                 <span
                                   data-tone={u.warn ? "warn" : undefined}
                                   className="meter"

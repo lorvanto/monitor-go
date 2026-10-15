@@ -56,13 +56,19 @@ func (s *Server) collect(ctx context.Context) error {
 }
 func (s *Server) hosts(ctx context.Context) ([]Host, error) {
 	out := []Host{}
+	// Host readers need the effective warning threshold without gaining access
+	// to the rest of the instance's settings.
+	var diskAlertPercent int
+	if e := s.Store.reader().QueryRowContext(ctx, "SELECT host_disk_percent FROM system_settings WHERE id=1").Scan(&diskAlertPercent); e != nil {
+		return nil, e
+	}
 	rows, e := s.Store.reader().QueryContext(ctx, "SELECT id,hostname,alias,inventory,snapshot,last_seen,version,source,agent_enabled,agent_version,enrolled_at,enrollment_expires FROM hosts ORDER BY id")
 	if e != nil {
 		return nil, e
 	}
 	defer rows.Close()
 	for rows.Next() {
-		var h Host
+		h := Host{DiskAlertPercent: diskAlertPercent}
 		var inv, snap string
 		if e = rows.Scan(&h.ID, &h.Hostname, &h.Alias, &inv, &snap, &h.LastSeen, &h.Version, &h.Source, &h.AgentEnabled, &h.AgentVersion, &h.EnrolledAt, &h.EnrollmentExpires); e != nil {
 			return nil, e

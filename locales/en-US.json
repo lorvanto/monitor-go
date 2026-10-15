@@ -1254,5 +1254,14 @@
   "保存通知渠道": "Save notification channel",
   "发送渠道测试通知": "Send channel test notification",
   "重试告警通知": "Retry alert notification",
-  "调整事件静默时间": "Change incident silence duration"
+  "调整事件静默时间": "Change incident silence duration",
+  "使用率达到 {p0}% 会产生告警": "Alerts when usage reaches {p0}%",
+  "磁盘使用率告警已关闭": "Disk usage alerts are disabled",
+  "APFS 共享容器": "APFS shared container",
+  "APFS 卷配额": "APFS volume quota",
+  "包含的挂载点（{p0}）": "Included mount points ({p0})",
+  "磁盘采样不完整；保留现有告警，完整采样后再判断恢复。": "Disk sampling is incomplete. Existing alerts remain open until a complete sample can confirm recovery.",
+  "APFS 容器容量共享，配额行仅显示卷限制，请勿相加。": "APFS containers share capacity. Quota rows show volume limits. Do not add these capacities together.",
+  "{p0} 台主机磁盘采样不完整": "Disk sampling is incomplete on {p0} hosts",
+  "磁盘采样不完整": "Incomplete disk sample"
 }

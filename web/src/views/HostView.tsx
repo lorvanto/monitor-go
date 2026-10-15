@@ -162,6 +162,7 @@ export default function HostView() {
   const host = getHost();
   const hostList = getHostList();
   const warning = getWarning();
+  const diskAlertPercent = host?.diskAlertPercent ?? 85;
   return (
     <>
       <div className="host-layout">
@@ -565,8 +566,33 @@ export default function HostView() {
                     {t("磁盘")}
                     <span className="count">{host.snapshot.disks.length}</span>
                   </h2>
-                  <p>{t("使用率达到 85% 会产生告警")}</p>
+                  <p>
+                    {diskAlertPercent > 0
+                      ? t("使用率达到 {p0}% 会产生告警", {
+                          p0: diskAlertPercent,
+                        })
+                      : t("磁盘使用率告警已关闭")}
+                  </p>
                 </header>
+                {host.snapshot.diskIncomplete ? (
+                  <div data-tone="warn" className="banner">
+                    <StatusGlyph tone="warn"></StatusGlyph>
+                    <div className="banner-text">
+                      <p>
+                        {diskAlertPercent > 0
+                          ? t(
+                              "磁盘采样不完整；保留现有告警，完整采样后再判断恢复。",
+                            )
+                          : t("磁盘采样不完整")}
+                      </p>
+                    </div>
+                  </div>
+                ) : null}
+                {host.snapshot.disks.some((d) => d.capacityKind) ? (
+                  <p className="disk-note muted">
+                    {t("APFS 容器容量共享，配额行仅显示卷限制，请勿相加。")}
+                  </p>
+                ) : null}
                 {host.snapshot.disks.length ? (
                   <div className="table-wrap">
                     <table className="table">
@@ -582,8 +608,42 @@ export default function HostView() {
                       <tbody>
                         <>
                           {host.snapshot.disks.map((d) => (
-                            <tr key={d.path}>
-                              <td className="disk-path">{d.path}</td>
+                            <tr
+                              key={`${d.capacityKind || "volume"}:${d.capacityId || ""}:${d.path}`}
+                            >
+                              <td className="disk-path">
+                                <div className="disk-capacity">
+                                  <span>{d.path}</span>
+                                  {d.capacityKind ? (
+                                    <>
+                                      <strong>
+                                        {d.capacityKind === "apfs-container"
+                                          ? t("APFS 共享容器")
+                                          : t("APFS 卷配额")}
+                                      </strong>
+                                      {d.capacityId ? (
+                                        <small className="muted">
+                                          {d.capacityId}
+                                        </small>
+                                      ) : null}
+                                    </>
+                                  ) : null}
+                                  {d.mountPoints?.length ? (
+                                    <details className="disk-mounts">
+                                      <summary>
+                                        {t("包含的挂载点（{p0}）", {
+                                          p0: d.mountPoints.length,
+                                        })}
+                                      </summary>
+                                      <ul>
+                                        {d.mountPoints.map((path) => (
+                                          <li key={path}>{path}</li>
+                                        ))}
+                                      </ul>
+                                    </details>
+                                  ) : null}
+                                </div>
+                              </td>
                               <td className="muted">{d.filesystem}</td>
                               <td className="num">{bytes(d.used)}</td>
                               <td className="num">{bytes(d.total)}</td>
@@ -591,7 +651,10 @@ export default function HostView() {
                                 <div className="disk-usage">
                                   <span
                                     data-tone={
-                                      d.percent >= 85 ? "warn" : undefined
+                                      diskAlertPercent > 0 &&
+                                      d.percent >= diskAlertPercent
+                                        ? "warn"
+                                        : undefined
                                     }
                                     className="meter"
                                   >

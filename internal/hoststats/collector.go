@@ -10,7 +10,6 @@ import (
 	gnet "github.com/shirou/gopsutil/v4/net"
 	"net/netip"
 	"runtime"
-	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -21,11 +20,14 @@ type netSample struct {
 	at      time.Time
 }
 type DiskInfo struct {
-	Path       string  `json:"path"`
-	Filesystem string  `json:"filesystem"`
-	Used       uint64  `json:"used"`
-	Total      uint64  `json:"total"`
-	Percent    float64 `json:"percent"`
+	Path         string   `json:"path"`
+	Filesystem   string   `json:"filesystem"`
+	Used         uint64   `json:"used"`
+	Total        uint64   `json:"total"`
+	Percent      float64  `json:"percent"`
+	CapacityID   string   `json:"capacityId,omitempty"`
+	CapacityKind string   `json:"capacityKind,omitempty"`
+	MountPoints  []string `json:"mountPoints,omitempty"`
 }
 type Inventory struct {
 	OS       string   `json:"os"`
@@ -39,14 +41,15 @@ type Inventory struct {
 	Source   string   `json:"source"`
 }
 type Snapshot struct {
-	CPU        *float64   `json:"cpu"`
-	Memory     *float64   `json:"memory"`
-	MemoryUsed uint64     `json:"memoryUsed"`
-	Uptime     uint64     `json:"uptime"`
-	NetIn      *float64   `json:"netIn"`
-	NetOut     *float64   `json:"netOut"`
-	Disks      []DiskInfo `json:"disks"`
-	Errors     []string   `json:"errors"`
+	CPU            *float64   `json:"cpu"`
+	Memory         *float64   `json:"memory"`
+	MemoryUsed     uint64     `json:"memoryUsed"`
+	Uptime         uint64     `json:"uptime"`
+	NetIn          *float64   `json:"netIn"`
+	NetOut         *float64   `json:"netOut"`
+	Disks          []DiskInfo `json:"disks"`
+	DiskIncomplete bool       `json:"diskIncomplete,omitempty"`
+	Errors         []string   `json:"errors"`
 }
 
 type Report struct {
@@ -59,19 +62,20 @@ type Report struct {
 	Snapshot     Snapshot  `json:"snapshot"`
 }
 type collectorDependencies struct {
-	now        func() time.Time
-	hostInfo   func(context.Context) (*host.InfoStat, error)
-	cpuInfo    func(context.Context) ([]cpu.InfoStat, error)
-	cpuPercent func(context.Context, time.Duration, bool) ([]float64, error)
-	memory     func(context.Context) (*mem.VirtualMemoryStat, error)
-	interfaces func(context.Context) (gnet.InterfaceStatList, error)
-	partitions func(context.Context, bool) ([]disk.PartitionStat, error)
-	usage      func(context.Context, string) (*disk.UsageStat, error)
-	counters   func(context.Context, bool) ([]gnet.IOCountersStat, error)
+	now         func() time.Time
+	hostInfo    func(context.Context) (*host.InfoStat, error)
+	cpuInfo     func(context.Context) ([]cpu.InfoStat, error)
+	cpuPercent  func(context.Context, time.Duration, bool) ([]float64, error)
+	memory      func(context.Context) (*mem.VirtualMemoryStat, error)
+	interfaces  func(context.Context) (gnet.InterfaceStatList, error)
+	partitions  func(context.Context, bool) ([]disk.PartitionStat, error)
+	usage       func(context.Context, string) (*disk.UsageStat, error)
+	counters    func(context.Context, bool) ([]gnet.IOCountersStat, error)
+	apfsCommand apfsCommandFunc
 }
 
 func systemDependencies() collectorDependencies {
-	return collectorDependencies{time.Now, host.InfoWithContext, cpu.InfoWithContext, cpu.PercentWithContext, mem.VirtualMemoryWithContext, gnet.InterfacesWithContext, disk.PartitionsWithContext, disk.UsageWithContext, gnet.IOCountersWithContext}
+	return collectorDependencies{now: time.Now, hostInfo: host.InfoWithContext, cpuInfo: cpu.InfoWithContext, cpuPercent: cpu.PercentWithContext, memory: mem.VirtualMemoryWithContext, interfaces: gnet.InterfacesWithContext, partitions: disk.PartitionsWithContext, usage: disk.UsageWithContext, counters: gnet.IOCountersWithContext, apfsCommand: platformAPFSCommand()}
 }
 
 type Collector struct {
@@ -106,7 +110,7 @@ func (c *Collector) Collect(ctx context.Context) (Report, error) {
 	if v, e := deps.cpuPercent(ctx, time.Second, false); e == nil && len(v) > 0 {
 		snap.CPU = &v[0]
 	} else {
-		snap.Errors = append(snap.Errors, "CPU 采样不可用")
+		appendCollectionError(&snap, "CPU 采样不可用")
 	}
 	if v, e := deps.memory(ctx); e == nil {
 		inv.Memory = v.Total
@@ -114,7 +118,7 @@ func (c *Collector) Collect(ctx context.Context) (Report, error) {
 		p := v.UsedPercent
 		snap.Memory = &p
 	} else {
-		snap.Errors = append(snap.Errors, "内存采样不可用")
+		appendCollectionError(&snap, "内存采样不可用")
 	}
 	if interfaces, e := deps.interfaces(ctx); e == nil {
 		for _, i := range interfaces {
@@ -125,28 +129,7 @@ func (c *Collector) Collect(ctx context.Context) (Report, error) {
 			}
 		}
 	}
-	parts, e := deps.partitions(ctx, false)
-	if e != nil {
-		snap.Errors = append(snap.Errors, "磁盘分区不可用")
-	}
-	seen := map[string]bool{}
-	for _, p := range parts {
-		if slices.Contains([]string{"devfs", "proc", "sysfs", "tmpfs", "devtmpfs", "squashfs", "autofs", "cgroup", "cgroup2", "debugfs", "tracefs", "securityfs"}, p.Fstype) {
-			continue
-		}
-		if len(snap.Disks) >= 16 {
-			break
-		}
-		if seen[p.Mountpoint] {
-			continue
-		}
-		seen[p.Mountpoint] = true
-		usage, e := deps.usage(ctx, p.Mountpoint)
-		if e != nil || usage.Total == 0 {
-			continue
-		}
-		snap.Disks = append(snap.Disks, DiskInfo{p.Mountpoint, p.Fstype, usage.Used, usage.Total, usage.UsedPercent})
-	}
+	collectDisks(ctx, deps, &snap)
 	if counters, e := deps.counters(ctx, true); e == nil {
 		current := &netSample{at: deps.now()}
 		for _, v := range counters {
@@ -165,7 +148,7 @@ func (c *Collector) Collect(ctx context.Context) (Report, error) {
 		}
 		c.previousNet = current
 	} else {
-		snap.Errors = append(snap.Errors, "网络流量不可用")
+		appendCollectionError(&snap, "网络流量不可用")
 	}
 
 	return Report{Protocol: 1, AgentVersion: buildinfo.Version, CollectedAt: deps.now().UnixMilli(), Hostname: info.Hostname, Inventory: inv, Snapshot: snap}, nil

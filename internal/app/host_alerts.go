@@ -3,6 +3,7 @@ package app
 import (
 	"database/sql"
 	"fmt"
+	"github.com/lorvanto/monitor-go/internal/hoststats"
 	"strings"
 )
 
@@ -93,11 +94,24 @@ func evaluateHostAlerts(tx *sql.Tx, id int64, hostname string, snap snapshot, at
 	}
 	details := []string{}
 	if settings.HostDiskPercent > 0 {
-		for _, disk := range snap.Disks {
+		for _, disk := range hoststats.NormalizeDisks(snap.Disks) {
 			if disk.Percent >= float64(settings.HostDiskPercent) {
-				details = append(details, fmt.Sprintf("%s 使用率 %.1f%%", disk.Path, disk.Percent))
+				path := disk.Path
+				switch disk.CapacityKind {
+				case "apfs-container":
+					path = "APFS 容器 " + path
+				case "apfs-quota":
+					path = "APFS 卷配额 " + path
+				}
+				details = append(details, fmt.Sprintf("%s 使用率 %.1f%%", path, disk.Percent))
 			}
 		}
+	}
+	// A healthy subset cannot prove that an unreadable disk recovered. Known
+	// high readings still open/update an incident, and disabling the rule still
+	// resolves it on the next report.
+	if settings.HostDiskPercent > 0 && snap.DiskIncomplete && len(details) == 0 {
+		return nil
 	}
 	detail := strings.Join(details, "；")
 	if settings.HostDiskPercent == 0 {

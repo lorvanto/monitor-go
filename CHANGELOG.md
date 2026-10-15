@@ -4,6 +4,12 @@ User-visible changes belong here. Entries under **Unreleased** describe the curr
 
 ## Unreleased
 
+### macOS APFS capacity and disk alerts
+
+- Consolidate mounted APFS volumes by verified container identity, retaining mount details and explicit volume quotas. Preserve independent equal-valued disks and raw samples when identity collection is unavailable.
+- Keep the existing per-host disk incident while updating its description. Incomplete disk collection cannot falsely resolve an incident; complete recovery and disabled thresholds retain their normal behavior.
+- Show the actual configured disk threshold and APFS capacity scope in host/overview views. Add collector, real SQLite/HTTP and frontend regressions without a schema migration or dependency change.
+
 ### macOS host identity
 
 - Report Apple host inventory as `macOS` with its actual product version, keeping the Darwin kernel release separate. Apply this to local collection and updated Agents without changing Go platform identifiers, Linux/Windows names or stored history.

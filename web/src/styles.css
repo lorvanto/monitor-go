@@ -2469,6 +2469,33 @@
   .disk-path {
     font-family: var(--font-mono);
     font-size: 12.5px;
+    max-width: 26rem;
+    overflow-wrap: anywhere;
+  }
+  .disk-capacity {
+    display: grid;
+    gap: 5px;
+    min-width: 0;
+  }
+  .disk-capacity strong,
+  .disk-mounts summary {
+    font-family: var(--font-sans);
+  }
+  .disk-mounts summary {
+    cursor: pointer;
+    padding-block: 8px;
+  }
+  .disk-mounts ul {
+    margin: 4px 0 0;
+    padding-left: 18px;
+  }
+  .disk-mounts li + li {
+    margin-top: 5px;
+  }
+  .disk-note {
+    margin: 0;
+    padding: 12px 16px;
+    overflow-wrap: anywhere;
   }
   .disk-usage {
     display: grid;

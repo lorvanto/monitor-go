@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"strings"
 	"time"
+	"unicode"
 )
 
 // Enrollment secrets are short-lived and scoped to exactly one reserved host.
@@ -168,9 +169,41 @@ func validateReport(v *hoststats.Report) error {
 			return bad("无效的网络指标")
 		}
 	}
+	capacityMounts := map[string]map[string]bool{}
 	for _, d := range snap.Disks {
-		if len(d.Path) > 512 || len(d.Filesystem) > 100 || math.IsNaN(d.Percent) || math.IsInf(d.Percent, 0) || d.Percent < 0 || d.Percent > 100 || d.Used > d.Total {
+		if len(d.Path) > 512 || len(d.Filesystem) > 100 || math.IsNaN(d.Percent) || math.IsInf(d.Percent, 0) || d.Percent < 0 || d.Percent > 100 || (d.Used > d.Total && d.CapacityKind != "apfs-quota") {
 			return bad("无效的磁盘指标")
+		}
+		if d.Path == "" || strings.ContainsRune(d.Path, '\x00') || len(d.CapacityID) > 180 || len(d.MountPoints) > 32 {
+			return bad("无效的磁盘指标")
+		}
+		if d.CapacityID == "" {
+			if d.CapacityKind != "" || len(d.MountPoints) > 0 {
+				return bad("无效的磁盘指标")
+			}
+		} else if (d.CapacityKind != "apfs-container" && d.CapacityKind != "apfs-quota") || !strings.EqualFold(d.Filesystem, "apfs") || strings.TrimSpace(d.CapacityID) != d.CapacityID || strings.IndexFunc(d.CapacityID, unicode.IsControl) >= 0 {
+			return bad("无效的磁盘指标")
+		}
+		if d.CapacityID != "" && (d.Total == 0 || (d.CapacityKind == "apfs-quota" && d.Used > d.Total && d.Percent != 100)) {
+			return bad("无效的磁盘指标")
+		}
+		for _, mount := range d.MountPoints {
+			if mount == "" || len(mount) > 512 || strings.ContainsRune(mount, '\x00') {
+				return bad("无效的磁盘指标")
+			}
+		}
+		if d.CapacityID != "" {
+			key := d.CapacityKind + ":" + d.CapacityID
+			if capacityMounts[key] == nil {
+				capacityMounts[key] = map[string]bool{}
+			}
+			capacityMounts[key][d.Path] = true
+			for _, mount := range d.MountPoints {
+				capacityMounts[key][mount] = true
+			}
+			if len(capacityMounts[key]) > 32 {
+				return bad("无效的磁盘指标")
+			}
 		}
 	}
 	for _, ip := range inv.IPs {
@@ -187,8 +220,13 @@ func validateReport(v *hoststats.Report) error {
 	if inv.IPs == nil {
 		inv.IPs = []string{}
 	}
-	if snap.Disks == nil {
-		snap.Disks = []diskInfo{}
+	snap.Disks = hoststats.NormalizeDisks(snap.Disks)
+	// Normalization canonicalizes UUIDs, so identities differing only in UUID
+	// letter case can combine even when their raw-identity groups passed above.
+	for _, disk := range snap.Disks {
+		if len(disk.MountPoints) > 32 {
+			return bad("无效的磁盘指标")
+		}
 	}
 	if snap.Errors == nil {
 		snap.Errors = []string{}

@@ -156,6 +156,7 @@ type Activity struct {
 	Message  string `json:"message"`
 }
 type Host struct {
+	DiskAlertPercent  int             `json:"diskAlertPercent"`
 	AliasKey          string          `json:"aliasKey,omitempty"`
 	Source            string          `json:"source"`
 	Status            string          `json:"status"`

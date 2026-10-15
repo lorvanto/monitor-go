@@ -118,6 +118,7 @@ export interface Host {
   alias: string;
   version: number;
   lastSeen: number;
+  diskAlertPercent?: number;
   inventory: {
     os: string;
     kernel: string;
@@ -142,7 +143,11 @@ export interface Host {
       used: number;
       total: number;
       percent: number;
+      capacityId?: string;
+      capacityKind?: "apfs-container" | "apfs-quota";
+      mountPoints?: string[];
     }[];
+    diskIncomplete?: boolean;
     errors: string[];
   };
 }
