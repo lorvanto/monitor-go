@@ -324,7 +324,7 @@ func TestV3UpgradeAddsApplicationsWithoutMenuCollision(t *testing.T) {
 	st.DB.QueryRow("SELECT max(version) FROM schema_migrations").Scan(&ver)
 	st.DB.QueryRow("SELECT count(*) FROM menus WHERE name='应用与工具'").Scan(&count)
 	st.DB.QueryRow("SELECT count(*) FROM role_permissions WHERE role_id=1 AND permission IN ('application:read','application:manage','application:keys','release:read','release:manage','release:download','tool:generate')").Scan(&keys)
-	if ver != 4 || count != 2 || keys != 7 {
+	if ver != currentSchemaVersion || count != 2 || keys != 7 {
 		t.Fatal("upgrade mismatch", ver, count, keys)
 	}
 	st.DB.QueryRow("SELECT count(*) FROM role_permissions WHERE role_id=2").Scan(&count)

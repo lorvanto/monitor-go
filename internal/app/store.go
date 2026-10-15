@@ -31,6 +31,11 @@ var migration3 string
 //go:embed migration4.sql
 var migration4 string
 
+//go:embed migration5.sql
+var migration5 string
+
+const currentSchemaVersion = 5
+
 type Store struct {
 	DB    *sql.DB
 	lock  *flock.Flock
@@ -140,7 +145,21 @@ func OpenStore(dir string) (*Store, error) {
 		}
 		version = 4
 	}
-	if version != 4 {
+	if version == 4 {
+		tx, e := db.Begin()
+		if e != nil {
+			return nil, e
+		}
+		if _, e = tx.Exec(migration5); e != nil {
+			tx.Rollback()
+			return nil, e
+		}
+		if e = tx.Commit(); e != nil {
+			return nil, e
+		}
+		version = 5
+	}
+	if version != currentSchemaVersion {
 		return nil, fmt.Errorf("不支持的数据库版本 %d", version)
 	}
 	keyPath := filepath.Join(abs, "master.key")

@@ -4,9 +4,9 @@
 
 本方案基于内置 SQLite 文件数据库，面向一套安装内的多人协作。业务资源共享，用户和角色控制操作范围。表名、字段和表拆分属于建议，实施迁移前进一步确定类型与索引。
 
-## 当前 v4 实现
+## 当前结构版本 5 实现
 
-实际迁移源见 `internal/app/schema.sql`、`migration2.sql`、`migration3.sql` 和 `migration4.sql`。以下表为本轮已实现，其余完整产品表设计仍是规划。
+实际迁移源见 `internal/app/schema.sql`、`migration2.sql`、`migration3.sql`、`migration4.sql` 和 `migration5.sql`。以下表为本轮已实现，其余完整产品表设计仍是规划。
 
 | 表 | 本轮实际职责 |
 |---|---|

@@ -217,7 +217,7 @@ func TestSQLiteLockConstraintsSecretsAndMigration(t *testing.T) {
 	}
 	var version int
 	s.DB.QueryRow("SELECT max(version) FROM schema_migrations").Scan(&version)
-	if version != 4 {
+	if version != currentSchemaVersion {
 		t.Fatal("migration not recorded")
 	}
 }

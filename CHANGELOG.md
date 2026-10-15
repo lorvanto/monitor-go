@@ -1,6 +1,6 @@
 # Changelog
 
-User-visible changes belong here. Entries under **Unreleased** describe the current development tree; they are not published releases. Application version `0.4.0` and schema version `4` currently identify the implementation baseline. A maintainer will create a dated release entry only when an actual tag and release are published.
+User-visible changes belong here. Entries under **Unreleased** describe the current development tree; they are not published releases. Application version `0.4.0` and schema version `5` currently identify the implementation baseline. A maintainer will create a dated release entry only when an actual tag and release are published.
 
 ## Unreleased
 
@@ -37,9 +37,13 @@ User-visible changes belong here. Entries under **Unreleased** describe the curr
 
 - Add a multi-stage Docker build with pinned base digests and a non-root runtime, plus Compose with a persistent data volume, read-only root, health check and explicit HTTPS settings. Five-language guides and a disposable container smoke test cover initialization, recreation and cold backup/restore. Container-local host collection is off by default; native Agents monitor real hosts. Images are built locally from source.
 
+### Scheduler queue performance
+
+- Add the schema 5 partial `jobs_queue` index for the FIFO queued-job lookup, so completed job history does not require a full table scan on each scheduler tick. Scheduling behavior and the seven-day job retention policy are unchanged. File-backed migration tests cover data preservation, indexed query plans, queue order, restart and transactional rollback.
+
 ### Upgrade considerations
 
-- SQLite migrations support schema versions 1 → 2 → 3 → 4. Stop the service and back up the entire data directory before upgrading. Older binaries cannot read schema 4 directly; rollback requires the complete pre-upgrade backup.
+- SQLite migrations support schema versions 1 → 2 → 3 → 4 → 5. Stop the service and back up the entire data directory before upgrading. Older binaries cannot read schema 5 directly; rollback requires the complete pre-upgrade backup.
 - The React client and locale changes require no new database migration. Rebuild and restart the Go binary to serve the updated assets. Browser API and upload calls carry `Accept-Language`; status codes and machine-readable fields remain stable. Missing language headers preserve the original Chinese API behavior.
 - Built-in navigation may include an optional `nameKey` for presentation. Custom names remain literal. Permanent file deletion uses the fixed `DELETE` wire token while accepting the legacy Chinese confirmation value.
 

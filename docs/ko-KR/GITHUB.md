@@ -4,7 +4,7 @@
 
 ## 현재 결정 사항
 
-공개 소스 저장소는 [lorvanto/monitor-go](https://github.com/lorvanto/monitor-go), 표시 이름은 Monitor Go입니다. 릴리스 태그 및 대상 플랫폼은 추후 확정합니다. 애플리케이션 `0.4.0`과 SQLite 스키마 `4`는 개발 기준이며 이미 공개된 릴리스를 의미하지 않습니다. 소스 push와 태그 및 배포 파일을 포함하는 Release 공개는 별도로 관리합니다.
+공개 소스 저장소는 [lorvanto/monitor-go](https://github.com/lorvanto/monitor-go), 표시 이름은 Monitor Go입니다. 릴리스 태그 및 대상 플랫폼은 추후 확정합니다. 애플리케이션 `0.4.0`과 SQLite 스키마 `5`는 개발 기준이며 이미 공개된 릴리스를 의미하지 않습니다. 소스 push와 태그 및 배포 파일을 포함하는 Release 공개는 별도로 관리합니다.
 
 프로젝트 코드와 문서는 [Apache-2.0](../../LICENSE)을 적용합니다. [NOTICE](../../NOTICE)와 [제삼자 라이선스 목록](../../THIRD_PARTY_NOTICES.md)도 확인하세요. 의존성, 글꼴 및 아이콘은 각각의 라이선스를 유지합니다. 라이선스 본문은 공식 영어 원문을 보존합니다.
 

@@ -2,7 +2,9 @@
 
 **English** · [简体中文](../zh-CN/README.md) · [日本語](../ja-JP/README.md) · [한국어](../ko-KR/README.md) · [繁體中文](../zh-TW/README.md) · [Documentation](../README.md)
 
-> Status: pre-release development baseline `0.4.0`, SQLite schema `4`; no published release is implied. Examples use a POSIX shell; Windows developers can use WSL.
+> Status: pre-release development baseline `0.4.0`, SQLite schema `5`; no published release is implied. Examples use a POSIX shell; Windows developers can use WSL.
+
+Schema 5 adds a partial index for queued scheduler jobs, avoiding scans of completed-job history. Job retention remains seven days. Stop the service and back up the complete data directory before upgrading; older binaries cannot read schema 5, and rollback requires that backup.
 
 See the [English interface screenshots](../../README.md#screenshots) for a feature tour using synthetic demonstration data. English is the default language on first use.
 
@@ -125,7 +127,7 @@ npm --prefix web run format:check
 
 Stop the service cleanly, then back up the entire data directory: SQLite and any companion files, `master.key`, and original `uploads/` files. Copying only a live `monitor.db` is not a complete backup. Restore the whole directory with a compatible server version.
 
-Database versions 1 → 2 → 3 → 4 migrate transactionally. Older binaries cannot directly read schema 4; rollback requires the entire pre-upgrade backup. New permissions are not silently assigned to custom roles. This internationalization change requires no new schema migration.
+Database versions 1 → 2 → 3 → 4 → 5 migrate transactionally. Older binaries cannot directly read schema 5; rollback requires the entire pre-upgrade backup. New permissions are not silently assigned to custom roles. This internationalization change requires no new schema migration.
 
 ## Current limits
 

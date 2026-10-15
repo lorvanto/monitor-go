@@ -9,6 +9,8 @@ import (
 	"time"
 )
 
+const nextQueuedJobQuery = "SELECT id FROM jobs WHERE state='queued' ORDER BY id LIMIT 1"
+
 func (s *Server) scheduler(ctx context.Context) {
 	var workers sync.WaitGroup
 	defer workers.Wait()
@@ -45,7 +47,7 @@ func (s *Server) scheduler(ctx context.Context) {
 			}
 			for len(slots) < cap(slots) {
 				var id int64
-				e = s.Store.DB.QueryRowContext(ctx, "SELECT id FROM jobs WHERE state='queued' ORDER BY id LIMIT 1").Scan(&id)
+				e = s.Store.DB.QueryRowContext(ctx, nextQueuedJobQuery).Scan(&id)
 				if e != nil {
 					break
 				}
