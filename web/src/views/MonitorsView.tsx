@@ -45,6 +45,9 @@ export default function MonitorsView() {
       interval: 60,
       timeout: 10,
       expected: 200,
+      keyword: "",
+      keywordInvert: false,
+      latencyWarnMs: 0,
       threshold: 3,
       sslDays: 14,
       username: "",
@@ -157,6 +160,9 @@ export default function MonitorsView() {
         interval: m.interval,
         timeout: m.timeout,
         expected: m.expected,
+        keyword: m.keyword || "",
+        keywordInvert: m.keywordInvert || false,
+        latencyWarnMs: m.latencyWarnMs || 0,
         threshold: m.threshold,
         sslDays: m.sslDays,
         username: m.username,
@@ -853,6 +859,65 @@ export default function MonitorsView() {
                   }}
                 />
               </label>
+            ) : null}
+            {viewState.form.type === "HTTP" ? (
+              <>
+                <label className="field">
+                  {t("响应关键字")}
+                  <input
+                    value={viewState.form.keyword}
+                    onChange={(event) => {
+                      store.setState((current) => ({
+                        form: {
+                          ...current.form,
+                          keyword: event.currentTarget.value,
+                        },
+                      }));
+                    }}
+                  />
+                  <small>
+                    {t(
+                      "留空不检查；最多 1024 字节，仅匹配响应体前 1 MiB，区分大小写。",
+                    )}
+                  </small>
+                </label>
+                <label className="check">
+                  <input
+                    type="checkbox"
+                    checked={viewState.form.keywordInvert}
+                    onChange={(event) => {
+                      store.setState((current) => ({
+                        form: {
+                          ...current.form,
+                          keywordInvert: event.currentTarget.checked,
+                        },
+                      }));
+                    }}
+                  />
+                  {t("响应不应包含关键字")}
+                </label>
+                <label className="field">
+                  {t("耗时警告阈值（毫秒）")}
+                  <input
+                    type="number"
+                    min="0"
+                    max="30000"
+                    required
+                    value={viewState.form.latencyWarnMs}
+                    onChange={(event) => {
+                      store.setState((current) => ({
+                        form: {
+                          ...current.form,
+                          latencyWarnMs: Number(event.currentTarget.value),
+                        },
+                      }));
+                    }}
+                  />
+                  <small>
+                    {t("0 表示关闭。连接、状态码或关键字失败优先于耗时警告。")}
+                  </small>
+                </label>
+              </>
             ) : null}
             {viewState.form.type === "SSL" ? (
               <label className="field">

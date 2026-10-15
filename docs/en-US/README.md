@@ -2,9 +2,9 @@
 
 **English** · [简体中文](../zh-CN/README.md) · [日本語](../ja-JP/README.md) · [한국어](../ko-KR/README.md) · [繁體中文](../zh-TW/README.md) · [Documentation](../README.md)
 
-> Status: pre-release development baseline `0.4.0-dev`, SQLite schema `6`; no published release is implied. Examples use a POSIX shell; Windows developers can use WSL.
+> Status: pre-release development baseline `0.4.0-dev`, SQLite schema `7`; no published release is implied. Examples use a POSIX shell; Windows developers can use WSL.
 
-Schema 5 adds a partial index for queued scheduler jobs, avoiding scans of completed-job history. Job retention remains seven days. Stop the service and back up the complete data directory before upgrading; older binaries cannot read schema 6, and rollback requires that backup.
+Schema 5 adds a partial index for queued scheduler jobs, avoiding scans of completed-job history. Job retention remains seven days. Stop the service and back up the complete data directory before upgrading; older binaries cannot read schema 7, and rollback requires that backup.
 
 See the [English interface screenshots](../../README.md#screenshots) for a feature tour using synthetic demonstration data. English is the default language on first use.
 
@@ -127,7 +127,7 @@ npm --prefix web run format:check
 
 Stop the service cleanly, then back up the entire data directory: SQLite and any companion files, `master.key`, and original `uploads/` files. Copying only a live `monitor.db` is not a complete backup. Restore the whole directory with a compatible server version.
 
-Database versions 1 → 2 → 3 → 4 → 5 → 6 migrate transactionally. Older binaries cannot directly read schema 6; rollback requires the entire pre-upgrade backup. New permissions are not silently assigned to custom roles. This internationalization change requires no new schema migration.
+Database versions 1 → 2 → 3 → 4 → 5 → 6 → 7 migrate transactionally. Older binaries cannot directly read schema 7; rollback requires the entire pre-upgrade backup. New permissions are not silently assigned to custom roles. This internationalization change requires no new schema migration.
 
 ## Current limits
 
@@ -157,7 +157,7 @@ Generic keeps its existing JSON and signature-header contract. Chat formats requ
 
 ## Host alert thresholds
 
-System settings provides installation-wide CPU, memory and disk thresholds (defaults: 90%, 90%, 85%) and a sustained duration of 1–60 minutes (default: 5). Set an individual threshold to 0 to disable that metric alert. Schema 6 adds these validated settings; stop the service and back up the whole data directory before upgrading. Older binaries cannot read schema 6.
+System settings provides installation-wide CPU, memory and disk thresholds (defaults: 90%, 90%, 85%) and a sustained duration of 1–60 minutes (default: 5). Set an individual threshold to 0 to disable that metric alert. Schema 6 adds these validated settings; stop the service and back up the whole data directory before upgrading. Older binaries cannot read schema 7.
 
 Local and remote hosts use the same rules. CPU/memory must stay at or above the threshold throughout the duration: samples must cover the whole window, including a sample at or before its start, with no missing values or gaps over 45 seconds. Insufficient data does not open an alert or resolve an existing one. The latest valid reading below the threshold resolves it. Disk alerts use the latest available disk readings immediately. Disabling a threshold resolves that metric's incident on the next report; settings changes also take effect on the next report. The 90-second remote-host offline rule is unchanged. Per-host overrides are not implemented.
 
@@ -189,3 +189,7 @@ To restore, stop the service, replace the entire data directory with a complete 
 Untouched seeded folder names (including paths in settings and package selection), role names/descriptions, image style names and the local-host alias follow the selected interface language. Renamed values remain literal; the server supplies explicit translation keys so a custom name matching a default is not translated by its text alone. Stored historical records remain unchanged.
 
 Fixed audit action labels are localized at display time; actor names, resource text and original stored audit rows are preserved.
+
+## HTTP response rules
+
+Create and edit HTTP checks with an optional UTF-8 response keyword (up to 1024 bytes), inverse matching and a response-time warning threshold (0–30000 ms; 0 disables it). Keyword matching is case-sensitive and examines only the first 1 MiB of the decoded body; details explicitly report truncation. Blank keywords preserve status-only checks. Latency includes reading the inspected body. Connection/status failures take priority, then keyword failures, then latency warnings. Response content is never copied into details. Non-HTTP checks clear these rules. Custom headers and GET/HEAD selection remain optional future work. Schema 7 adds the fields; stop and back up before upgrading, as older binaries cannot read it.

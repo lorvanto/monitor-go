@@ -94,6 +94,10 @@ type Role struct {
 	Permissions    []string `json:"permissions"`
 }
 type Monitor struct {
+	Keyword       string `json:"keyword"`
+	KeywordInvert bool   `json:"keywordInvert"`
+	LatencyWarnMS int    `json:"latencyWarnMs"`
+
 	ID        int64         `json:"id,string"`
 	Name      string        `json:"name"`
 	Type      string        `json:"type"`

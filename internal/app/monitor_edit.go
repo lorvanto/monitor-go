@@ -47,7 +47,7 @@ func (s *Server) editMonitor(w http.ResponseWriter, r *http.Request, u *User) (a
 				return err
 			}
 		}
-		_, err := tx.Exec(`UPDATE monitors SET name=?,type=?,target=?,group_name=?,interval_seconds=?,timeout_seconds=?,expected_status=?,failure_threshold=?,ssl_days=?,username=?,secret=?,tls=?,version=version+1,failures=0,state='unknown',next_check=0 WHERE id=?`, in.Name, in.Type, in.Target, in.Group, in.Interval, in.Timeout, in.Expected, in.Threshold, in.SSLDays, in.Username, secret, in.TLS, id)
+		_, err := tx.Exec(`UPDATE monitors SET name=?,type=?,target=?,group_name=?,interval_seconds=?,timeout_seconds=?,expected_status=?,failure_threshold=?,ssl_days=?,username=?,secret=?,tls=?,keyword=?,keyword_invert=?,latency_warn_ms=?,version=version+1,failures=0,state='unknown',next_check=0 WHERE id=?`, in.Name, in.Type, in.Target, in.Group, in.Interval, in.Timeout, in.Expected, in.Threshold, in.SSLDays, in.Username, secret, in.TLS, in.Keyword, in.KeywordInvert, in.LatencyWarnMS, id)
 		if err != nil {
 			return err
 		}

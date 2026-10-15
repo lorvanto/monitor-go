@@ -9,13 +9,14 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"unicode/utf8"
 )
 
-const monitorColumns = `id,name,type,target,group_name,interval_seconds,timeout_seconds,expected_status,failure_threshold,ssl_days,username,secret,tls,enabled,state,latency,detail,checked_at,next_check,version`
+const monitorColumns = `id,name,type,target,group_name,interval_seconds,timeout_seconds,expected_status,failure_threshold,ssl_days,username,secret,tls,enabled,state,latency,detail,checked_at,next_check,version,keyword,keyword_invert,latency_warn_ms`
 
 func scanMonitor(row interface{ Scan(...any) error }) (Monitor, error) {
 	m := Monitor{History: []CheckResult{}}
-	e := row.Scan(&m.ID, &m.Name, &m.Type, &m.Target, &m.Group, &m.Interval, &m.Timeout, &m.Expected, &m.Threshold, &m.SSLDays, &m.Username, &m.Secret, &m.TLS, &m.Enabled, &m.State, &m.Latency, &m.Detail, &m.Checked, &m.NextCheck, &m.Version)
+	e := row.Scan(&m.ID, &m.Name, &m.Type, &m.Target, &m.Group, &m.Interval, &m.Timeout, &m.Expected, &m.Threshold, &m.SSLDays, &m.Username, &m.Secret, &m.TLS, &m.Enabled, &m.State, &m.Latency, &m.Detail, &m.Checked, &m.NextCheck, &m.Version, &m.Keyword, &m.KeywordInvert, &m.LatencyWarnMS)
 	m.HasSecret = m.Secret != ""
 	if !m.Enabled {
 		m.State = "paused"
@@ -106,6 +107,10 @@ func (s *Server) listMonitors(w http.ResponseWriter, r *http.Request, u *User) (
 }
 
 type monitorInput struct {
+	Keyword       string `json:"keyword"`
+	KeywordInvert bool   `json:"keywordInvert"`
+	LatencyWarnMS int    `json:"latencyWarnMs"`
+
 	Name      string `json:"name"`
 	Type      string `json:"type"`
 	Target    string `json:"target"`
@@ -135,6 +140,14 @@ func (i *monitorInput) validate() error {
 	}
 	if i.Expected < 100 || i.Expected > 599 {
 		return bad("预期状态码无效")
+	}
+	if !utf8.ValidString(i.Keyword) || len(i.Keyword) > 1024 || i.LatencyWarnMS < 0 || i.LatencyWarnMS > 30000 {
+		return bad("HTTP 关键字最多 1024 字节；耗时警告阈值为 0–30000 毫秒")
+	}
+	if i.Type != "HTTP" {
+		i.Keyword = ""
+		i.KeywordInvert = false
+		i.LatencyWarnMS = 0
 	}
 	switch i.Type {
 	case "HTTP":
@@ -180,7 +193,7 @@ func (s *Server) createMonitor(w http.ResponseWriter, r *http.Request, u *User) 
 		if n >= 500 {
 			return bad("当前版本单套安装最多配置 500 个检测目标")
 		}
-		res, e := tx.Exec(`INSERT INTO monitors(name,type,target,group_name,interval_seconds,timeout_seconds,expected_status,failure_threshold,ssl_days,username,secret,tls) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)`, in.Name, in.Type, in.Target, in.Group, in.Interval, in.Timeout, in.Expected, in.Threshold, in.SSLDays, in.Username, secret, in.TLS)
+		res, e := tx.Exec(`INSERT INTO monitors(name,type,target,group_name,interval_seconds,timeout_seconds,expected_status,failure_threshold,ssl_days,username,secret,tls,keyword,keyword_invert,latency_warn_ms) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`, in.Name, in.Type, in.Target, in.Group, in.Interval, in.Timeout, in.Expected, in.Threshold, in.SSLDays, in.Username, secret, in.TLS, in.Keyword, in.KeywordInvert, in.LatencyWarnMS)
 		if e != nil {
 			return e
 		}

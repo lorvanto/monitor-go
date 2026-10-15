@@ -696,6 +696,9 @@ function editableMonitor() {
     interval: 120,
     timeout: 5,
     expected: 200,
+    keyword: "",
+    keywordInvert: false,
+    latencyWarnMs: 0,
     threshold: 2,
     sslDays: 14,
     username: "probe",
@@ -1072,4 +1075,51 @@ it("localizes fixed audit action labels while retaining actor and resource text"
   ).toBeTruthy();
   expect(screen.getByText("自定义成员")).toBeTruthy();
   expect(screen.getByText("自定义资源")).toBeTruthy();
+});
+
+it("edits HTTP keyword and latency rules while preserving drafts across five languages", async () => {
+  const monitor = {
+    ...editableMonitor(),
+    type: "HTTP",
+    target: "https://example.com",
+    keyword: "ready",
+    keywordInvert: true,
+    latencyWarnMs: 500,
+  };
+  fixtures["/monitors"] = [monitor];
+  appStore.setState({
+    data: { ...appStore.getState().data, monitors: [monitor] },
+  });
+  render(<MonitorsView />);
+  fireEvent.click(
+    screen.getByRole("button", {
+      name: t("编辑检测{p0}", { p0: monitor.name }),
+    }),
+  );
+  const dialog = screen.getByRole("dialog");
+  const keyword = within(dialog).getByLabelText(t("响应关键字"), {
+    exact: false,
+  });
+  expect((keyword as HTMLInputElement).value).toBe("ready");
+  fireEvent.change(keyword, { target: { value: "healthy 世界" } });
+  fireEvent.change(
+    within(dialog).getByLabelText(t("耗时警告阈值（毫秒）"), { exact: false }),
+    { target: { value: "300" } },
+  );
+  for (const locale of locales) {
+    await act(() => setLocale(locale.code));
+    expect((keyword as HTMLInputElement).value).toBe("healthy 世界");
+  }
+  fireEvent.click(within(dialog).getByRole("button", { name: t("保存") }));
+  await waitFor(() =>
+    expect(
+      requests.find((r) => r.method === "PUT" && r.path === "/monitors/71")
+        ?.body,
+    ).toMatchObject({
+      keyword: "healthy 世界",
+      keywordInvert: true,
+      latencyWarnMs: 300,
+      version: 4,
+    }),
+  );
 });

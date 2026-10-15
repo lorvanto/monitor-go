@@ -28,6 +28,9 @@ export interface CheckResult {
   detail: string;
 }
 export interface Monitor {
+  keyword: string;
+  keywordInvert: boolean;
+  latencyWarnMs: number;
   id: string;
   name: string;
   type: string;

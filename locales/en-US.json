@@ -1197,5 +1197,11 @@
   "列表缩略图": "List thumbnail",
   "文档插图": "Document illustration",
   "本机": "Local server",
-  "系统": "System"
+  "系统": "System",
+  "响应关键字": "Response keyword",
+  "响应不应包含关键字": "Response must not contain the keyword",
+  "耗时警告阈值（毫秒）": "Response-time warning threshold (ms)",
+  "留空不检查；最多 1024 字节，仅匹配响应体前 1 MiB，区分大小写。": "Leave blank to skip. Up to 1024 bytes; case-sensitive matching in the first 1 MiB of the body only.",
+  "0 表示关闭。连接、状态码或关键字失败优先于耗时警告。": "0 disables this warning. Connection, status and keyword failures take priority over response-time warnings.",
+  "HTTP 关键字最多 1024 字节；耗时警告阈值为 0–30000 毫秒": "HTTP keywords are limited to 1024 bytes; response-time warnings must be 0–30000 ms."
 }

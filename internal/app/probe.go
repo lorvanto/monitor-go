@@ -83,12 +83,44 @@ func probe(ctx context.Context, m Monitor, password string) CheckResult {
 			err = e
 			break
 		}
-		io.CopyN(io.Discard, resp.Body, 4096)
-		resp.Body.Close()
-		result.Detail = fmt.Sprintf("HTTP %d · 预期 %d", resp.StatusCode, m.Expected)
+		result.Detail = fmt.Sprintf("HTTP %d · expected %d", resp.StatusCode, m.Expected)
 		if resp.StatusCode != m.Expected {
 			result.State = "failed"
+			resp.Body.Close()
+			break
 		}
+		if m.Keyword == "" {
+			// Preserve status-only behavior for existing checks.
+			io.CopyN(io.Discard, resp.Body, 4096)
+			resp.Body.Close()
+			break
+		}
+		const maxBody = 1 << 20
+		body, readErr := io.ReadAll(io.LimitReader(resp.Body, maxBody+1))
+		resp.Body.Close()
+		if readErr != nil {
+			err = readErr
+			break
+		}
+		truncated := len(body) > maxBody
+		if truncated {
+			body = body[:maxBody]
+		}
+		found := strings.Contains(string(body), m.Keyword)
+		if found == m.KeywordInvert {
+			result.State = "failed"
+			if m.KeywordInvert {
+				result.Detail += " · forbidden response text found"
+			} else {
+				result.Detail += " · required response text not found"
+			}
+		} else {
+			result.Detail += " · response text matched"
+		}
+		if truncated {
+			result.Detail += " · body truncated; only the first 1 MiB was checked"
+		}
+
 	case "TCP":
 		c, e := safeDial(ctx, "tcp", m.Target)
 		if e != nil {
@@ -202,6 +234,10 @@ func probe(ctx context.Context, m Monitor, password string) CheckResult {
 		err = errors.New("检测类型不支持")
 	}
 	result.Latency = float64(time.Since(start).Microseconds()) / 1000
+	if err == nil && m.Type == "HTTP" && result.State == "healthy" && m.LatencyWarnMS > 0 && result.Latency > float64(m.LatencyWarnMS) {
+		result.State = "warning"
+		result.Detail += fmt.Sprintf(" · response time exceeds %d ms", m.LatencyWarnMS)
+	}
 	if err != nil {
 		result.State = "failed"
 		if errors.Is(err, context.DeadlineExceeded) || ctx.Err() != nil {
