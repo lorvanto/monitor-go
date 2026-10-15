@@ -4,7 +4,7 @@
 
 ## 現在の決定
 
-公開ソースリポジトリは[lorvanto/monitor-go](https://github.com/lorvanto/monitor-go)、表示名はMonitor Goです。リリースタグと対象プラットフォームは今後決定します。アプリケーション `0.4.0`、SQLiteスキーマ `5` は開発基準であり、公開済みリリースを意味しません。ソースのpushと、タグや配布ファイルを伴うRelease公開は別に管理します。
+公開ソースリポジトリは[lorvanto/monitor-go](https://github.com/lorvanto/monitor-go)、表示名はMonitor Goです。リリースタグと対象プラットフォームは今後決定します。アプリケーション `0.4.0`、SQLiteスキーマ `6` は開発基準であり、公開済みリリースを意味しません。ソースのpushと、タグや配布ファイルを伴うRelease公開は別に管理します。
 
 プロジェクトのコードと文書は[Apache-2.0](../../LICENSE)で提供します。[NOTICE](../../NOTICE)と[第三者ライセンス一覧](../../THIRD_PARTY_NOTICES.md)も確認してください。依存ライブラリー、フォント、アイコンには個別の条件が適用されます。ライセンス本文は公式英語版を保持します。
 

@@ -1176,5 +1176,16 @@
   "填写钉钉机器人安全设置中的加签密钥；时间戳和签名放在 URL 参数中。": "Use the signing secret from the DingTalk bot security settings. Timestamp and signature are sent in the URL query.",
   "填写飞书机器人的签名校验密钥；时间戳和签名放在消息正文中。": "Use the Feishu bot signature verification secret. Timestamp and signature are sent in the message body.",
   "企业微信的密钥包含在 Webhook URL 的 key 参数中，无需额外签名密钥。": "The WeCom secret is the key parameter in the Webhook URL; no separate signing secret is needed.",
-  "平台响应中的错误码必须为 0 才视为成功，失败会自动重试；不跟随重定向。": "The platform response must contain error code 0. Failed deliveries retry automatically; redirects are not followed."
+  "平台响应中的错误码必须为 0 才视为成功，失败会自动重试；不跟随重定向。": "The platform response must contain error code 0. Failed deliveries retry automatically; redirects are not followed.",
+  "主机告警阈值": "Host alert thresholds",
+  "阈值为 0 时关闭该项告警。CPU 和内存需持续超限，磁盘按最新采样判断。": "Set a threshold to 0 to disable that alert. CPU and memory require sustained high usage; disk uses the latest sample.",
+  "采样需覆盖整个持续时长，间隔超过 45 秒或缺失数据时不新建持续超限告警；最新有效值低于阈值时恢复。": "Samples must cover the entire duration. Gaps over 45 seconds or missing values prevent new sustained-usage alerts; the latest valid value below the threshold resolves them.",
+  "CPU 阈值（%）": "CPU threshold (%)",
+  "内存阈值（%）": "Memory threshold (%)",
+  "磁盘阈值（%）": "Disk threshold (%)",
+  "持续时长（分钟）": "Sustained duration (minutes)",
+  "主机阈值为 0–100%，持续时长为 1–60 分钟": "Host thresholds must be 0–100% and duration 1–60 minutes",
+  "主机 CPU 使用率需要关注": "Host CPU usage needs attention",
+  "主机内存使用率需要关注": "Host memory usage needs attention",
+  "主机指标告警已关闭": "Host metric alert disabled"
 }

@@ -4,7 +4,7 @@ A self-hosted monitoring and operations platform built with **Go**, **React 19**
 
 [English guide](docs/en-US/README.md) · [简体中文](docs/zh-CN/README.md) · [日本語](docs/ja-JP/README.md) · [한국어](docs/ko-KR/README.md) · [繁體中文](docs/zh-TW/README.md)
 
-**Status:** pre-release development baseline `0.4.0`, database schema `5`. Public release assets and supported target-platform commitments are still being prepared. See [known limitations](docs/en-US/README.md) and the [roadmap](ROADMAP.md).
+**Status:** pre-release development baseline `0.4.0`, database schema `6`. Public release assets and supported target-platform commitments are still being prepared. See [known limitations](docs/en-US/README.md) and the [roadmap](ROADMAP.md).
 
 ## Features
 
@@ -19,6 +19,8 @@ A self-hosted monitoring and operations platform built with **Go**, **React 19**
 | Interface | Five languages with English on first use, light/dark themes, keyboard page search and responsive layouts |
 
 SQLite is the only application datastore. MySQL and Redis are monitored targets, not installation dependencies. Team members share installation resources; this is not a multi-tenant service. Custom names, notes and historical records retain their original language.
+
+Host CPU, memory and disk alert thresholds are configurable in System settings. See [threshold behavior](docs/en-US/README.md#host-alert-thresholds).
 
 ## Screenshots
 

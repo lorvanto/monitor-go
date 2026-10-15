@@ -34,7 +34,10 @@ var migration4 string
 //go:embed migration5.sql
 var migration5 string
 
-const currentSchemaVersion = 5
+//go:embed migration6.sql
+var migration6 string
+
+const currentSchemaVersion = 6
 
 type Store struct {
 	DB    *sql.DB
@@ -103,61 +106,20 @@ func OpenStore(dir string) (*Store, error) {
 	if err = db.QueryRow("SELECT max(version) FROM schema_migrations").Scan(&version); err != nil {
 		return nil, err
 	}
-	if version == 1 {
+	for version >= 1 && version < currentSchemaVersion {
+		migrations := []string{migration2, migration3, migration4, migration5, migration6}
 		tx, e := db.Begin()
 		if e != nil {
 			return nil, e
 		}
-		if _, e = tx.Exec(migration2); e != nil {
+		if _, e = tx.Exec(migrations[version-1]); e != nil {
 			tx.Rollback()
 			return nil, e
 		}
 		if e = tx.Commit(); e != nil {
 			return nil, e
 		}
-		version = 2
-	}
-	if version == 2 {
-		tx, e := db.Begin()
-		if e != nil {
-			return nil, e
-		}
-		if _, e = tx.Exec(migration3); e != nil {
-			tx.Rollback()
-			return nil, e
-		}
-		if e = tx.Commit(); e != nil {
-			return nil, e
-		}
-		version = 3
-	}
-	if version == 3 {
-		tx, e := db.Begin()
-		if e != nil {
-			return nil, e
-		}
-		if _, e = tx.Exec(migration4); e != nil {
-			tx.Rollback()
-			return nil, e
-		}
-		if e = tx.Commit(); e != nil {
-			return nil, e
-		}
-		version = 4
-	}
-	if version == 4 {
-		tx, e := db.Begin()
-		if e != nil {
-			return nil, e
-		}
-		if _, e = tx.Exec(migration5); e != nil {
-			tx.Rollback()
-			return nil, e
-		}
-		if e = tx.Commit(); e != nil {
-			return nil, e
-		}
-		version = 5
+		version++
 	}
 	if version != currentSchemaVersion {
 		return nil, fmt.Errorf("不支持的数据库版本 %d", version)

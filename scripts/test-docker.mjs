@@ -142,7 +142,7 @@ try {
   compose(["exec", "-T", "monitor", "sh", "-c", "test ! -e /data/setup-token"]);
   const system = await request("/system");
   assert.equal(system.database, "SQLite");
-  assert.equal(system.schema, 5);
+  assert.equal(system.schema, 6);
   if (platform) assert.equal(system.platform, platform.replace("/", " / "));
   assert.deepEqual(await request("/hosts"), []);
   const folder = await request("/files/folders", {

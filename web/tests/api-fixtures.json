@@ -10,9 +10,7 @@
     "name": "React Test",
     "enabled": true,
     "version": 1,
-    "roles": [
-      "1"
-    ],
+    "roles": ["1"],
     "permissions": [
       "alert:handle",
       "alert:read",
@@ -109,11 +107,7 @@
       "builtin": false,
       "version": 1,
       "members": 0,
-      "permissions": [
-        "alert:read",
-        "host:read",
-        "monitor:read"
-      ]
+      "permissions": ["alert:read", "host:read", "monitor:read"]
     }
   ],
   "/users": [
@@ -123,9 +117,7 @@
       "name": "React Test",
       "enabled": true,
       "version": 1,
-      "roles": [
-        "1"
-      ],
+      "roles": ["1"],
       "permissions": []
     }
   ],
@@ -644,7 +636,11 @@
     "defaultFolder": "2",
     "auditDays": 90,
     "version": 1,
-    "useDefaultName": true
+    "useDefaultName": true,
+    "hostCPUPercent": 90,
+    "hostMemoryPercent": 90,
+    "hostDiskPercent": 85,
+    "hostAlertMinutes": 5
   },
   "/system": {
     "database": "SQLite",

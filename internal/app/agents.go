@@ -239,16 +239,7 @@ func (s *Server) reportAgent(w http.ResponseWriter, r *http.Request, u *User) (a
 		if e = transitionAlert(tx, fmt.Sprintf("host:%d:offline", id), "host", id, report.Hostname, "", "Agent 已恢复上报", "", false); e != nil {
 			return e
 		}
-		details := []string{}
-		for _, d := range report.Snapshot.Disks {
-			if d.Percent >= 85 {
-				details = append(details, fmt.Sprintf("%s 使用率 %.1f%%", d.Path, d.Percent))
-			}
-		}
-		if len(report.Snapshot.Disks) > 0 {
-			return transitionAlert(tx, fmt.Sprintf("host:%d:disk", id), "host", id, report.Hostname, "主机磁盘空间需要关注", strings.Join(details, "；"), "warning", len(details) > 0)
-		}
-		return nil
+		return evaluateHostAlerts(tx, id, report.Hostname, report.Snapshot, at)
 	})
 	return map[string]any{"accepted": true, "intervalSeconds": 15}, e
 }

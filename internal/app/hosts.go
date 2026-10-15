@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
-	"fmt"
 	"github.com/lorvanto/monitor-go/internal/hoststats"
 	"log/slog"
 	"net/http"
@@ -45,24 +44,14 @@ func (s *Server) collect(ctx context.Context) error {
 		return e
 	}
 	return s.Store.write(ctx, func(tx *sql.Tx) error {
-		if _, e := tx.Exec(`INSERT INTO hosts(id,hostname,alias,inventory,snapshot,last_seen) VALUES(1,?,'本机',?,?,?) ON CONFLICT(id) DO UPDATE SET hostname=excluded.hostname,inventory=excluded.inventory,snapshot=excluded.snapshot,last_seen=excluded.last_seen`, report.Hostname, string(rawInv), string(rawSnap), now()); e != nil {
+		at := now()
+		if _, e := tx.Exec(`INSERT INTO hosts(id,hostname,alias,inventory,snapshot,last_seen) VALUES(1,?,'本机',?,?,?) ON CONFLICT(id) DO UPDATE SET hostname=excluded.hostname,inventory=excluded.inventory,snapshot=excluded.snapshot,last_seen=excluded.last_seen`, report.Hostname, string(rawInv), string(rawSnap), at); e != nil {
 			return e
 		}
-		if _, e := tx.Exec("INSERT INTO host_samples(host_id,at,cpu,memory,net_in,net_out) VALUES(1,?,?,?,?,?)", now(), snap.CPU, snap.Memory, snap.NetIn, snap.NetOut); e != nil {
+		if _, e := tx.Exec("INSERT INTO host_samples(host_id,at,cpu,memory,net_in,net_out) VALUES(1,?,?,?,?,?)", at, snap.CPU, snap.Memory, snap.NetIn, snap.NetOut); e != nil {
 			return e
 		}
-		details := []string{}
-		for _, d := range snap.Disks {
-			if d.Percent >= 85 {
-				details = append(details, fmt.Sprintf("%s 使用率 %.1f%%", d.Path, d.Percent))
-			}
-		}
-		if len(snap.Disks) > 0 {
-			if e := transitionAlert(tx, "host:1:disk", "host", 1, report.Hostname, "主机磁盘空间需要关注", strings.Join(details, "；"), "warning", len(details) > 0); e != nil {
-				return e
-			}
-		}
-		return nil
+		return evaluateHostAlerts(tx, 1, report.Hostname, snap, at)
 	})
 }
 func (s *Server) hosts(ctx context.Context) ([]Host, error) {

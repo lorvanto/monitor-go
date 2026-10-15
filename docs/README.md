@@ -1,6 +1,6 @@
 # Documentation
 
-Start with a current guide in your preferred language. The application is a pre-release development baseline (`0.4.0`, SQLite schema `5`). The project uses Apache-2.0; third-party components retain their own licenses.
+Start with a current guide in your preferred language. The application is a pre-release development baseline (`0.4.0`, SQLite schema `6`). The project uses Apache-2.0; third-party components retain their own licenses.
 
 All documentation uses English directory and file names under `docs/<locale>/`: `en-US`, `zh-CN`, `ja-JP`, `ko-KR` and `zh-TW`. Each directory contains a current `README.md` guide; Simplified Chinese design documents and historical records live in `zh-CN/` with an `INDEX.md` entry point.
 

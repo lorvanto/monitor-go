@@ -19,6 +19,10 @@ interface Settings {
   storageLimitMB: number;
   defaultFolder: string;
   auditDays: number;
+  hostCPUPercent: number;
+  hostMemoryPercent: number;
+  hostDiskPercent: number;
+  hostAlertMinutes: number;
   version: number;
 }
 interface Info {
@@ -42,6 +46,10 @@ export default function SettingsView() {
       storageLimitMB: 1024,
       defaultFolder: "2",
       auditDays: 90,
+      hostCPUPercent: 90,
+      hostMemoryPercent: 90,
+      hostDiskPercent: 85,
+      hostAlertMinutes: 5,
       version: 0,
     } as Settings,
     info: undefined as Info | undefined,
@@ -304,6 +312,51 @@ export default function SettingsView() {
                     )}
                   </small>
                 </label>
+              </div>
+            </section>
+            <section className="settings-section">
+              <div>
+                <h2>{t("主机告警阈值")}</h2>
+                <p>
+                  {t(
+                    "阈值为 0 时关闭该项告警。CPU 和内存需持续超限，磁盘按最新采样判断。",
+                  )}
+                </p>
+                <p>
+                  {t(
+                    "采样需覆盖整个持续时长，间隔超过 45 秒或缺失数据时不新建持续超限告警；最新有效值低于阈值时恢复。",
+                  )}
+                </p>
+              </div>
+              <div className="form">
+                {(
+                  [
+                    ["hostCPUPercent", "CPU 阈值（%）", 0, 100],
+                    ["hostMemoryPercent", "内存阈值（%）", 0, 100],
+                    ["hostDiskPercent", "磁盘阈值（%）", 0, 100],
+                    ["hostAlertMinutes", "持续时长（分钟）", 1, 60],
+                  ] as const
+                ).map(([key, label, min, max]) => (
+                  <label className="field" key={key}>
+                    {t(label)}
+                    <input
+                      type="number"
+                      required
+                      min={min}
+                      max={max}
+                      step={1}
+                      value={viewState.form[key]}
+                      onChange={(event) =>
+                        store.setState((current) => ({
+                          form: {
+                            ...current.form,
+                            [key]: Number(event.currentTarget.value),
+                          },
+                        }))
+                      }
+                    />
+                  </label>
+                ))}
               </div>
             </section>
             <section className="settings-section">

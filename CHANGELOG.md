@@ -1,8 +1,14 @@
 # Changelog
 
-User-visible changes belong here. Entries under **Unreleased** describe the current development tree; they are not published releases. Application version `0.4.0` and schema version `5` currently identify the implementation baseline. A maintainer will create a dated release entry only when an actual tag and release are published.
+User-visible changes belong here. Entries under **Unreleased** describe the current development tree; they are not published releases. Application version `0.4.0` and schema version `6` currently identify the implementation baseline. A maintainer will create a dated release entry only when an actual tag and release are published.
 
 ## Unreleased
+
+### Configurable host thresholds
+
+- Schema 6 adds global CPU, memory, disk and sustained-duration settings. Local and remote hosts share continuous-window validation, recovery and disable rules. Settings retain authorization, optimistic locking and audit records.
+- Stop the service and back up the complete data directory before upgrading; older binaries cannot read schema 6.
+
 
 ### Available in the initial baseline
 
@@ -62,7 +68,7 @@ User-visible changes belong here. Entries under **Unreleased** describe the curr
 
 ### Upgrade considerations
 
-- SQLite migrations support schema versions 1 → 2 → 3 → 4 → 5. Stop the service and back up the entire data directory before upgrading. Older binaries cannot read schema 5 directly; rollback requires the complete pre-upgrade backup.
+- SQLite migrations support schema versions 1 → 2 → 3 → 4 → 5 → 6. Stop the service and back up the entire data directory before upgrading. Older binaries cannot read schema 6 directly; rollback requires the complete pre-upgrade backup.
 - The React client and locale changes require no new database migration. Rebuild and restart the Go binary to serve the updated assets. Browser API and upload calls carry `Accept-Language`; status codes and machine-readable fields remain stable. Missing language headers preserve the original Chinese API behavior.
 - Built-in navigation may include an optional `nameKey` for presentation. Custom names remain literal. Permanent file deletion uses the fixed `DELETE` wire token while accepting the legacy Chinese confirmation value.
 

@@ -936,3 +936,36 @@ it("selects chat Webhook formats with matching signing guidance and keeps drafts
   );
   await act(async () => {});
 });
+
+it("keeps threshold drafts across languages and submits zero to disable an alert", async () => {
+  render(<SettingsView />);
+  await waitFor(() =>
+    expect(
+      (screen.getByLabelText(t("CPU 阈值（%）")) as HTMLInputElement).value,
+    ).toBe("90"),
+  );
+  const cpu = screen.getByLabelText(t("CPU 阈值（%）")) as HTMLInputElement;
+  fireEvent.change(cpu, { target: { value: "0" } });
+  const duration = screen.getByLabelText(
+    t("持续时长（分钟）"),
+  ) as HTMLInputElement;
+  fireEvent.change(duration, { target: { value: "10" } });
+  for (const locale of locales) {
+    await act(() => setLocale(locale.code));
+    expect(cpu.value).toBe("0");
+    expect(duration.value).toBe("10");
+  }
+  fireEvent.submit(cpu.closest("form")!);
+  await waitFor(() =>
+    expect(
+      requests.find((r) => r.path === "/settings" && r.method === "PATCH")
+        ?.body,
+    ).toMatchObject({
+      hostCPUPercent: 0,
+      hostMemoryPercent: 90,
+      hostDiskPercent: 85,
+      hostAlertMinutes: 10,
+    }),
+  );
+  await act(async () => {});
+});

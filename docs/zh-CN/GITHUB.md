@@ -4,7 +4,7 @@
 
 ## 已确定与待完成事项
 
-公开源码仓库为 [lorvanto/monitor-go](https://github.com/lorvanto/monitor-go)。当前显示名称为 Monitor Go，应用版本为 `0.4.0`，SQLite 结构版本为 `5`。这两个版本号表示开发基线，不代表已发布 GitHub Release。项目代码与文档采用 [Apache-2.0](../../LICENSE)，第三方依赖保留原许可证。
+公开源码仓库为 [lorvanto/monitor-go](https://github.com/lorvanto/monitor-go)。当前显示名称为 Monitor Go，应用版本为 `0.4.0`，SQLite 结构版本为 `6`。这两个版本号表示开发基线，不代表已发布 GitHub Release。项目代码与文档采用 [Apache-2.0](../../LICENSE)，第三方依赖保留原许可证。
 
 当前 Go module 与内部导入已统一为 `github.com/lorvanto/monitor-go`。源码推送与版本发布分开管理；当前不包含 GitHub Release 标签或下载资产。
 
@@ -85,7 +85,7 @@ npm --prefix web run check:docs
 
 先确定要承诺的操作系统与架构，完成 `make test`、格式检查和 `make build`，记录工具链与提交。对候选构建重新执行依赖与可达漏洞检查，不能沿用历史“零漏洞”结论。交叉编译成功不代表目标系统运行通过；目标机需要验证安装、初始化、登录、权限、探测、Agent 重连、文件、通知和停止流程。
 
-升级与回退使用测试数据库演练。停机完整备份数据库及伴随文件、`master.key` 与原上传文件；旧二进制不能直接读取 schema 5，回退依赖整套升级前备份。确认服务端与 Agent 的兼容组合，明确未验证平台。
+升级与回退使用测试数据库演练。停机完整备份数据库及伴随文件、`master.key` 与原上传文件；旧二进制不能直接读取 schema 6，回退依赖整套升级前备份。确认服务端与 Agent 的兼容组合，明确未验证平台。
 
 选定发布版本后，同步 `web/package.json`、锁文件根包版本、`internal/app/server.go` / `internal/app/settings.go` 返回的版本、变更记录和使用指南。当前没有 `-version` 参数或链接器版本注入机制，不使用不存在的参数。数据库版本单独管理。
 

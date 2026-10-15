@@ -2,9 +2,9 @@
 
 **English** · [简体中文](../zh-CN/README.md) · [日本語](../ja-JP/README.md) · [한국어](../ko-KR/README.md) · [繁體中文](../zh-TW/README.md) · [Documentation](../README.md)
 
-> Status: pre-release development baseline `0.4.0`, SQLite schema `5`; no published release is implied. Examples use a POSIX shell; Windows developers can use WSL.
+> Status: pre-release development baseline `0.4.0`, SQLite schema `6`; no published release is implied. Examples use a POSIX shell; Windows developers can use WSL.
 
-Schema 5 adds a partial index for queued scheduler jobs, avoiding scans of completed-job history. Job retention remains seven days. Stop the service and back up the complete data directory before upgrading; older binaries cannot read schema 5, and rollback requires that backup.
+Schema 5 adds a partial index for queued scheduler jobs, avoiding scans of completed-job history. Job retention remains seven days. Stop the service and back up the complete data directory before upgrading; older binaries cannot read schema 6, and rollback requires that backup.
 
 See the [English interface screenshots](../../README.md#screenshots) for a feature tour using synthetic demonstration data. English is the default language on first use.
 
@@ -127,7 +127,7 @@ npm --prefix web run format:check
 
 Stop the service cleanly, then back up the entire data directory: SQLite and any companion files, `master.key`, and original `uploads/` files. Copying only a live `monitor.db` is not a complete backup. Restore the whole directory with a compatible server version.
 
-Database versions 1 → 2 → 3 → 4 → 5 migrate transactionally. Older binaries cannot directly read schema 5; rollback requires the entire pre-upgrade backup. New permissions are not silently assigned to custom roles. This internationalization change requires no new schema migration.
+Database versions 1 → 2 → 3 → 4 → 5 → 6 migrate transactionally. Older binaries cannot directly read schema 6; rollback requires the entire pre-upgrade backup. New permissions are not silently assigned to custom roles. This internationalization change requires no new schema migration.
 
 ## Current limits
 
@@ -154,3 +154,9 @@ Webhook message formats are Generic, DingTalk, Feishu and WeCom; existing channe
 Generic keeps its existing JSON and signature-header contract. Chat formats require a successful HTTP response **and** platform code 0 (`errcode` for DingTalk/WeCom, `code` for Feishu); malformed or missing codes fail. Failures retry after 15 seconds, 1 minute and 5 minutes. Messages include event, original title/resource/description, severity, UTC time and delivery ID. Fixed labels are English. Long fields are truncated in chat messages to fit WeCom’s 4096-byte Markdown limit; stored alerts remain unchanged. No real-platform delivery was verified: local HTTP fixtures cover formats, signing, errors and retries. Use Test on your own bot to verify credentials and platform policies.
 
 [DingTalk](https://open.dingtalk.com/document/robots/customize-robot-security-settings) · [Feishu](https://open.feishu.cn/document/client-docs/bot-v3/add-custom-bot) · [WeCom](https://developer.work.weixin.qq.com/document/path/91770)
+
+## Host alert thresholds
+
+System settings provides installation-wide CPU, memory and disk thresholds (defaults: 90%, 90%, 85%) and a sustained duration of 1–60 minutes (default: 5). Set an individual threshold to 0 to disable that metric alert. Schema 6 adds these validated settings; stop the service and back up the whole data directory before upgrading. Older binaries cannot read schema 6.
+
+Local and remote hosts use the same rules. CPU/memory must stay at or above the threshold throughout the duration: samples must cover the whole window, including a sample at or before its start, with no missing values or gaps over 45 seconds. Insufficient data does not open an alert or resolve an existing one. The latest valid reading below the threshold resolves it. Disk alerts use the latest available disk readings immediately. Disabling a threshold resolves that metric's incident on the next report; settings changes also take effect on the next report. The 90-second remote-host offline rule is unchanged. Per-host overrides are not implemented.
