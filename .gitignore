@@ -1,0 +1,39 @@
+# 本机文件
+.DS_Store
+.idea/
+.vscode/
+
+# 依赖和构建产物
+node_modules/
+dist/
+web/dist/
+bin/
+build/
+coverage/
+*.test
+coverage.out
+
+# 运行数据和本地配置
+data/
+backups/
+logs/
+tmp/
+.env
+.env.*
+!.env.example
+config.local.*
+*.db
+*.db-wal
+*.db-shm
+*.sqlite
+*.sqlite3
+
+# 私钥和本地身份材料
+*.key
+*.pem
+*.p12
+*.pfx
+
+# Agent 接入材料
+agent-data/
+enrollment-token

@@ -1,0 +1,18 @@
+ALTER TABLE hosts ADD COLUMN source TEXT NOT NULL DEFAULT 'local';
+ALTER TABLE hosts ADD COLUMN agent_enabled INTEGER NOT NULL DEFAULT 1;
+ALTER TABLE hosts ADD COLUMN token_hash TEXT NOT NULL DEFAULT '';
+ALTER TABLE hosts ADD COLUMN enrollment_hash TEXT NOT NULL DEFAULT '';
+ALTER TABLE hosts ADD COLUMN enrollment_expires INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE hosts ADD COLUMN enrolled_at INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE hosts ADD COLUMN report_id TEXT NOT NULL DEFAULT '';
+ALTER TABLE hosts ADD COLUMN reported_at INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE hosts ADD COLUMN agent_version TEXT NOT NULL DEFAULT '';
+CREATE UNIQUE INDEX agent_token_unique ON hosts(token_hash) WHERE token_hash <> '';
+CREATE UNIQUE INDEX agent_enrollment_unique ON hosts(enrollment_hash) WHERE enrollment_hash <> '';
+CREATE TABLE notification_channels(id INTEGER PRIMARY KEY, name TEXT NOT NULL, kind TEXT NOT NULL CHECK(kind IN ('webhook','smtp')), config TEXT NOT NULL, enabled INTEGER NOT NULL DEFAULT 1, version INTEGER NOT NULL DEFAULT 1, deleted_at INTEGER);
+CREATE TABLE notification_deliveries(id INTEGER PRIMARY KEY, channel_id INTEGER NOT NULL REFERENCES notification_channels(id), alert_id INTEGER REFERENCES alerts(id), event TEXT NOT NULL, event_key TEXT NOT NULL, payload TEXT NOT NULL, channel_version INTEGER NOT NULL, state TEXT NOT NULL DEFAULT 'queued', attempts INTEGER NOT NULL DEFAULT 0, next_attempt INTEGER NOT NULL, created_at INTEGER NOT NULL, finished_at INTEGER, detail TEXT NOT NULL DEFAULT '', UNIQUE(channel_id,event_key));
+CREATE INDEX notification_due ON notification_deliveries(state,next_attempt);
+INSERT OR IGNORE INTO role_permissions(role_id,permission) SELECT id,'host:agents' FROM roles WHERE id=1 AND builtin=1;
+INSERT OR IGNORE INTO role_permissions(role_id,permission) SELECT id,'notification:manage' FROM roles WHERE id=1 AND builtin=1;
+DELETE FROM sessions WHERE user_id IN (SELECT user_id FROM user_roles WHERE role_id=1);
+INSERT INTO schema_migrations(version) VALUES(2);

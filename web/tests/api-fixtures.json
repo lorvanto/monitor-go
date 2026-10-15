@@ -1,0 +1,1190 @@
+{
+  "/status": {
+    "initialized": true,
+    "storage": "SQLite",
+    "version": "0.4.0"
+  },
+  "/me": {
+    "id": "1",
+    "username": "react-admin",
+    "name": "React Test",
+    "enabled": true,
+    "version": 1,
+    "roles": [
+      "1"
+    ],
+    "permissions": [
+      "alert:handle",
+      "alert:read",
+      "application:keys",
+      "application:manage",
+      "application:read",
+      "audit:read",
+      "file:download",
+      "file:manage",
+      "file:read",
+      "file:styles",
+      "file:upload",
+      "host:agents",
+      "host:read",
+      "host:update",
+      "menu:manage",
+      "monitor:read",
+      "monitor:run",
+      "monitor:update",
+      "notification:manage",
+      "release:download",
+      "release:manage",
+      "release:read",
+      "role:manage",
+      "system:read",
+      "system:settings",
+      "tool:generate",
+      "user:manage"
+    ],
+    "csrf": "test-csrf"
+  },
+  "/hosts": [],
+  "/monitors": [],
+  "/alerts": [],
+  "/roles": [
+    {
+      "id": "1",
+      "name": "超级管理员",
+      "description": "管理平台全部功能",
+      "builtin": true,
+      "version": 1,
+      "members": 1,
+      "permissions": [
+        "alert:handle",
+        "alert:read",
+        "application:keys",
+        "application:manage",
+        "application:read",
+        "audit:read",
+        "file:download",
+        "file:manage",
+        "file:read",
+        "file:styles",
+        "file:upload",
+        "host:agents",
+        "host:read",
+        "host:update",
+        "menu:manage",
+        "monitor:read",
+        "monitor:run",
+        "monitor:update",
+        "notification:manage",
+        "release:download",
+        "release:manage",
+        "release:read",
+        "role:manage",
+        "system:read",
+        "system:settings",
+        "tool:generate",
+        "user:manage"
+      ]
+    },
+    {
+      "id": "2",
+      "name": "运维工程师",
+      "description": "维护主机、检测目标和告警",
+      "builtin": false,
+      "version": 1,
+      "members": 0,
+      "permissions": [
+        "alert:handle",
+        "alert:read",
+        "host:read",
+        "host:update",
+        "monitor:read",
+        "monitor:run",
+        "monitor:update"
+      ]
+    },
+    {
+      "id": "3",
+      "name": "只读成员",
+      "description": "查看监控状态和历史数据",
+      "builtin": false,
+      "version": 1,
+      "members": 0,
+      "permissions": [
+        "alert:read",
+        "host:read",
+        "monitor:read"
+      ]
+    }
+  ],
+  "/users": [
+    {
+      "id": "1",
+      "username": "react-admin",
+      "name": "React Test",
+      "enabled": true,
+      "version": 1,
+      "roles": [
+        "1"
+      ],
+      "permissions": []
+    }
+  ],
+  "/permissions": [
+    {
+      "key": "applications",
+      "name": "应用与工具",
+      "icon": "Box",
+      "description": "接入身份、版本分发与编码工具",
+      "items": [
+        {
+          "key": "application:read",
+          "label": "查看应用"
+        },
+        {
+          "key": "application:manage",
+          "label": "管理应用",
+          "sensitive": true
+        },
+        {
+          "key": "application:keys",
+          "label": "管理应用密钥",
+          "sensitive": true
+        },
+        {
+          "key": "release:read",
+          "label": "查看安装包"
+        },
+        {
+          "key": "release:manage",
+          "label": "管理安装包",
+          "sensitive": true
+        },
+        {
+          "key": "release:download",
+          "label": "下载安装包"
+        },
+        {
+          "key": "tool:generate",
+          "label": "生成二维码与条码"
+        }
+      ]
+    },
+    {
+      "key": "files",
+      "name": "文件与资源",
+      "icon": "FolderOpen",
+      "description": "文件内容、上传、管理与图片处理",
+      "items": [
+        {
+          "key": "file:read",
+          "label": "查看与预览"
+        },
+        {
+          "key": "file:upload",
+          "label": "上传文件"
+        },
+        {
+          "key": "file:download",
+          "label": "下载原文件"
+        },
+        {
+          "key": "file:manage",
+          "label": "管理目录与回收站",
+          "sensitive": true
+        },
+        {
+          "key": "file:styles",
+          "label": "管理图片样式"
+        }
+      ]
+    },
+    {
+      "key": "host",
+      "name": "主机监控",
+      "icon": "Server",
+      "description": "主机资料与资源指标",
+      "items": [
+        {
+          "key": "host:read",
+          "label": "查看主机"
+        },
+        {
+          "key": "host:update",
+          "label": "编辑主机"
+        },
+        {
+          "key": "host:agents",
+          "label": "管理 Agent 接入",
+          "sensitive": true
+        }
+      ]
+    },
+    {
+      "key": "monitor",
+      "name": "服务检测",
+      "icon": "Radar",
+      "description": "目标、检测记录与执行",
+      "items": [
+        {
+          "key": "monitor:read",
+          "label": "查看检测"
+        },
+        {
+          "key": "monitor:update",
+          "label": "管理目标"
+        },
+        {
+          "key": "monitor:run",
+          "label": "执行检测"
+        }
+      ]
+    },
+    {
+      "key": "alert",
+      "name": "告警处理",
+      "icon": "Bell",
+      "description": "故障认领与通知静默",
+      "items": [
+        {
+          "key": "alert:read",
+          "label": "查看告警"
+        },
+        {
+          "key": "alert:handle",
+          "label": "处理告警"
+        },
+        {
+          "key": "notification:manage",
+          "label": "管理通知渠道",
+          "sensitive": true
+        }
+      ]
+    },
+    {
+      "key": "system",
+      "name": "系统与团队",
+      "icon": "Settings2",
+      "description": "成员授权、导航、审计与实例配置",
+      "items": [
+        {
+          "key": "user:manage",
+          "label": "管理用户",
+          "sensitive": true
+        },
+        {
+          "key": "role:manage",
+          "label": "角色授权",
+          "sensitive": true
+        },
+        {
+          "key": "menu:manage",
+          "label": "管理菜单",
+          "sensitive": true
+        },
+        {
+          "key": "audit:read",
+          "label": "查看操作审计",
+          "sensitive": true
+        },
+        {
+          "key": "system:read",
+          "label": "查看系统信息"
+        },
+        {
+          "key": "system:settings",
+          "label": "修改系统设置",
+          "sensitive": true
+        }
+      ]
+    }
+  ],
+  "/me/navigation": {
+    "instanceName": "我的监控中心",
+    "items": [
+      {
+        "nameKey": "观测与运维",
+        "id": "1",
+        "parentId": "",
+        "name": "观测与运维",
+        "kind": "group",
+        "pageKey": "",
+        "url": "",
+        "icon": "Activity",
+        "sort": 10,
+        "visible": true,
+        "permission": "",
+        "builtin": true,
+        "version": 1,
+        "children": [
+          {
+            "nameKey": "监控总览",
+            "id": "10",
+            "parentId": "1",
+            "name": "监控总览",
+            "kind": "page",
+            "pageKey": "overview",
+            "url": "",
+            "icon": "LayoutDashboard",
+            "sort": 10,
+            "visible": true,
+            "permission": "",
+            "builtin": true,
+            "version": 1
+          },
+          {
+            "nameKey": "主机详情",
+            "id": "11",
+            "parentId": "1",
+            "name": "主机详情",
+            "kind": "page",
+            "pageKey": "host",
+            "url": "",
+            "icon": "Server",
+            "sort": 20,
+            "visible": true,
+            "permission": "",
+            "builtin": true,
+            "version": 1
+          },
+          {
+            "nameKey": "服务检测",
+            "id": "12",
+            "parentId": "1",
+            "name": "服务检测",
+            "kind": "page",
+            "pageKey": "monitors",
+            "url": "",
+            "icon": "Radar",
+            "sort": 30,
+            "visible": true,
+            "permission": "",
+            "builtin": true,
+            "version": 1
+          },
+          {
+            "nameKey": "告警中心",
+            "id": "13",
+            "parentId": "1",
+            "name": "告警中心",
+            "kind": "page",
+            "pageKey": "alerts",
+            "url": "",
+            "icon": "Bell",
+            "sort": 40,
+            "visible": true,
+            "permission": "",
+            "builtin": true,
+            "version": 1
+          }
+        ]
+      },
+      {
+        "nameKey": "文件与资源",
+        "id": "2",
+        "parentId": "",
+        "name": "文件与资源",
+        "kind": "group",
+        "pageKey": "",
+        "url": "",
+        "icon": "FolderOpen",
+        "sort": 20,
+        "visible": true,
+        "permission": "",
+        "builtin": true,
+        "version": 1,
+        "children": [
+          {
+            "nameKey": "文件管理",
+            "id": "14",
+            "parentId": "2",
+            "name": "文件管理",
+            "kind": "page",
+            "pageKey": "files",
+            "url": "",
+            "icon": "FolderOpen",
+            "sort": 10,
+            "visible": true,
+            "permission": "",
+            "builtin": true,
+            "version": 1
+          }
+        ]
+      },
+      {
+        "nameKey": "应用与工具",
+        "id": "19",
+        "parentId": "",
+        "name": "应用与工具",
+        "kind": "group",
+        "pageKey": "",
+        "url": "",
+        "icon": "Box",
+        "sort": 25,
+        "visible": true,
+        "permission": "",
+        "builtin": true,
+        "version": 1,
+        "children": [
+          {
+            "nameKey": "应用与密钥",
+            "id": "20",
+            "parentId": "19",
+            "name": "应用与密钥",
+            "kind": "page",
+            "pageKey": "applications",
+            "url": "",
+            "icon": "KeyRound",
+            "sort": 10,
+            "visible": true,
+            "permission": "",
+            "builtin": true,
+            "version": 1
+          },
+          {
+            "nameKey": "安装包管理",
+            "id": "21",
+            "parentId": "19",
+            "name": "安装包管理",
+            "kind": "page",
+            "pageKey": "releases",
+            "url": "",
+            "icon": "Package",
+            "sort": 20,
+            "visible": true,
+            "permission": "",
+            "builtin": true,
+            "version": 1
+          },
+          {
+            "nameKey": "编码工具",
+            "id": "22",
+            "parentId": "19",
+            "name": "编码工具",
+            "kind": "page",
+            "pageKey": "codes",
+            "url": "",
+            "icon": "QrCode",
+            "sort": 30,
+            "visible": true,
+            "permission": "",
+            "builtin": true,
+            "version": 1
+          }
+        ]
+      },
+      {
+        "nameKey": "系统管理",
+        "id": "3",
+        "parentId": "",
+        "name": "系统管理",
+        "kind": "group",
+        "pageKey": "",
+        "url": "",
+        "icon": "Settings2",
+        "sort": 30,
+        "visible": true,
+        "permission": "",
+        "builtin": true,
+        "version": 1,
+        "children": [
+          {
+            "nameKey": "角色与权限",
+            "id": "15",
+            "parentId": "3",
+            "name": "角色与权限",
+            "kind": "page",
+            "pageKey": "roles",
+            "url": "",
+            "icon": "ShieldCheck",
+            "sort": 10,
+            "visible": true,
+            "permission": "",
+            "builtin": true,
+            "version": 1
+          },
+          {
+            "nameKey": "菜单管理",
+            "id": "16",
+            "parentId": "3",
+            "name": "菜单管理",
+            "kind": "page",
+            "pageKey": "menus",
+            "url": "",
+            "icon": "ListTree",
+            "sort": 20,
+            "visible": true,
+            "permission": "",
+            "builtin": true,
+            "version": 1
+          },
+          {
+            "nameKey": "操作审计",
+            "id": "17",
+            "parentId": "3",
+            "name": "操作审计",
+            "kind": "page",
+            "pageKey": "audit",
+            "url": "",
+            "icon": "ScrollText",
+            "sort": 30,
+            "visible": true,
+            "permission": "",
+            "builtin": true,
+            "version": 1
+          },
+          {
+            "nameKey": "系统设置",
+            "id": "18",
+            "parentId": "3",
+            "name": "系统设置",
+            "kind": "page",
+            "pageKey": "settings",
+            "url": "",
+            "icon": "Settings2",
+            "sort": 40,
+            "visible": true,
+            "permission": "",
+            "builtin": true,
+            "version": 1
+          }
+        ]
+      }
+    ]
+  },
+  "/files/tree": {
+    "defaultFolder": "2",
+    "fileCount": 0,
+    "items": [
+      {
+        "id": "1",
+        "parentId": "",
+        "kind": "folder",
+        "name": "全部文件",
+        "mime": "",
+        "size": 0,
+        "sha256": "",
+        "width": 0,
+        "height": 0,
+        "createdAt": 0,
+        "updatedAt": 0,
+        "version": 1,
+        "deletedAt": 0,
+        "trashRoot": "",
+        "creator": "系统"
+      },
+      {
+        "id": "2",
+        "parentId": "1",
+        "kind": "folder",
+        "name": "未分类",
+        "mime": "",
+        "size": 0,
+        "sha256": "",
+        "width": 0,
+        "height": 0,
+        "createdAt": 0,
+        "updatedAt": 0,
+        "version": 1,
+        "deletedAt": 0,
+        "trashRoot": "",
+        "creator": "系统"
+      }
+    ],
+    "storageLimitMB": 1024,
+    "storageUsed": 0,
+    "trashCount": 0,
+    "uploadLimitMB": 32
+  },
+  "/files": {
+    "items": [
+      {
+        "id": "2",
+        "parentId": "1",
+        "kind": "folder",
+        "name": "未分类",
+        "mime": "",
+        "size": 0,
+        "sha256": "",
+        "width": 0,
+        "height": 0,
+        "createdAt": 0,
+        "updatedAt": 0,
+        "version": 1,
+        "deletedAt": 0,
+        "trashRoot": "",
+        "creator": "系统"
+      }
+    ],
+    "page": 1,
+    "total": 1
+  },
+  "/image-styles": [
+    {
+      "id": "1",
+      "name": "列表缩略图",
+      "width": 320,
+      "height": 240,
+      "fit": "cover",
+      "version": 1
+    },
+    {
+      "id": "2",
+      "name": "文档插图",
+      "width": 1200,
+      "height": 900,
+      "fit": "contain",
+      "version": 1
+    }
+  ],
+  "/settings": {
+    "instanceName": "我的监控中心",
+    "uploadLimitMB": 32,
+    "storageLimitMB": 1024,
+    "defaultFolder": "2",
+    "auditDays": 90,
+    "version": 1
+  },
+  "/system": {
+    "database": "SQLite",
+    "databaseSize": 4096,
+    "files": 0,
+    "folders": 2,
+    "goVersion": "go1.26.9",
+    "pendingGC": 0,
+    "platform": "linux/amd64",
+    "schema": 4,
+    "storageUsed": 0,
+    "version": "0.4.0"
+  },
+  "/menus": {
+    "icons": [
+      "KeyRound",
+      "Package",
+      "QrCode",
+      "Barcode",
+      "LayoutDashboard",
+      "Activity",
+      "Server",
+      "Radar",
+      "Bell",
+      "FolderOpen",
+      "FileText",
+      "Image",
+      "ShieldCheck",
+      "ListTree",
+      "ScrollText",
+      "Settings2",
+      "Globe",
+      "Link",
+      "Box",
+      "Users",
+      "Wrench",
+      "HardDrive",
+      "BookOpen"
+    ],
+    "items": [
+      {
+        "nameKey": "观测与运维",
+        "id": "1",
+        "parentId": "",
+        "name": "观测与运维",
+        "kind": "group",
+        "pageKey": "",
+        "url": "",
+        "icon": "Activity",
+        "sort": 10,
+        "visible": true,
+        "permission": "",
+        "builtin": true,
+        "version": 1
+      },
+      {
+        "nameKey": "监控总览",
+        "id": "10",
+        "parentId": "1",
+        "name": "监控总览",
+        "kind": "page",
+        "pageKey": "overview",
+        "url": "",
+        "icon": "LayoutDashboard",
+        "sort": 10,
+        "visible": true,
+        "permission": "",
+        "builtin": true,
+        "version": 1
+      },
+      {
+        "nameKey": "文件管理",
+        "id": "14",
+        "parentId": "2",
+        "name": "文件管理",
+        "kind": "page",
+        "pageKey": "files",
+        "url": "",
+        "icon": "FolderOpen",
+        "sort": 10,
+        "visible": true,
+        "permission": "",
+        "builtin": true,
+        "version": 1
+      },
+      {
+        "nameKey": "角色与权限",
+        "id": "15",
+        "parentId": "3",
+        "name": "角色与权限",
+        "kind": "page",
+        "pageKey": "roles",
+        "url": "",
+        "icon": "ShieldCheck",
+        "sort": 10,
+        "visible": true,
+        "permission": "",
+        "builtin": true,
+        "version": 1
+      },
+      {
+        "nameKey": "应用与密钥",
+        "id": "20",
+        "parentId": "19",
+        "name": "应用与密钥",
+        "kind": "page",
+        "pageKey": "applications",
+        "url": "",
+        "icon": "KeyRound",
+        "sort": 10,
+        "visible": true,
+        "permission": "",
+        "builtin": true,
+        "version": 1
+      },
+      {
+        "nameKey": "文件与资源",
+        "id": "2",
+        "parentId": "",
+        "name": "文件与资源",
+        "kind": "group",
+        "pageKey": "",
+        "url": "",
+        "icon": "FolderOpen",
+        "sort": 20,
+        "visible": true,
+        "permission": "",
+        "builtin": true,
+        "version": 1
+      },
+      {
+        "nameKey": "主机详情",
+        "id": "11",
+        "parentId": "1",
+        "name": "主机详情",
+        "kind": "page",
+        "pageKey": "host",
+        "url": "",
+        "icon": "Server",
+        "sort": 20,
+        "visible": true,
+        "permission": "",
+        "builtin": true,
+        "version": 1
+      },
+      {
+        "nameKey": "菜单管理",
+        "id": "16",
+        "parentId": "3",
+        "name": "菜单管理",
+        "kind": "page",
+        "pageKey": "menus",
+        "url": "",
+        "icon": "ListTree",
+        "sort": 20,
+        "visible": true,
+        "permission": "",
+        "builtin": true,
+        "version": 1
+      },
+      {
+        "nameKey": "安装包管理",
+        "id": "21",
+        "parentId": "19",
+        "name": "安装包管理",
+        "kind": "page",
+        "pageKey": "releases",
+        "url": "",
+        "icon": "Package",
+        "sort": 20,
+        "visible": true,
+        "permission": "",
+        "builtin": true,
+        "version": 1
+      },
+      {
+        "nameKey": "应用与工具",
+        "id": "19",
+        "parentId": "",
+        "name": "应用与工具",
+        "kind": "group",
+        "pageKey": "",
+        "url": "",
+        "icon": "Box",
+        "sort": 25,
+        "visible": true,
+        "permission": "",
+        "builtin": true,
+        "version": 1
+      },
+      {
+        "nameKey": "系统管理",
+        "id": "3",
+        "parentId": "",
+        "name": "系统管理",
+        "kind": "group",
+        "pageKey": "",
+        "url": "",
+        "icon": "Settings2",
+        "sort": 30,
+        "visible": true,
+        "permission": "",
+        "builtin": true,
+        "version": 1
+      },
+      {
+        "nameKey": "服务检测",
+        "id": "12",
+        "parentId": "1",
+        "name": "服务检测",
+        "kind": "page",
+        "pageKey": "monitors",
+        "url": "",
+        "icon": "Radar",
+        "sort": 30,
+        "visible": true,
+        "permission": "",
+        "builtin": true,
+        "version": 1
+      },
+      {
+        "nameKey": "操作审计",
+        "id": "17",
+        "parentId": "3",
+        "name": "操作审计",
+        "kind": "page",
+        "pageKey": "audit",
+        "url": "",
+        "icon": "ScrollText",
+        "sort": 30,
+        "visible": true,
+        "permission": "",
+        "builtin": true,
+        "version": 1
+      },
+      {
+        "nameKey": "编码工具",
+        "id": "22",
+        "parentId": "19",
+        "name": "编码工具",
+        "kind": "page",
+        "pageKey": "codes",
+        "url": "",
+        "icon": "QrCode",
+        "sort": 30,
+        "visible": true,
+        "permission": "",
+        "builtin": true,
+        "version": 1
+      },
+      {
+        "nameKey": "告警中心",
+        "id": "13",
+        "parentId": "1",
+        "name": "告警中心",
+        "kind": "page",
+        "pageKey": "alerts",
+        "url": "",
+        "icon": "Bell",
+        "sort": 40,
+        "visible": true,
+        "permission": "",
+        "builtin": true,
+        "version": 1
+      },
+      {
+        "nameKey": "系统设置",
+        "id": "18",
+        "parentId": "3",
+        "name": "系统设置",
+        "kind": "page",
+        "pageKey": "settings",
+        "url": "",
+        "icon": "Settings2",
+        "sort": 40,
+        "visible": true,
+        "permission": "",
+        "builtin": true,
+        "version": 1
+      }
+    ],
+    "pages": [
+      {
+        "key": "applications",
+        "name": "应用与密钥",
+        "permission": "application:access",
+        "icon": "KeyRound"
+      },
+      {
+        "key": "releases",
+        "name": "安装包管理",
+        "permission": "release:access",
+        "icon": "Package"
+      },
+      {
+        "key": "codes",
+        "name": "编码工具",
+        "permission": "tool:generate",
+        "icon": "QrCode"
+      },
+      {
+        "key": "overview",
+        "name": "监控总览",
+        "permission": "",
+        "icon": "LayoutDashboard"
+      },
+      {
+        "key": "host",
+        "name": "主机详情",
+        "permission": "host:read",
+        "icon": "Server"
+      },
+      {
+        "key": "monitors",
+        "name": "服务检测",
+        "permission": "monitor:read",
+        "icon": "Radar"
+      },
+      {
+        "key": "alerts",
+        "name": "告警中心",
+        "permission": "alert:access",
+        "icon": "Bell"
+      },
+      {
+        "key": "files",
+        "name": "文件管理",
+        "permission": "file:access",
+        "icon": "FolderOpen"
+      },
+      {
+        "key": "roles",
+        "name": "角色与权限",
+        "permission": "team:read",
+        "icon": "ShieldCheck"
+      },
+      {
+        "key": "menus",
+        "name": "菜单管理",
+        "permission": "menu:manage",
+        "icon": "ListTree"
+      },
+      {
+        "key": "audit",
+        "name": "操作审计",
+        "permission": "audit:read",
+        "icon": "ScrollText"
+      },
+      {
+        "key": "settings",
+        "name": "系统设置",
+        "permission": "system:access",
+        "icon": "Settings2"
+      }
+    ],
+    "permissions": [
+      {
+        "key": "applications",
+        "name": "应用与工具",
+        "icon": "Box",
+        "description": "接入身份、版本分发与编码工具",
+        "items": [
+          {
+            "key": "application:read",
+            "label": "查看应用"
+          },
+          {
+            "key": "application:manage",
+            "label": "管理应用",
+            "sensitive": true
+          },
+          {
+            "key": "application:keys",
+            "label": "管理应用密钥",
+            "sensitive": true
+          },
+          {
+            "key": "release:read",
+            "label": "查看安装包"
+          },
+          {
+            "key": "release:manage",
+            "label": "管理安装包",
+            "sensitive": true
+          },
+          {
+            "key": "release:download",
+            "label": "下载安装包"
+          },
+          {
+            "key": "tool:generate",
+            "label": "生成二维码与条码"
+          }
+        ]
+      },
+      {
+        "key": "files",
+        "name": "文件与资源",
+        "icon": "FolderOpen",
+        "description": "文件内容、上传、管理与图片处理",
+        "items": [
+          {
+            "key": "file:read",
+            "label": "查看与预览"
+          },
+          {
+            "key": "file:upload",
+            "label": "上传文件"
+          },
+          {
+            "key": "file:download",
+            "label": "下载原文件"
+          },
+          {
+            "key": "file:manage",
+            "label": "管理目录与回收站",
+            "sensitive": true
+          },
+          {
+            "key": "file:styles",
+            "label": "管理图片样式"
+          }
+        ]
+      },
+      {
+        "key": "host",
+        "name": "主机监控",
+        "icon": "Server",
+        "description": "主机资料与资源指标",
+        "items": [
+          {
+            "key": "host:read",
+            "label": "查看主机"
+          },
+          {
+            "key": "host:update",
+            "label": "编辑主机"
+          },
+          {
+            "key": "host:agents",
+            "label": "管理 Agent 接入",
+            "sensitive": true
+          }
+        ]
+      },
+      {
+        "key": "monitor",
+        "name": "服务检测",
+        "icon": "Radar",
+        "description": "目标、检测记录与执行",
+        "items": [
+          {
+            "key": "monitor:read",
+            "label": "查看检测"
+          },
+          {
+            "key": "monitor:update",
+            "label": "管理目标"
+          },
+          {
+            "key": "monitor:run",
+            "label": "执行检测"
+          }
+        ]
+      },
+      {
+        "key": "alert",
+        "name": "告警处理",
+        "icon": "Bell",
+        "description": "故障认领与通知静默",
+        "items": [
+          {
+            "key": "alert:read",
+            "label": "查看告警"
+          },
+          {
+            "key": "alert:handle",
+            "label": "处理告警"
+          },
+          {
+            "key": "notification:manage",
+            "label": "管理通知渠道",
+            "sensitive": true
+          }
+        ]
+      },
+      {
+        "key": "system",
+        "name": "系统与团队",
+        "icon": "Settings2",
+        "description": "成员授权、导航、审计与实例配置",
+        "items": [
+          {
+            "key": "user:manage",
+            "label": "管理用户",
+            "sensitive": true
+          },
+          {
+            "key": "role:manage",
+            "label": "角色授权",
+            "sensitive": true
+          },
+          {
+            "key": "menu:manage",
+            "label": "管理菜单",
+            "sensitive": true
+          },
+          {
+            "key": "audit:read",
+            "label": "查看操作审计",
+            "sensitive": true
+          },
+          {
+            "key": "system:read",
+            "label": "查看系统信息"
+          },
+          {
+            "key": "system:settings",
+            "label": "修改系统设置",
+            "sensitive": true
+          }
+        ]
+      }
+    ],
+    "revision": "606344a6d5ef2eb1f7cb533bb4f512dd378ee14be6edfa4331b31a1403a40625"
+  },
+  "/audit": {
+    "items": [],
+    "hasMore": false
+  },
+  "/applications": [],
+  "/releases": {
+    "items": [],
+    "page": 1,
+    "pageSize": 30,
+    "total": 0
+  },
+  "/overview": {
+    "at": 1700000000000,
+    "points": [],
+    "activity": []
+  },
+  "/notification-channels": [],
+  "/notification-deliveries": []
+}

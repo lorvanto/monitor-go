@@ -1,0 +1,39 @@
+{
+  "name": "monitor-go-web",
+  "version": "0.4.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1 --port 5188 --strictPort",
+    "build": "npm run check:i18n && npm run check:docs && tsc --noEmit && vite build",
+    "preview": "vite preview --host 127.0.0.1 --port 5188 --strictPort",
+    "typecheck": "tsc --noEmit",
+    "check:i18n": "node ../scripts/check-i18n.mjs",
+    "check:docs": "node ../scripts/check-docs.mjs",
+    "test": "node --test tests/*.test.mjs ../scripts/check-docs.test.mjs && vitest run",
+    "format": "prettier --write \"src/**/*.{ts,tsx,css}\" \"tests/*.{mjs,ts,tsx}\" \"../locales/*.json\" \"../scripts/*.mjs\"",
+    "format:check": "prettier --check \"src/**/*.{ts,tsx,css}\" \"tests/*.{mjs,ts,tsx}\" \"../locales/*.json\" \"../scripts/*.mjs\"",
+    "test:unit": "vitest run",
+    "test:docs": "node --test ../scripts/check-docs.test.mjs"
+  },
+  "dependencies": {
+    "@fontsource-variable/ibm-plex-sans": "5.3.0",
+    "@fontsource/ibm-plex-mono": "5.3.0",
+    "lucide-react": "1.57.0",
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
+    "zustand": "5.0.15"
+  },
+  "devDependencies": {
+    "@testing-library/react": "16.3.3",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "@vitejs/plugin-react": "6.1.2",
+    "jsdom": "26.1.0",
+    "prettier": "3.6.2",
+    "typescript": "5.9.3",
+    "vite": "8.3.4",
+    "vitest": "5.0.4"
+  },
+  "license": "Apache-2.0"
+}

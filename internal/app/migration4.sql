@@ -1,0 +1,22 @@
+CREATE TABLE applications(id INTEGER PRIMARY KEY,slug TEXT NOT NULL UNIQUE,name TEXT NOT NULL,description TEXT NOT NULL DEFAULT '',enabled INTEGER NOT NULL DEFAULT 1,version INTEGER NOT NULL DEFAULT 1,created_by INTEGER REFERENCES users(id),created_at INTEGER NOT NULL,updated_at INTEGER NOT NULL,deleted_at INTEGER);
+CREATE TABLE api_keys(id INTEGER PRIMARY KEY,application_id INTEGER NOT NULL REFERENCES applications(id),name TEXT NOT NULL,key_prefix TEXT NOT NULL,secret_hash TEXT NOT NULL UNIQUE,scopes TEXT NOT NULL,expires_at INTEGER NOT NULL,last_used_at INTEGER,created_by INTEGER REFERENCES users(id),created_at INTEGER NOT NULL,revoked_at INTEGER,version INTEGER NOT NULL DEFAULT 1);
+CREATE INDEX api_keys_app ON api_keys(application_id,id);
+CREATE TABLE app_releases(id INTEGER PRIMARY KEY,application_id INTEGER NOT NULL REFERENCES applications(id),name TEXT NOT NULL,version_name TEXT NOT NULL,platform TEXT NOT NULL,arch TEXT NOT NULL,source TEXT NOT NULL CHECK(source IN ('file','url')),file_id INTEGER REFERENCES files(id),download_url TEXT NOT NULL DEFAULT '',notes TEXT NOT NULL DEFAULT '',state TEXT NOT NULL CHECK(state IN ('draft','published','withdrawn')),ever_published INTEGER NOT NULL DEFAULT 0,download_count INTEGER NOT NULL DEFAULT 0,version INTEGER NOT NULL DEFAULT 1,created_by INTEGER REFERENCES users(id),created_at INTEGER NOT NULL,updated_at INTEGER NOT NULL,published_at INTEGER,deleted_at INTEGER,UNIQUE(application_id,version_name,platform,arch),CHECK((source='file' AND file_id IS NOT NULL AND download_url='') OR (source='url' AND file_id IS NULL AND download_url<>'')));
+CREATE INDEX app_releases_app ON app_releases(application_id,state,id);
+CREATE INDEX app_releases_file ON app_releases(file_id) WHERE deleted_at IS NULL;
+ALTER TABLE menus ADD COLUMN builtin_key TEXT NOT NULL DEFAULT '';
+CREATE UNIQUE INDEX menus_builtin_key ON menus(builtin_key) WHERE builtin_key<>'';
+-- Allocate above existing user-created menu IDs; never assume IDs 19+ are unused.
+INSERT INTO menus(name,kind,builtin_key,icon,sort,builtin) VALUES('应用与工具','group','application-tools','Box',25,1);
+INSERT INTO menus(parent_id,name,kind,page_key,icon,sort,builtin) SELECT id,'应用与密钥','page','applications','KeyRound',10,1 FROM menus WHERE builtin_key='application-tools';
+INSERT INTO menus(parent_id,name,kind,page_key,icon,sort,builtin) SELECT id,'安装包管理','page','releases','Package',20,1 FROM menus WHERE builtin_key='application-tools';
+INSERT INTO menus(parent_id,name,kind,page_key,icon,sort,builtin) SELECT id,'编码工具','page','codes','QrCode',30,1 FROM menus WHERE builtin_key='application-tools';
+INSERT OR IGNORE INTO role_permissions SELECT id,'application:read' FROM roles WHERE id=1 AND builtin=1;
+INSERT OR IGNORE INTO role_permissions SELECT id,'application:manage' FROM roles WHERE id=1 AND builtin=1;
+INSERT OR IGNORE INTO role_permissions SELECT id,'application:keys' FROM roles WHERE id=1 AND builtin=1;
+INSERT OR IGNORE INTO role_permissions SELECT id,'release:read' FROM roles WHERE id=1 AND builtin=1;
+INSERT OR IGNORE INTO role_permissions SELECT id,'release:manage' FROM roles WHERE id=1 AND builtin=1;
+INSERT OR IGNORE INTO role_permissions SELECT id,'release:download' FROM roles WHERE id=1 AND builtin=1;
+INSERT OR IGNORE INTO role_permissions SELECT id,'tool:generate' FROM roles WHERE id=1 AND builtin=1;
+DELETE FROM sessions WHERE user_id IN(SELECT user_id FROM user_roles WHERE role_id=1);
+INSERT INTO schema_migrations(version) VALUES(4);

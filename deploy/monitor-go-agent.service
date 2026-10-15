@@ -1,0 +1,22 @@
+[Unit]
+Description=Monitor Go Host Agent
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=monitor-go-agent
+Group=monitor-go-agent
+StateDirectory=monitor-go-agent
+StateDirectoryMode=0700
+ExecStart=/usr/local/bin/monitor-go-agent -config /var/lib/monitor-go-agent/config.json
+Restart=on-failure
+RestartSec=15
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=read-only
+PrivateTmp=true
+UMask=0077
+
+[Install]
+WantedBy=multi-user.target
