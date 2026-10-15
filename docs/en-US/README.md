@@ -193,3 +193,7 @@ Fixed audit action labels are localized at display time; actor names, resource t
 ## HTTP response rules
 
 Create and edit HTTP checks with an optional UTF-8 response keyword (up to 1024 bytes), inverse matching and a response-time warning threshold (0–30000 ms; 0 disables it). Keyword matching is case-sensitive and examines only the first 1 MiB of the decoded body; details explicitly report truncation. Blank keywords preserve status-only checks. Latency includes reading the inspected body. Connection/status failures take priority, then keyword failures, then latency warnings. Response content is never copied into details. Non-HTTP checks clear these rules. Custom headers and GET/HEAD selection remain optional future work. Schema 7 adds the fields; stop and back up before upgrading, as older binaries cannot read it.
+
+## Agent retry and collection verification
+
+Network/server failures use a linear delay of 5 seconds per consecutive failure, capped at 60 seconds; a successful report restores the normal 15-second interval. HTTP 401/403, and 409 during enrollment, stop the Agent because credentials are invalid or enrollment conflicts. Re-enroll with a new configuration instead of endlessly retrying revoked access. Automated tests use local HTTP/TLS servers and injected collectors/clocks, covering credential persistence, reports, retry cap/reset, redirects, private CAs, partition filtering (up to 16 usable unique mounts), partial metric errors and network counter/time resets.

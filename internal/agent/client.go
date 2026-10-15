@@ -177,7 +177,26 @@ func Send(ctx context.Context, client *http.Client, c Config, path string, body 
 	}
 	return nil
 }
+
+type runDependencies struct {
+	collect func(context.Context) (hoststats.Report, error)
+	wait    func(context.Context, time.Duration) error
+}
+
+func waitForReport(ctx context.Context, delay time.Duration) error {
+	timer := time.NewTimer(delay)
+	defer timer.Stop()
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	case <-timer.C:
+		return nil
+	}
+}
 func Run(ctx context.Context, path, server, enrollmentFile, caFile string) error {
+	return run(ctx, path, server, enrollmentFile, caFile, runDependencies{})
+}
+func run(ctx context.Context, path, server, enrollmentFile, caFile string, deps runDependencies) error {
 	if e := os.MkdirAll(filepath.Dir(path), 0700); e != nil {
 		return e
 	}
@@ -200,15 +219,17 @@ func Run(ctx context.Context, path, server, enrollmentFile, caFile string) error
 	}
 	defer client.CloseIdleConnections()
 	collector := hoststats.Collector{}
+	if deps.collect == nil {
+		deps.collect = collector.Collect
+	}
+	if deps.wait == nil {
+		deps.wait = waitForReport
+	}
 	delay := time.Duration(0)
 	failures := 0
 	for {
-		timer := time.NewTimer(delay)
-		select {
-		case <-ctx.Done():
-			timer.Stop()
+		if deps.wait(ctx, delay) != nil {
 			return nil
-		case <-timer.C:
 		}
 		if c.EnrollmentToken != "" {
 			e = Send(ctx, client, c, "enroll", map[string]string{"token": c.EnrollmentToken, "credential": c.Credential}, false)
@@ -224,7 +245,7 @@ func Run(ctx context.Context, path, server, enrollmentFile, caFile string) error
 			}
 		} else {
 			var report hoststats.Report
-			report, e = collector.Collect(ctx)
+			report, e = deps.collect(ctx)
 			if e == nil {
 				report.ReportID = token()
 				report.Inventory.Source = "远程 Agent"

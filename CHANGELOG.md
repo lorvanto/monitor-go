@@ -4,6 +4,12 @@ User-visible changes belong here. Entries under **Unreleased** describe the curr
 
 ## Unreleased
 
+### Agent and collector regression coverage
+
+- Add deterministic Agent enrollment, persisted credential, report, retry, redirect and private-CA tests using local HTTP/TLS fixtures. Preserve terminal authentication failures and capped linear backoff for retryable failures.
+- Exercise host collection with injected dependencies, partition limits and partial failures. Avoid invalid network rates when the sample clock does not advance or counters reset.
+
+
 ### HTTP response rules
 
 - Schema 7 adds bounded response keyword matching, inverse matching and latency warnings to HTTP check creation/editing. Connection/status and keyword failures take precedence; details flag the 1 MiB inspection limit without exposing response bodies.

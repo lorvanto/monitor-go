@@ -58,31 +58,52 @@ type Report struct {
 	Inventory    Inventory `json:"inventory"`
 	Snapshot     Snapshot  `json:"snapshot"`
 }
+type collectorDependencies struct {
+	now        func() time.Time
+	hostInfo   func(context.Context) (*host.InfoStat, error)
+	cpuInfo    func(context.Context) ([]cpu.InfoStat, error)
+	cpuPercent func(context.Context, time.Duration, bool) ([]float64, error)
+	memory     func(context.Context) (*mem.VirtualMemoryStat, error)
+	interfaces func(context.Context) (gnet.InterfaceStatList, error)
+	partitions func(context.Context, bool) ([]disk.PartitionStat, error)
+	usage      func(context.Context, string) (*disk.UsageStat, error)
+	counters   func(context.Context, bool) ([]gnet.IOCountersStat, error)
+}
+
+func systemDependencies() collectorDependencies {
+	return collectorDependencies{time.Now, host.InfoWithContext, cpu.InfoWithContext, cpu.PercentWithContext, mem.VirtualMemoryWithContext, gnet.InterfacesWithContext, disk.PartitionsWithContext, disk.UsageWithContext, gnet.IOCountersWithContext}
+}
+
 type Collector struct {
-	mu          sync.Mutex
-	previousNet *netSample
+	dependencies *collectorDependencies
+	mu           sync.Mutex
+	previousNet  *netSample
 }
 
 func (c *Collector) Collect(ctx context.Context) (Report, error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
+	deps := systemDependencies()
+	if c.dependencies != nil {
+		deps = *c.dependencies
+	}
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
-	info, e := host.InfoWithContext(ctx)
+	info, e := deps.hostInfo(ctx)
 	if e != nil {
 		return Report{}, e
 	}
 	inv := Inventory{OS: strings.TrimSpace(info.Platform + " " + info.PlatformVersion), Kernel: info.KernelVersion, Arch: runtime.GOARCH, Cores: runtime.NumCPU(), BootTime: info.BootTime, Source: "服务端本机采集", IPs: []string{}}
 	snap := Snapshot{Uptime: info.Uptime, Disks: []DiskInfo{}, Errors: []string{}}
-	if cpus, e := cpu.InfoWithContext(ctx); e == nil && len(cpus) > 0 {
+	if cpus, e := deps.cpuInfo(ctx); e == nil && len(cpus) > 0 {
 		inv.CPU = cpus[0].ModelName
 	}
-	if v, e := cpu.PercentWithContext(ctx, time.Second, false); e == nil && len(v) > 0 {
+	if v, e := deps.cpuPercent(ctx, time.Second, false); e == nil && len(v) > 0 {
 		snap.CPU = &v[0]
 	} else {
 		snap.Errors = append(snap.Errors, "CPU 采样不可用")
 	}
-	if v, e := mem.VirtualMemoryWithContext(ctx); e == nil {
+	if v, e := deps.memory(ctx); e == nil {
 		inv.Memory = v.Total
 		snap.MemoryUsed = v.Used
 		p := v.UsedPercent
@@ -90,7 +111,7 @@ func (c *Collector) Collect(ctx context.Context) (Report, error) {
 	} else {
 		snap.Errors = append(snap.Errors, "内存采样不可用")
 	}
-	if interfaces, e := gnet.InterfacesWithContext(ctx); e == nil {
+	if interfaces, e := deps.interfaces(ctx); e == nil {
 		for _, i := range interfaces {
 			for _, a := range i.Addrs {
 				if prefix, err := netip.ParsePrefix(a.Addr); err == nil && prefix.Addr().IsGlobalUnicast() && !prefix.Addr().IsLoopback() {
@@ -99,7 +120,7 @@ func (c *Collector) Collect(ctx context.Context) (Report, error) {
 			}
 		}
 	}
-	parts, e := disk.PartitionsWithContext(ctx, false)
+	parts, e := deps.partitions(ctx, false)
 	if e != nil {
 		snap.Errors = append(snap.Errors, "磁盘分区不可用")
 	}
@@ -115,14 +136,14 @@ func (c *Collector) Collect(ctx context.Context) (Report, error) {
 			continue
 		}
 		seen[p.Mountpoint] = true
-		usage, e := disk.UsageWithContext(ctx, p.Mountpoint)
+		usage, e := deps.usage(ctx, p.Mountpoint)
 		if e != nil || usage.Total == 0 {
 			continue
 		}
 		snap.Disks = append(snap.Disks, DiskInfo{p.Mountpoint, p.Fstype, usage.Used, usage.Total, usage.UsedPercent})
 	}
-	if counters, e := gnet.IOCountersWithContext(ctx, true); e == nil {
-		current := &netSample{at: time.Now()}
+	if counters, e := deps.counters(ctx, true); e == nil {
+		current := &netSample{at: deps.now()}
 		for _, v := range counters {
 			if strings.HasPrefix(v.Name, "lo") {
 				continue
@@ -130,7 +151,7 @@ func (c *Collector) Collect(ctx context.Context) (Report, error) {
 			current.in += v.BytesRecv
 			current.out += v.BytesSent
 		}
-		if prev := c.previousNet; prev != nil && current.in >= prev.in && current.out >= prev.out {
+		if prev := c.previousNet; prev != nil && current.at.After(prev.at) && current.in >= prev.in && current.out >= prev.out {
 			dt := current.at.Sub(prev.at).Seconds()
 			vin := float64(current.in-prev.in) / dt
 			vout := float64(current.out-prev.out) / dt
@@ -142,5 +163,5 @@ func (c *Collector) Collect(ctx context.Context) (Report, error) {
 		snap.Errors = append(snap.Errors, "网络流量不可用")
 	}
 
-	return Report{Protocol: 1, AgentVersion: buildinfo.Version, CollectedAt: time.Now().UnixMilli(), Hostname: info.Hostname, Inventory: inv, Snapshot: snap}, nil
+	return Report{Protocol: 1, AgentVersion: buildinfo.Version, CollectedAt: deps.now().UnixMilli(), Hostname: info.Hostname, Inventory: inv, Snapshot: snap}, nil
 }
