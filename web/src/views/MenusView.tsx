@@ -7,6 +7,7 @@ import { localizedLabels, metadataLabel, t, useI18n } from "../i18n";
 import { classNames } from "../lib/react";
 import {
   api,
+  displayNavName,
   notify,
   refreshNavigation,
   useApp,
@@ -36,6 +37,7 @@ export default function MenusView() {
     loading: true,
     busy: false,
     editing: false,
+    nameEdited: false,
     confirm: "" as "delete" | "reset" | "",
     target: undefined as NavItem | undefined,
     form: blank(),
@@ -123,7 +125,7 @@ export default function MenusView() {
     }
   }
   function edit(item?: NavItem) {
-    store.setState({ target: item });
+    store.setState({ target: item, nameEdited: false });
     store.setState({
       form: {
         ...store.getState().form,
@@ -154,7 +156,15 @@ export default function MenusView() {
       await api(
         target ? `/menus/${target.id}` : "/menus",
         target ? "PATCH" : "POST",
-        store.getState().form,
+        {
+          ...store.getState().form,
+          // Keeping the stored name preserves its built-in translation key when
+          // only visibility/order changes. Explicit name edits remain user text.
+          name:
+            target && !store.getState().nameEdited
+              ? target.name
+              : store.getState().form.name,
+        },
       );
       store.setState({ editing: false });
       await load();
@@ -274,7 +284,7 @@ export default function MenusView() {
                           className="menu-name"
                         >
                           <Icon name={item.icon}></Icon>
-                          <strong>{item.name}</strong>
+                          <strong>{displayNavName(item)}</strong>
                           {item.builtin ? (
                             <span className="tag">{t("内置")}</span>
                           ) : null}
@@ -290,9 +300,11 @@ export default function MenusView() {
                         >
                           <span className="ellipsis">
                             {item.kind === "page"
-                              ? viewState.pages.find(
-                                  (p) => p.key === item.pageKey,
-                                )?.name
+                              ? metadataLabel(
+                                  viewState.pages.find(
+                                    (p) => p.key === item.pageKey,
+                                  )?.name,
+                                )
                               : item.kind === "link"
                                 ? item.url
                                 : "—"}
@@ -404,13 +416,18 @@ export default function MenusView() {
                   required
                   maxLength={40}
                   placeholder={t("例如：运维手册")}
-                  value={viewState.form.name}
+                  value={
+                    viewState.target?.nameKey && !viewState.nameEdited
+                      ? displayNavName(viewState.target)
+                      : viewState.form.name
+                  }
                   onChange={(event) => {
                     store.setState((current) => ({
                       form: {
                         ...current.form,
                         name: event.currentTarget.value,
                       },
+                      nameEdited: true,
                     }));
                   }}
                 />
@@ -432,7 +449,7 @@ export default function MenusView() {
                   <>
                     {groups.map((group) => (
                       <option key={group.id} value={group.id}>
-                        {"　".repeat(group.depth) + group.name}
+                        {"　".repeat(group.depth) + displayNavName(group)}
                       </option>
                     ))}
                   </>
@@ -562,7 +579,7 @@ export default function MenusView() {
                         <>
                           {p.items.map((v) => (
                             <option key={v.key} value={v.key}>
-                              {v.label}
+                              {metadataLabel(v.label)}
                             </option>
                           ))}
                         </>
@@ -648,7 +665,11 @@ export default function MenusView() {
                 )
               : t(
                   "删除“{p0}”？如果它是分组且包含子菜单，需要先移动或删除子菜单。",
-                  { p0: viewState.target?.name },
+                  {
+                    p0: viewState.target
+                      ? displayNavName(viewState.target)
+                      : "",
+                  },
                 )}
           </p>
           {viewState.error ? (

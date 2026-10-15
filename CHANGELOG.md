@@ -31,6 +31,8 @@ User-visible changes belong here. Entries under **Unreleased** describe the curr
 
 ### Default resource localization
 
+- Localize built-in labels and selectors inside menu management as well as navigation. Keep default name translations when only changing order/visibility, and preserve explicit name drafts across language changes.
+
 - Localize untouched seeded folders and full selector paths, roles/descriptions, image styles and local-host labels in all five languages. Translate fixed audit action labels at display time. Preserve custom names and stored historical data; do not infer translation from arbitrary display text.
 
 

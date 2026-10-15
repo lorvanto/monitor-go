@@ -186,19 +186,23 @@ mkdir -p backups
 
 To restore, stop the service, replace the entire data directory with a complete backup, and start a binary supporting at least its schema version. Keep the old directory until verification succeeds. Restore offline only; do not merge files into a running installation. Treat backups as private credentials and copy them to independent storage. Cold backups remain supported.
 
+## Default resource labels
+
 Untouched seeded folder names (including paths in settings and package selection), role names/descriptions, image style names and the local-host alias follow the selected interface language. Renamed values remain literal; the server supplies explicit translation keys so a custom name matching a default is not translated by its text alone. Stored historical records remain unchanged.
 
 Fixed audit action labels are localized at display time; actor names, resource text and original stored audit rows are preserved.
+
+Menu management also localizes built-in names, page destinations, parent groups and permission options. Changing visibility or order without editing the name preserves its default translation behavior; an explicitly edited name remains user-authored text and survives language switching.
 
 ## HTTP response rules
 
 Create and edit HTTP checks with an optional UTF-8 response keyword (up to 1024 bytes), inverse matching and a response-time warning threshold (0–30000 ms; 0 disables it). Keyword matching is case-sensitive and examines only the first 1 MiB of the decoded body; details explicitly report truncation. Blank keywords preserve status-only checks. Latency includes reading the inspected body. Connection/status failures take priority, then keyword failures, then latency warnings. Response content is never copied into details. Non-HTTP checks clear these rules. Custom headers and GET/HEAD selection remain optional future work. Schema 7 adds the fields; stop and back up before upgrading, as older binaries cannot read it.
 
+HTTP latency incidents use a response-time title; SSL certificate warnings keep their certificate-specific title.
+
 ## Agent retry and collection verification
 
 Network/server failures use a linear delay of 5 seconds per consecutive failure, capped at 60 seconds; a successful report restores the normal 15-second interval. HTTP 401/403, and 409 during enrollment, stop the Agent because credentials are invalid or enrollment conflicts. Re-enroll with a new configuration instead of endlessly retrying revoked access. Automated tests use local HTTP/TLS servers and injected collectors/clocks, covering credential persistence, reports, retry cap/reset, redirects, private CAs, partition filtering (up to 16 usable unique mounts), partial metric errors and network counter/time resets.
-
-HTTP latency incidents use a response-time title; SSL certificate warnings keep their certificate-specific title.
 
 ## Long-term availability and retention
 

@@ -1225,3 +1225,92 @@ it("saves metric retention and preserves its draft through language switches", a
     ).toMatchObject({ rawRetentionDays: 3, summaryRetentionDays: 180 }),
   );
 });
+
+it("localizes all built-in menu labels and selectors while preserving custom names", async () => {
+  fixtures["/menus"].items.push({
+    id: "custom-chinese",
+    parentId: "",
+    name: "自定义菜单",
+    kind: "group",
+    visible: true,
+    icon: "FolderOpen",
+    version: 1,
+    sort: 99,
+    builtin: false,
+  });
+  const view = render(<MenusView />);
+  await act(async () => {});
+  expect(view.container.textContent).toContain("Monitoring & operations");
+  expect(view.container.textContent).toContain("自定义菜单");
+  expect(view.container.textContent?.replaceAll("自定义菜单", "")).not.toMatch(
+    /[\u3400-\u9fff]/u,
+  );
+  fireEvent.click(screen.getByRole("button", { name: t("新增菜单") }));
+  const dialog = screen.getByRole("dialog");
+  expect(
+    within(dialog).getByRole("combobox", { name: t("上级分组") }).textContent,
+  ).toContain("Monitoring & operations");
+  expect(
+    within(dialog).getByRole("combobox", { name: t("指向页面") }).textContent,
+  ).toContain("Overview");
+  expect(
+    within(dialog).getByRole("combobox", { name: t("附加访问限制") })
+      .textContent,
+  ).not.toMatch(/[\u3400-\u9fff]/u);
+});
+it("preserves built-in menu names when saving other fields after a locale switch", async () => {
+  render(<MenusView />);
+  await act(async () => {});
+  const row = screen.getByRole("row", { name: /Monitoring & operations/ });
+  fireEvent.click(within(row).getByRole("button", { name: t("编辑") }));
+  expect(
+    (screen.getByPlaceholderText(t("例如：运维手册")) as HTMLInputElement)
+      .value,
+  ).toBe("Monitoring & operations");
+  fireEvent.change(screen.getByLabelText(t("排序值")), {
+    target: { value: "12" },
+  });
+  for (const locale of locales) {
+    await act(() => setLocale(locale.code));
+    expect(
+      (screen.getByPlaceholderText(t("例如：运维手册")) as HTMLInputElement)
+        .value,
+    ).toBe(t("观测与运维"));
+    expect((screen.getByLabelText(t("排序值")) as HTMLInputElement).value).toBe(
+      "12",
+    );
+  }
+  fireEvent.click(screen.getByRole("button", { name: t("保存菜单") }));
+  await waitFor(() =>
+    expect(
+      requests.find((r) => r.path === "/menus/1" && r.method === "PATCH")?.body,
+    ).toMatchObject({ name: "观测与运维", sort: 12 }),
+  );
+  await act(async () => {});
+});
+it("keeps explicit menu-name drafts unchanged through all five locales", async () => {
+  render(<MenusView />);
+  await act(async () => {});
+  fireEvent.click(
+    within(
+      screen.getByRole("row", { name: /Monitoring & operations/ }),
+    ).getByRole("button", { name: t("编辑") }),
+  );
+  fireEvent.change(screen.getByPlaceholderText(t("例如：运维手册")), {
+    target: { value: "Operations team" },
+  });
+  for (const locale of locales) {
+    await act(() => setLocale(locale.code));
+    expect(
+      (screen.getByPlaceholderText(t("例如：运维手册")) as HTMLInputElement)
+        .value,
+    ).toBe("Operations team");
+  }
+  fireEvent.click(screen.getByRole("button", { name: t("保存菜单") }));
+  await waitFor(() =>
+    expect(
+      requests.find((r) => r.path === "/menus/1" && r.method === "PATCH")?.body,
+    ).toMatchObject({ name: "Operations team" }),
+  );
+  await act(async () => {});
+});
