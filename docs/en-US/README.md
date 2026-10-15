@@ -164,3 +164,7 @@ Local and remote hosts use the same rules. CPU/memory must stay at or above the 
 ## Page refresh and list queries
 
 The 10-second visible-page refresh loads hosts/checks/incidents only where needed, plus the current session and navigation. Other pages use a small alert-count endpoint for the mobile badge, with the same latest-200-event scope as the incident list. Team roles, members and permissions load on entry to their page or after a change, not on every poll. Page switches and writes trigger a fresh load while stale-page and prior-session responses are discarded. Monitor lists use three SQL queries and incident lists use two; the response shape, 24-hour availability, latest 32 check results and latest 100 activities per incident are preserved.
+
+## Static asset caching
+
+The server prepares strong ETags and gzip representations at startup using the Go standard library. Hashed files under `/assets/` use `public, max-age=31536000, immutable`; HTML and other unhashed files use `no-cache` and conditional validation. Gzip negotiation respects exclusions and quality preferences, with `Vary: Accept-Encoding` and distinct validators for compressed/uncompressed bytes. Conditional GET/HEAD returns 304 when appropriate; byte ranges and existing security headers remain supported. No external compression service is required.

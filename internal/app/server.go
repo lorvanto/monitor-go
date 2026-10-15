@@ -31,6 +31,7 @@ type Config struct {
 	Collect                                  bool
 }
 type Server struct {
+	static         http.Handler
 	Store          *Store
 	cfg            Config
 	setupToken     string
@@ -71,11 +72,18 @@ func New(cfg Config) (*Server, error) {
 	if e != nil {
 		return nil, e
 	}
+	var static http.Handler
+	if cfg.Assets != nil {
+		static, e = newStaticHandler(cfg.Assets)
+		if e != nil {
+			return nil, e
+		}
+	}
 	st, e := OpenStore(cfg.DataDir)
 	if e != nil {
 		return nil, e
 	}
-	s := &Server{Store: st, cfg: cfg, trustedProxies: proxies, attempts: map[string]attempt{}, uploadSlots: make(chan struct{}, 2), codeSlots: make(chan struct{}, 2)}
+	s := &Server{static: static, Store: st, cfg: cfg, trustedProxies: proxies, attempts: map[string]attempt{}, uploadSlots: make(chan struct{}, 2), codeSlots: make(chan struct{}, 2)}
 	var count int
 	e = st.DB.QueryRow("SELECT count(*) FROM users").Scan(&count)
 	if e != nil {
@@ -300,14 +308,8 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("/api/", func(w http.ResponseWriter, r *http.Request) {
 		output(w, 404, map[string]any{"error": map[string]string{"message": locales.Text(requestLocale(w, r), "接口不存在")}})
 	})
-	if s.cfg.Assets != nil {
-		mux.Handle("/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			if r.Method != http.MethodGet && r.Method != http.MethodHead {
-				w.WriteHeader(http.StatusMethodNotAllowed)
-				return
-			}
-			http.FileServer(http.FS(s.cfg.Assets)).ServeHTTP(w, r)
-		}))
+	if s.static != nil {
+		mux.Handle("/", s.static)
 	}
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("X-Frame-Options", "DENY")

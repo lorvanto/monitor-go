@@ -4,6 +4,11 @@ User-visible changes belong here. Entries under **Unreleased** describe the curr
 
 ## Unreleased
 
+### Static asset caching
+
+- Precompute strong ETags and gzip content at startup. Hash-named assets receive one-year immutable caching; HTML/unhashed files revalidate. Preserve HEAD, ranges, conditional requests and security headers without new dependencies.
+
+
 ### Page refresh and batched lists
 
 - Poll only the active page’s required data, session, navigation and a lightweight mobile alert badge. Load team metadata on entry or mutation; preserve session and page race protection.

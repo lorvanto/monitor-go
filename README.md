@@ -20,7 +20,7 @@ A self-hosted monitoring and operations platform built with **Go**, **React 19**
 
 SQLite is the only application datastore. MySQL and Redis are monitored targets, not installation dependencies. Team members share installation resources; this is not a multi-tenant service. Custom names, notes and historical records retain their original language.
 
-Pages refresh their required data on demand; list queries batch availability and recent history.
+Pages refresh their required data on demand; list queries batch availability and recent history. Embedded frontend assets support gzip and conditional caching.
 
 Host CPU, memory and disk alert thresholds are configurable in System settings. See [threshold behavior](docs/en-US/README.md#host-alert-thresholds).
 
