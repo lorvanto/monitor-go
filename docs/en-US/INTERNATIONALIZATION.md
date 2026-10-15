@@ -67,6 +67,8 @@ The catalog policy also detects Korean/Chinese/Japanese script contamination and
 
 ## Phone layouts and dialogs
 
+Keep space between language-selector text and its dropdown arrow; compact control padding must preserve the arrow's reserved area at every viewport width.
+
 On narrow screens, time-range controls wrap and long application, host and alert names break within their panels. Dialog content scrolls independently while close and footer actions remain available. Long context text scrolls with the body; long titles have a bounded scroll area. File/image preview selectors and package-directory controls fit the available width.
 
 Dialogs follow the browser visual viewport during keyboard opening and panning, and scroll the focused input into view without resetting drafts. Mobile form controls use readable font sizes, and footer actions have larger tap areas with wrapping labels. Verify all five locales at 320px and 390px portrait widths, 640px landscape, and a reduced-height viewport; check actual control hit targets as well as page and dialog scroll widths.

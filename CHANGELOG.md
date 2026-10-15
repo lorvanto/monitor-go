@@ -4,6 +4,10 @@ User-visible changes belong here. Entries under **Unreleased** describe the curr
 
 ## Unreleased
 
+### Language selector spacing
+
+- Reserve space between language labels and dropdown arrows in dialogs, sign-in and navigation controls, including narrow layouts.
+
 ### Mobile workflow verification
 
 - Document five-language phone workflows for setup validation, sign-in/out, form persistence, file selection/upload/download, failure recovery and language switching. Record HTTP/SQLite and SHA-256 checks, with explicit browser-versus-device verification boundaries. No new product defect was reproduced; runtime code is unchanged.
