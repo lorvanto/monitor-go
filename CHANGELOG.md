@@ -55,6 +55,11 @@ User-visible changes belong here. Entries under **Unreleased** describe the curr
 
 - Translate the untouched default instance name with the browser language instead of displaying the stored Chinese seed in English pages. Add an explicit default-name option in settings; preserve custom names, including Chinese names. No schema migration is required.
 
+### Chat robot Webhooks
+
+- Add DingTalk Markdown, Feishu text and WeCom Markdown formats without a database migration. Preserve generic JSON Webhooks and their signature headers.
+- Implement platform signatures, strict business-result checks and persisted retries, with bounded chat text and original stored alerts retained. Add five-language format selection and configuration guidance. Validation uses local HTTP fixtures; real robot accounts were not tested.
+
 ### Upgrade considerations
 
 - SQLite migrations support schema versions 1 → 2 → 3 → 4 → 5. Stop the service and back up the entire data directory before upgrading. Older binaries cannot read schema 5 directly; rollback requires the complete pre-upgrade backup.

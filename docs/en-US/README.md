@@ -89,9 +89,9 @@ The [systemd template](../../deploy/monitor-go-agent.service) requires the deplo
 
 ## Notifications, files and distribution
 
-Configure SMTP or generic Webhook channels in the alert center. SMTP requires TLS or STARTTLS. Webhooks require HTTPS, except numeric loopback for testing. Notifications use persistent jobs with up to four attempts. Delivery is at least once; receivers should deduplicate by `X-MonitorGo-Delivery-ID`. SMTP acceptance does not guarantee inbox delivery. Silence skips pending notifications without later catch-up.
+Configure SMTP, generic Webhook or chat-robot channels in the alert center. SMTP requires TLS or STARTTLS. Webhooks require HTTPS, except numeric loopback for testing. Notifications use persistent jobs with up to four attempts. Delivery is at least once; receivers should deduplicate by `X-MonitorGo-Delivery-ID`. SMTP acceptance does not guarantee inbox delivery. Silence skips pending notifications without later catch-up.
 
-Webhook signatures use `X-MonitorGo-Signature: sha256=<hex HMAC-SHA256>`. Sign the timestamp header, a period, and the original body bytes with the channel secret. Validate signatures and a timestamp window at the receiver.
+Generic Webhook signatures use `X-MonitorGo-Signature: sha256=<hex HMAC-SHA256>`. Sign the timestamp header, a period, and the original body bytes with the channel secret. Validate signatures and a timestamp window at the receiver.
 
 Files are private and shared within the installation. Upload, preview, download and management have separate permissions. Trash uses storage quota. Permanent deletion requires typing the confirmation phrase shown in the selected language. Originals are stored under `data/uploads/`. Image styles create derivatives without replacing originals.
 
@@ -131,7 +131,7 @@ Database versions 1 → 2 → 3 → 4 → 5 migrate transactionally. Older binar
 
 ## Current limits
 
-There is no multitenancy, external storage adapter, remote command execution, agent auto-update, online backup UI, public file sharing or proprietary chat-channel templates. Certificate issuance remains planned. Configured ceilings of 500 checks and 1000 agents are not load-test claims. Production Linux sampling, real email-provider delivery and capacity testing require deployment-specific validation.
+There is no multitenancy, external storage adapter, remote command execution, agent auto-update, online backup UI, public file sharing. Certificate issuance remains planned. Configured ceilings of 500 checks and 1000 agents are not load-test claims. Production Linux sampling, real email-provider delivery and capacity testing require deployment-specific validation.
 
 Historical design proposals and detailed validation records remain in the [Chinese documentation index](../zh-CN/INDEX.md); they are not all implemented product features. Source repository: [lorvanto/monitor-go](https://github.com/lorvanto/monitor-go). Release tags and target-platform commitments remain to be selected. Project-owned code and documentation use [Apache-2.0](../../LICENSE); dependencies retain their own licenses. See [contribution guidance](../../CONTRIBUTING.md), [security policy](../../SECURITY.md), [third-party notices](../../THIRD_PARTY_NOTICES.md) and [release preparation](RELEASING.md).
 
@@ -146,3 +146,11 @@ All current guides use `docs/<locale>/` with English directory and file names. S
 Use Edit on a monitor to change its complete configuration. Blank passwords keep saved credentials; a new password replaces them, and Clear saved credentials removes them. HTTP/TCP/SSL clear database credentials. Updates use optimistic versions and reset the current state and schedule, cancelling queued jobs. Existing history and unresolved alerts are retained. Archive requires confirmation and stops future checks. Read-only members have neither action. A 409 conflict refreshes server data while retaining your form; reopen the editor to review the latest configuration before saving again.
 
 The default instance name follows the interface language (English: “My monitoring center”). In System settings, select “Use the default instance name” to restore that behavior. Custom names remain exactly as entered in every language. Untouched legacy defaults are recognized automatically; previously saved names are preserved until you explicitly choose the default.
+
+## Chat robot Webhooks
+
+Webhook message formats are Generic, DingTalk, Feishu and WeCom; existing channels remain Generic. Select the format in the channel editor. DingTalk uses Markdown with optional URL timestamp/signature (milliseconds); Feishu uses text with optional body timestamp/signature (seconds). WeCom uses Markdown and the `key` in its URL, with no separate signing secret. Changing format in the editor clears the previous signing secret.
+
+Generic keeps its existing JSON and signature-header contract. Chat formats require a successful HTTP response **and** platform code 0 (`errcode` for DingTalk/WeCom, `code` for Feishu); malformed or missing codes fail. Failures retry after 15 seconds, 1 minute and 5 minutes. Messages include event, original title/resource/description, severity, UTC time and delivery ID. Fixed labels are English. Long fields are truncated in chat messages to fit WeCom’s 4096-byte Markdown limit; stored alerts remain unchanged. No real-platform delivery was verified: local HTTP fixtures cover formats, signing, errors and retries. Use Test on your own bot to verify credentials and platform policies.
+
+[DingTalk](https://open.dingtalk.com/document/robots/customize-robot-security-settings) · [Feishu](https://open.feishu.cn/document/client-docs/bot-v3/add-custom-bot) · [WeCom](https://developer.work.weixin.qq.com/document/path/91770)

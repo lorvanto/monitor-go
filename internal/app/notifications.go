@@ -1,17 +1,12 @@
 package app
 
 import (
-	"bytes"
 	"context"
-	"crypto/hmac"
-	"crypto/sha256"
 	"crypto/tls"
 	"database/sql"
-	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"log/slog"
 	"mime"
 	"net"
@@ -175,38 +170,19 @@ func (s *Server) deliver(ctx context.Context, id int64) error {
 	return e
 }
 func sendWebhook(ctx context.Context, c channelConfig, p notificationPayload) (string, error) {
-	body, e := json.Marshal(p)
+	req, e := webhookRequest(ctx, c, p, time.Now())
 	if e != nil {
 		return "通知编码失败", e
 	}
 	tr := &http.Transport{DialContext: safeDial, TLSHandshakeTimeout: 5 * time.Second, DisableKeepAlives: true}
 	defer tr.CloseIdleConnections()
 	client := &http.Client{Transport: tr, CheckRedirect: func(*http.Request, []*http.Request) error { return errors.New("通知不跟随重定向") }}
-	req, e := http.NewRequestWithContext(ctx, "POST", c.URL, bytes.NewReader(body))
-	if e != nil {
-		return "Webhook 地址无效", e
-	}
-	timestamp := strconv.FormatInt(time.Now().Unix(), 10)
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("User-Agent", "MonitorGo/0.2.0")
-	req.Header.Set("X-MonitorGo-Delivery-ID", p.DeliveryID)
-	req.Header.Set("X-MonitorGo-Timestamp", timestamp)
-	if c.Secret != "" {
-		mac := hmac.New(sha256.New, []byte(c.Secret))
-		mac.Write([]byte(timestamp + "."))
-		mac.Write(body)
-		req.Header.Set("X-MonitorGo-Signature", "sha256="+hex.EncodeToString(mac.Sum(nil)))
-	}
 	res, e := client.Do(req)
 	if e != nil {
 		return "Webhook 连接失败，请检查网络、地址和 TLS 证书", e
 	}
 	defer res.Body.Close()
-	io.CopyN(io.Discard, res.Body, 4096)
-	if res.StatusCode < 200 || res.StatusCode >= 300 {
-		return fmt.Sprintf("Webhook 返回 HTTP %d", res.StatusCode), errors.New("webhook rejected")
-	}
-	return fmt.Sprintf("Webhook 已接收 · HTTP %d", res.StatusCode), nil
+	return webhookResponse(res, c.Format)
 }
 func notificationMessage(c channelConfig, p notificationPayload) []byte {
 	label := map[string]string{"opened": "故障告警", "resolved": "恢复通知", "test": "渠道测试"}[p.Event]

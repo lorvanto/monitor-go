@@ -108,6 +108,8 @@ The default instance name follows the interface language; custom instance names 
 
 Monitor configurations can be fully edited with credential preservation and version checks, or archived with confirmation. See [monitor editing](docs/en-US/README.md#monitor-editing-and-archiving).
 
+Chat notifications support DingTalk, Feishu and WeCom with platform-specific signing and error-code handling. See [chat robot Webhooks](docs/en-US/README.md#chat-robot-webhooks).
+
 ## Documentation and community
 
 [User guides](docs/README.md) · [Contributing](CONTRIBUTING.md) · [Collaboration guidelines](AGENTS.md) · [Support](SUPPORT.md) · [Security](SECURITY.md) · [Changelog](CHANGELOG.md) · [Roadmap](ROADMAP.md) · [Release preparation](docs/en-US/RELEASING.md)

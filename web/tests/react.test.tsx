@@ -877,3 +877,62 @@ it("translates the default name in settings and keeps an unsaved custom name on 
     expect(input.value).toBe("我的研发监控");
   }
 });
+
+it("selects chat Webhook formats with matching signing guidance and keeps drafts across languages", async () => {
+  const { default: NotificationsPanel } = await import(
+    "../src/components/NotificationsPanel"
+  );
+  render(<NotificationsPanel mode="channels" />);
+  await act(async () => {});
+  fireEvent.click(screen.getAllByRole("button", { name: t("添加渠道") })[0]);
+  const dialog = screen.getByRole("dialog");
+  const format = within(dialog).getByLabelText(t("消息格式"));
+  fireEvent.change(format, { target: { value: "dingtalk" } });
+  expect(
+    within(dialog).getByText(
+      t("填写钉钉机器人安全设置中的加签密钥；时间戳和签名放在 URL 参数中。"),
+    ),
+  ).toBeTruthy();
+  expect(
+    within(dialog).queryByText(
+      t("签名放在 X-MonitorGo-Signature 请求头；接收端可用投递编号去重。"),
+    ),
+  ).toBeNull();
+  const url = within(dialog).getByPlaceholderText(
+    "https://hooks.example.com/monitor",
+  ) as HTMLInputElement;
+  fireEvent.change(url, { target: { value: "https://example.com/test-hook" } });
+  for (const locale of locales) {
+    await act(() => setLocale(locale.code));
+    expect(url.value).toBe("https://example.com/test-hook");
+    expect((format as HTMLSelectElement).value).toBe("dingtalk");
+  }
+  await act(() => setLocale("en-US"));
+  fireEvent.change(format, { target: { value: "wecom" } });
+  expect(
+    within(dialog).queryByLabelText(t("签名密钥（可选）"), { exact: false }),
+  ).toBeNull();
+  expect(
+    within(dialog).getByText(
+      t("企业微信的密钥包含在 Webhook URL 的 key 参数中，无需额外签名密钥。"),
+      { exact: false },
+    ),
+  ).toBeTruthy();
+  fireEvent.change(format, { target: { value: "feishu" } });
+  expect(
+    within(dialog).getByText(
+      t("填写飞书机器人的签名校验密钥；时间戳和签名放在消息正文中。"),
+    ),
+  ).toBeTruthy();
+  fireEvent.click(within(dialog).getByRole("button", { name: t("保存渠道") }));
+  await waitFor(() =>
+    expect(
+      requests.find(
+        (r) => r.path === "/notification-channels" && r.method === "POST",
+      )?.body,
+    ).toMatchObject({
+      config: { format: "feishu", url: "https://example.com/test-hook" },
+    }),
+  );
+  await act(async () => {});
+});

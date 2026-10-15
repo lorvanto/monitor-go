@@ -9,6 +9,7 @@ import Modal from "./Modal";
 import StatusBadge from "./StatusBadge";
 import StatusGlyph from "./StatusGlyph";
 interface Config {
+  format?: string;
   url: string;
   host: string;
   port: number;
@@ -52,6 +53,7 @@ export default function NotificationsPanel(inputProps: {
     version: 0,
     hasSecret: false,
     config: {
+      format: "generic",
       url: "",
       host: "",
       port: 465,
@@ -215,6 +217,26 @@ export default function NotificationsPanel(inputProps: {
     sending: "info",
   };
   const deliveryTone = (s: string): Tone => deliveryTones[s] || "idle";
+  const formatLabel = (format?: string) =>
+    ({
+      generic: t("通用 Webhook"),
+      dingtalk: t("钉钉"),
+      feishu: t("飞书"),
+      wecom: t("企业微信"),
+    })[format || "generic"] || t("通用 Webhook");
+  const signingHelp = (format?: string) =>
+    ({
+      generic: t(
+        "签名放在 X-MonitorGo-Signature 请求头；接收端可用投递编号去重。",
+      ),
+      dingtalk: t(
+        "填写钉钉机器人安全设置中的加签密钥；时间戳和签名放在 URL 参数中。",
+      ),
+      feishu: t("填写飞书机器人的签名校验密钥；时间戳和签名放在消息正文中。"),
+      wecom: t(
+        "企业微信的密钥包含在 Webhook URL 的 key 参数中，无需额外签名密钥。",
+      ),
+    })[format || "generic"];
   function latest(id: string) {
     return store.getState().deliveries.find((d) => d.channelId === id);
   }
@@ -278,7 +300,7 @@ export default function NotificationsPanel(inputProps: {
                 <h3>{t("为告警连接一个通知渠道")}</h3>
                 <p>
                   {t(
-                    "支持 SMTP 邮件与通用 Webhook，启用后发送新发生的故障和恢复。",
+                    "支持 SMTP、通用 Webhook、钉钉、飞书和企业微信的故障与恢复通知。",
                   )}
                 </p>
                 <button
@@ -319,7 +341,7 @@ export default function NotificationsPanel(inputProps: {
                                 <small>
                                   {c.kind === "smtp"
                                     ? t("SMTP 邮件")
-                                    : t("通用 Webhook")}
+                                    : formatLabel(c.config.format)}
                                 </small>
                               </span>
                             </span>
@@ -580,13 +602,41 @@ export default function NotificationsPanel(inputProps: {
                     }));
                   }}
                 >
-                  <option value="webhook">{t("通用 Webhook")}</option>
+                  <option value="webhook">{t("Webhook 通知")}</option>
                   <option value="smtp">{t("SMTP 邮件")}</option>
                 </select>
               </label>
             </div>
             {viewState.draft.kind === "webhook" ? (
               <>
+                <label className="field">
+                  {t("消息格式")}
+                  <select
+                    value={viewState.draft.config.format || "generic"}
+                    onChange={(event) =>
+                      store.setState((current) => ({
+                        clearSecret: !!current.draft.id,
+                        draft: {
+                          ...current.draft,
+                          hasSecret: false,
+                          config: {
+                            ...current.draft.config,
+                            format: event.currentTarget.value,
+                            secret: "",
+                          },
+                        },
+                      }))
+                    }
+                  >
+                    {["generic", "dingtalk", "feishu", "wecom"].map(
+                      (format) => (
+                        <option key={format} value={format}>
+                          {formatLabel(format)}
+                        </option>
+                      ),
+                    )}
+                  </select>
+                </label>
                 <label className="field">
                   {t("Webhook 地址")}
                   <input
@@ -607,40 +657,47 @@ export default function NotificationsPanel(inputProps: {
                     }}
                   />
                   <small>
-                    {t(
-                      "以 POST 发送 JSON 事件，接收端返回 HTTP 2xx 即视为成功；不跟随重定向。",
-                    )}
+                    {viewState.draft.config.format &&
+                    viewState.draft.config.format !== "generic"
+                      ? t(
+                          "平台响应中的错误码必须为 0 才视为成功，失败会自动重试；不跟随重定向。",
+                        )
+                      : t(
+                          "以 POST 发送 JSON 事件，接收端返回 HTTP 2xx 即视为成功；不跟随重定向。",
+                        )}
+                    {viewState.draft.config.format === "wecom"
+                      ? signingHelp("wecom")
+                      : null}
                   </small>
                 </label>
-                <label className="field">
-                  {t("签名密钥（可选）")}
-                  <input
-                    type="password"
-                    autoComplete="new-password"
-                    placeholder={
-                      viewState.draft.hasSecret
-                        ? t("已保存密钥，留空则保持不变")
-                        : t("用于 HMAC-SHA256 签名")
-                    }
-                    value={viewState.draft.config.secret}
-                    onChange={(event) => {
-                      store.setState((current) => ({
-                        draft: {
-                          ...current.draft,
-                          config: {
-                            ...current.draft.config,
-                            secret: event.currentTarget.value,
+                {viewState.draft.config.format !== "wecom" ? (
+                  <label className="field">
+                    {t("签名密钥（可选）")}
+                    <input
+                      type="password"
+                      autoComplete="new-password"
+                      placeholder={
+                        viewState.draft.hasSecret
+                          ? t("已保存密钥，留空则保持不变")
+                          : t("用于 HMAC-SHA256 签名")
+                      }
+                      value={viewState.draft.config.secret}
+                      onChange={(event) => {
+                        store.setState((current) => ({
+                          clearSecret: false,
+                          draft: {
+                            ...current.draft,
+                            config: {
+                              ...current.draft.config,
+                              secret: event.currentTarget.value,
+                            },
                           },
-                        },
-                      }));
-                    }}
-                  />
-                  <small>
-                    {t(
-                      "签名放在 X-MonitorGo-Signature 请求头；接收端可用投递编号去重。",
-                    )}
-                  </small>
-                </label>
+                        }));
+                      }}
+                    />
+                    <small>{signingHelp(viewState.draft.config.format)}</small>
+                  </label>
+                ) : null}
                 {viewState.draft.hasSecret ? (
                   <label className="check">
                     <input

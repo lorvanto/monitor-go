@@ -12,6 +12,7 @@ import (
 )
 
 type channelConfig struct {
+	Format   string   `json:"format"`
 	URL      string   `json:"url"`
 	Host     string   `json:"host"`
 	Port     int      `json:"port"`
@@ -49,6 +50,15 @@ func validateChannel(in *channelInput) error {
 		return bad("通知凭据过长")
 	}
 	if in.Kind == "webhook" {
+		c.Format = webhookFormat(c.Format)
+		switch c.Format {
+		case "generic", "dingtalk", "feishu", "wecom":
+		default:
+			return bad("Webhook 消息格式不支持")
+		}
+		if c.Format == "wecom" {
+			c.Secret = ""
+		}
 		u, e := url.Parse(c.URL)
 		if e != nil || u.Hostname() == "" || u.User != nil || u.Fragment != "" || len(c.URL) > 2048 {
 			return bad("Webhook 地址不正确")
@@ -63,7 +73,7 @@ func validateChannel(in *channelInput) error {
 				return bad("Webhook 端口不正确")
 			}
 		}
-		*c = channelConfig{URL: c.URL, Secret: c.Secret, To: []string{}}
+		*c = channelConfig{Format: c.Format, URL: c.URL, Secret: c.Secret, To: []string{}}
 	} else if in.Kind == "smtp" {
 		c.Host = strings.TrimSpace(c.Host)
 		if c.Host == "" || len(c.Host) > 253 || strings.ContainsAny(c.Host, "/\r\n @") || c.Port < 1 || c.Port > 65535 {
@@ -91,6 +101,7 @@ func validateChannel(in *channelInput) error {
 			return bad("SMTP 登录需要密码或授权码")
 		}
 		c.URL = ""
+		c.Format = ""
 	} else {
 		return bad("通知类型仅支持 Webhook 和 SMTP 邮件")
 	}
@@ -115,6 +126,9 @@ func (s *Server) listChannels(w http.ResponseWriter, r *http.Request, u *User) (
 		}
 		if e = json.Unmarshal([]byte(raw), &c.Config); e != nil {
 			return nil, e
+		}
+		if c.Kind == "webhook" {
+			c.Config.Format = webhookFormat(c.Config.Format)
 		}
 		c.HasSecret = c.Config.Secret != ""
 		c.Config.Secret = ""

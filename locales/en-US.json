@@ -1163,5 +1163,18 @@
   "确认归档": "Confirm archive",
   "检测目标已归档": "Monitor archived",
   "归档 {p0} 后将停止检测，历史记录和未恢复告警仍会保留。": "Archiving {p0} stops checks and preserves history and unresolved alerts.",
-  "使用默认实例名称（随界面语言切换）": "Use the default instance name (follows interface language)"
+  "使用默认实例名称（随界面语言切换）": "Use the default instance name (follows interface language)",
+  "消息格式": "Message format",
+  "钉钉": "DingTalk",
+  "飞书": "Feishu",
+  "企业微信": "WeCom",
+  "Webhook 通知": "Webhook",
+  "Webhook 消息格式不支持": "Unsupported Webhook message format",
+  "Webhook 响应格式不正确": "Invalid Webhook response format",
+  "Webhook 平台拒绝消息 · %d": "Webhook platform rejected the message · %d",
+  "支持 SMTP、通用 Webhook、钉钉、飞书和企业微信的故障与恢复通知。": "Send incident and recovery notifications through SMTP, generic Webhooks, DingTalk, Feishu or WeCom.",
+  "填写钉钉机器人安全设置中的加签密钥；时间戳和签名放在 URL 参数中。": "Use the signing secret from the DingTalk bot security settings. Timestamp and signature are sent in the URL query.",
+  "填写飞书机器人的签名校验密钥；时间戳和签名放在消息正文中。": "Use the Feishu bot signature verification secret. Timestamp and signature are sent in the message body.",
+  "企业微信的密钥包含在 Webhook URL 的 key 参数中，无需额外签名密钥。": "The WeCom secret is the key parameter in the Webhook URL; no separate signing secret is needed.",
+  "平台响应中的错误码必须为 0 才视为成功，失败会自动重试；不跟随重定向。": "The platform response must contain error code 0. Failed deliveries retry automatically; redirects are not followed."
 }
