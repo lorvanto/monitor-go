@@ -175,6 +175,7 @@ func TestFileLimitsSettingsAndAuditRetention(t *testing.T) {
 	s, _, c := fixture(t)
 	settings := decodeValue[Settings](t, c.call("GET", "/settings", nil, 200))
 	settings.InstanceName = "研发工作台"
+	settings.UseDefaultName = false
 	settings.UploadLimitMB = 1
 	settings.StorageLimitMB = 10
 	settings.AuditDays = 7

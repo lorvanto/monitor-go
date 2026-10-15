@@ -14,6 +14,7 @@ import {
 } from "../stores/app";
 interface Settings {
   instanceName: string;
+  useDefaultName: boolean;
   uploadLimitMB: number;
   storageLimitMB: number;
   defaultFolder: string;
@@ -36,6 +37,7 @@ export default function SettingsView() {
   const initialState = {
     form: {
       instanceName: "",
+      useDefaultName: true,
       uploadLimitMB: 32,
       storageLimitMB: 1024,
       defaultFolder: "2",
@@ -179,23 +181,45 @@ export default function SettingsView() {
                   {t("显示在侧栏顶部和浏览器标签中，便于团队区分不同的安装。")}
                 </p>
               </div>
-              <label className="field">
-                {t("名称")}
-                <input
-                  required
-                  maxLength={40}
-                  placeholder={t("例如：研发运维中心")}
-                  value={viewState.form.instanceName}
-                  onChange={(event) => {
-                    store.setState((current) => ({
-                      form: {
-                        ...current.form,
-                        instanceName: event.currentTarget.value,
-                      },
-                    }));
-                  }}
-                />
-              </label>
+              <div className="form">
+                <label className="check">
+                  <input
+                    type="checkbox"
+                    checked={viewState.form.useDefaultName}
+                    onChange={(event) =>
+                      store.setState((current) => ({
+                        form: {
+                          ...current.form,
+                          useDefaultName: event.currentTarget.checked,
+                        },
+                      }))
+                    }
+                  />
+                  {t("使用默认实例名称（随界面语言切换）")}
+                </label>
+                <label className="field">
+                  {t("名称")}
+                  <input
+                    required={!viewState.form.useDefaultName}
+                    disabled={viewState.form.useDefaultName}
+                    maxLength={40}
+                    placeholder={t("例如：研发运维中心")}
+                    value={
+                      viewState.form.useDefaultName
+                        ? t("我的监控中心")
+                        : viewState.form.instanceName
+                    }
+                    onChange={(event) => {
+                      store.setState((current) => ({
+                        form: {
+                          ...current.form,
+                          instanceName: event.currentTarget.value,
+                        },
+                      }));
+                    }}
+                  />
+                </label>
+              </div>
             </section>
             <section className="settings-section">
               <div>

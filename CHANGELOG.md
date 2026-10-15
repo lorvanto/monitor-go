@@ -51,6 +51,10 @@ User-visible changes belong here. Entries under **Unreleased** describe the curr
 - Add permission-checked full monitor updates, explicit credential retention/replacement/removal, optimistic conflicts, audit records and queued-job cancellation. Preserve history and existing incidents.
 - Add translated React edit forms and archive confirmation; conflicts preserve unsaved input while refreshing server data.
 
+### Default instance-name localization
+
+- Translate the untouched default instance name with the browser language instead of displaying the stored Chinese seed in English pages. Add an explicit default-name option in settings; preserve custom names, including Chinese names. No schema migration is required.
+
 ### Upgrade considerations
 
 - SQLite migrations support schema versions 1 → 2 → 3 → 4 → 5. Stop the service and back up the entire data directory before upgrading. Older binaries cannot read schema 5 directly; rollback requires the complete pre-upgrade backup.

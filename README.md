@@ -104,6 +104,8 @@ Start an isolated backend and frontend with the commands in [CONTRIBUTING.md](CO
 
 Login limits count failed attempts per client IP and username. Configure `-trusted-proxy` only for known reverse proxies; see the [deployment guide](docs/en-US/README.md#trusted-proxies-and-login-limits).
 
+The default instance name follows the interface language; custom instance names remain unchanged.
+
 Monitor configurations can be fully edited with credential preservation and version checks, or archived with confirmation. See [monitor editing](docs/en-US/README.md#monitor-editing-and-archiving).
 
 ## Documentation and community

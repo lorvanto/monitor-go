@@ -299,7 +299,7 @@
     }
   ],
   "/me/navigation": {
-    "instanceName": "我的监控中心",
+    "instanceName": "",
     "items": [
       {
         "nameKey": "观测与运维",
@@ -549,7 +549,8 @@
           }
         ]
       }
-    ]
+    ],
+    "instanceNameKey": "我的监控中心"
   },
   "/files/tree": {
     "defaultFolder": "2",
@@ -637,12 +638,13 @@
     }
   ],
   "/settings": {
-    "instanceName": "我的监控中心",
+    "instanceName": "",
     "uploadLimitMB": 32,
     "storageLimitMB": 1024,
     "defaultFolder": "2",
     "auditDays": 90,
-    "version": 1
+    "version": 1,
+    "useDefaultName": true
   },
   "/system": {
     "database": "SQLite",

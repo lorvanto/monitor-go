@@ -50,6 +50,7 @@ interface AppData {
 interface AppState {
   navigation: NavItem[];
   instanceName: string;
+  instanceNameKey: string;
   data: AppData;
   user: User | null;
   initialized: boolean;
@@ -75,7 +76,8 @@ const emptyData = (): AppData => ({
 });
 export const appStore = create<AppState>(() => ({
   navigation: [],
-  instanceName: t("我的监控中心"),
+  instanceName: "",
+  instanceNameKey: "我的监控中心",
   data: emptyData(),
   user: null,
   initialized: true,
@@ -212,7 +214,8 @@ function clearSession() {
     navigation: [],
     data: emptyData(),
     updatedAt: 0,
-    instanceName: t("我的监控中心"),
+    instanceName: "",
+    instanceNameKey: "我的监控中心",
     menuOpen: false,
     activeHost: "",
     activeMonitor: "",
@@ -262,12 +265,15 @@ export async function api<T>(
   return json.data;
 }
 export async function refreshNavigation() {
-  const navigation = await api<{ items: NavItem[]; instanceName: string }>(
-    "/me/navigation",
-  );
+  const navigation = await api<{
+    items: NavItem[];
+    instanceName: string;
+    instanceNameKey?: string;
+  }>("/me/navigation");
   appStore.setState({
     navigation: navigation.items,
     instanceName: navigation.instanceName,
+    instanceNameKey: navigation.instanceNameKey || "",
   });
 }
 interface RefreshTask {
@@ -306,13 +312,18 @@ async function loadAll(session: number) {
         can("team:read") ? api<Role[]>("/roles") : [],
         can("team:read") ? api<User[]>("/users") : [],
         can("team:read") ? api<PermissionGroup[]>("/permissions") : [],
-        api<{ items: NavItem[]; instanceName: string }>("/me/navigation"),
+        api<{
+          items: NavItem[];
+          instanceName: string;
+          instanceNameKey?: string;
+        }>("/me/navigation"),
       ]);
     if (session !== sessionVersion || !appStore.getState().user) return;
     appStore.setState({
       data: { hosts, monitors, alerts, roles, users, permissions },
       navigation: navigation.items,
       instanceName: navigation.instanceName,
+      instanceNameKey: navigation.instanceNameKey || "",
       updatedAt: Date.now(),
       connectionError: "",
     });

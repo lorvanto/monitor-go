@@ -243,6 +243,10 @@ export default function App() {
   }, []);
   const results = getResults();
   const initial = getInitial();
+  const instanceName =
+    appState.instanceNameKey === "我的监控中心"
+      ? t("我的监控中心")
+      : appState.instanceName;
   return (
     <>
       {appState.booting ? (
@@ -268,7 +272,7 @@ export default function App() {
             <aside className={classNames("rail", { open: appState.menuOpen })}>
               <div className="rail-head">
                 <button
-                  title={appState.instanceName}
+                  title={instanceName}
                   className="brand"
                   onClick={() => {
                     navigate("overview");
@@ -276,7 +280,7 @@ export default function App() {
                 >
                   <BrandMark></BrandMark>
                   <span className="brand-text">
-                    <strong>{appState.instanceName}</strong>
+                    <strong>{instanceName}</strong>
                     <small>{"Monitor Go"}</small>
                   </span>
                 </button>

@@ -21,6 +21,7 @@ func auditRequest(tx *sql.Tx, r *http.Request, actor, action, resource string) e
 
 type Settings struct {
 	InstanceName   string `json:"instanceName"`
+	UseDefaultName bool   `json:"useDefaultName"`
 	UploadLimitMB  int64  `json:"uploadLimitMB"`
 	StorageLimitMB int64  `json:"storageLimitMB"`
 	DefaultFolder  string `json:"defaultFolder"`
@@ -29,9 +30,19 @@ type Settings struct {
 }
 type rowQuery interface{ QueryRow(string, ...any) *sql.Row }
 
+// Empty names explicitly select the localized default. Version 1 also identifies
+// the untouched legacy default; saved custom names, even identical text, stay literal.
+func defaultInstanceName(name string, version int) bool {
+	return name == "" || (version == 1 && name == "我的监控中心")
+}
+
 func readSettings(q rowQuery) (Settings, error) {
 	var v Settings
 	e := q.QueryRow("SELECT instance_name,upload_limit_mb,storage_limit_mb,CAST(default_folder AS TEXT),audit_days,version FROM system_settings WHERE id=1").Scan(&v.InstanceName, &v.UploadLimitMB, &v.StorageLimitMB, &v.DefaultFolder, &v.AuditDays, &v.Version)
+	v.UseDefaultName = defaultInstanceName(v.InstanceName, v.Version)
+	if v.UseDefaultName {
+		v.InstanceName = ""
+	}
 	return v, e
 }
 func (s *Server) getSettings(w http.ResponseWriter, r *http.Request, u *User) (any, error) {
@@ -43,7 +54,10 @@ func (s *Server) saveSettings(w http.ResponseWriter, r *http.Request, u *User) (
 		return nil, e
 	}
 	in.InstanceName = strings.TrimSpace(in.InstanceName)
-	if in.InstanceName == "" || len(in.InstanceName) > 120 {
+	if in.UseDefaultName {
+		in.InstanceName = ""
+	}
+	if !in.UseDefaultName && (in.InstanceName == "" || len(in.InstanceName) > 120) {
 		return nil, bad("实例名称为 1–120 字节")
 	}
 	if in.UploadLimitMB < 1 || in.UploadLimitMB > 1024 || in.StorageLimitMB < 10 || in.StorageLimitMB > 1048576 || in.AuditDays < 7 || in.AuditDays > 365 {

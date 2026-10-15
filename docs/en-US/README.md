@@ -144,3 +144,5 @@ All current guides use `docs/<locale>/` with English directory and file names. S
 ## Monitor editing and archiving
 
 Use Edit on a monitor to change its complete configuration. Blank passwords keep saved credentials; a new password replaces them, and Clear saved credentials removes them. HTTP/TCP/SSL clear database credentials. Updates use optimistic versions and reset the current state and schedule, cancelling queued jobs. Existing history and unresolved alerts are retained. Archive requires confirmation and stops future checks. Read-only members have neither action. A 409 conflict refreshes server data while retaining your form; reopen the editor to review the latest configuration before saving again.
+
+The default instance name follows the interface language (English: “My monitoring center”). In System settings, select “Use the default instance name” to restore that behavior. Custom names remain exactly as entered in every language. Untouched legacy defaults are recognized automatically; previously saved names are preserved until you explicitly choose the default.

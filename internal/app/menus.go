@@ -110,8 +110,14 @@ func (s *Server) navigation(w http.ResponseWriter, r *http.Request, u *User) (an
 		return out
 	}
 	var name string
-	e = s.Store.DB.QueryRowContext(r.Context(), "SELECT instance_name FROM system_settings WHERE id=1").Scan(&name)
-	return map[string]any{"items": walk(""), "instanceName": name}, e
+	var version int
+	e = s.Store.DB.QueryRowContext(r.Context(), "SELECT instance_name,version FROM system_settings WHERE id=1").Scan(&name, &version)
+	nameKey := ""
+	if defaultInstanceName(name, version) {
+		nameKey = "我的监控中心"
+		name = ""
+	}
+	return map[string]any{"items": walk(""), "instanceName": name, "instanceNameKey": nameKey}, e
 }
 func validateMenu(in *menuInput) error {
 	in.Name = strings.TrimSpace(in.Name)

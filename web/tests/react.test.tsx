@@ -836,3 +836,44 @@ it("hides monitor edit and archive controls for readers", () => {
     }),
   ).toBeNull();
 });
+
+it("localizes the default instance name in the shell in all five languages", async () => {
+  render(<App />);
+  await screen.findByRole("button", {
+    name: "My monitoring center Monitor Go",
+  });
+  for (const locale of locales) {
+    await act(() => setLocale(locale.code));
+    expect(
+      screen.getByRole("button", { name: `${t("我的监控中心")} Monitor Go` }),
+    ).toBeTruthy();
+  }
+});
+it("preserves a custom Chinese instance name when the interface is English", async () => {
+  fixtures["/me/navigation"].instanceName = "我的监控中心";
+  fixtures["/me/navigation"].instanceNameKey = "";
+  render(<App />);
+  expect(
+    await screen.findByRole("button", { name: "我的监控中心 Monitor Go" }),
+  ).toBeTruthy();
+});
+it("translates the default name in settings and keeps an unsaved custom name on language changes", async () => {
+  render(<SettingsView />);
+  const toggle = await screen.findByLabelText(
+    t("使用默认实例名称（随界面语言切换）"),
+  );
+  await waitFor(() =>
+    expect((toggle as HTMLInputElement).disabled).toBe(false),
+  );
+  const input = screen.getByLabelText(t("名称"), {
+    exact: true,
+  }) as HTMLInputElement;
+  expect(input.value).toBe("My monitoring center");
+  expect(input.disabled).toBe(true);
+  fireEvent.click(toggle);
+  fireEvent.change(input, { target: { value: "我的研发监控" } });
+  for (const locale of locales) {
+    await act(() => setLocale(locale.code));
+    expect(input.value).toBe("我的研发监控");
+  }
+});
