@@ -1,3 +1,5 @@
+import { notice, errorMessage, type DisplayMessage } from "../lib/messages";
+import Form from "../components/Form";
 import { useEffect, useState, type CSSProperties } from "react";
 import { createStore, useStore } from "zustand";
 import Icon from "../components/Icon";
@@ -33,7 +35,7 @@ export default function MenusView() {
     icons: [] as string[],
     permissions: [] as PermissionGroup[],
     revision: "",
-    error: "",
+    error: "" as DisplayMessage,
     loading: true,
     busy: false,
     editing: false,
@@ -119,7 +121,7 @@ export default function MenusView() {
       store.setState({ revision: v.revision });
       store.setState({ error: "" });
     } catch (e) {
-      store.setState({ error: (e as Error).message });
+      store.setState({ error: errorMessage(e) });
     } finally {
       store.setState({ loading: false });
     }
@@ -169,9 +171,9 @@ export default function MenusView() {
       store.setState({ editing: false });
       await load();
       await refreshNavigation();
-      notify(t("菜单已保存，导航已更新"));
+      notify(notice("菜单已保存，导航已更新"));
     } catch (e) {
-      store.setState({ error: (e as Error).message });
+      store.setState({ error: errorMessage(e) });
     } finally {
       store.setState({ busy: false });
     }
@@ -191,9 +193,9 @@ export default function MenusView() {
       store.setState({ confirm: "" });
       await load();
       await refreshNavigation();
-      notify(t("菜单配置已更新"));
+      notify(notice("菜单配置已更新"));
     } catch (e) {
-      store.setState({ error: (e as Error).message });
+      store.setState({ error: errorMessage(e) });
     } finally {
       store.setState({ busy: false });
     }
@@ -401,7 +403,7 @@ export default function MenusView() {
             </>
           }
         >
-          <form
+          <Form
             id="menu-form"
             className="form"
             onSubmit={(event) => {
@@ -619,7 +621,7 @@ export default function MenusView() {
                 {viewState.error}
               </p>
             ) : null}
-          </form>
+          </Form>
         </Modal>
       ) : null}
       {viewState.confirm ? (

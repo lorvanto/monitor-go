@@ -219,7 +219,7 @@ func (s *Server) saveRelease(w http.ResponseWriter, r *http.Request, u *User) (a
 				return e
 			}
 		}
-		return auditRequest(tx, r, u.Name, "保存安装包（"+map[string]string{"draft": "草稿", "published": "已发布", "withdrawn": "已下架"}[in.State]+"）", a.Name+" / "+in.VersionName+" / "+in.Name)
+		return auditRequest(tx, r, u.Name, map[string]string{"draft": "保存安装包（草稿）", "published": "保存安装包（已发布）", "withdrawn": "保存安装包（已下架）"}[in.State], a.Name+" / "+in.VersionName+" / "+in.Name)
 	})
 	return map[string]string{"id": idText(id)}, e
 }

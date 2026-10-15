@@ -4,6 +4,13 @@ User-visible changes belong here. Entries under **Unreleased** describe the curr
 
 ## Unreleased
 
+### English UI and form validation
+
+- Localize native field-validation bubbles, stored errors and transient notices across setup, sign-in and dialogs, including in-flight responses and language switches without resubmission. Preserve typed drafts and translate untouched default editor names.
+- Carry the UI language on file/package downloads and image requests. API errors retain their readable message and add translation keys and arguments.
+- Keep new empty check groups language-neutral and distinguish default-group filtering from all groups. Preserve existing names and historical data; no schema or dependency change.
+- Complete 24 missing fixed audit-action translations without rewriting stored history. Add dialog/selector, HTTP, SQLite and language-switch regressions; reject Chinese catalog values in English and enforce shared form validation.
+
 ### Bounded read concurrency
 
 - Keep one writer and route reporting queries through two read-only SQLite connections, protected by URI mode and per-connection query-only pragmas. Preserve transactional reads, authorization and scheduling paths, migrations, seed and backup behavior.

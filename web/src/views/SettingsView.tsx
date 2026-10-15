@@ -1,3 +1,5 @@
+import { notice, errorMessage, type DisplayMessage } from "../lib/messages";
+import Form from "../components/Form";
 import { resourceName } from "../lib/resourceLabels";
 import { useEffect, useState } from "react";
 import { createStore, useStore } from "zustand";
@@ -64,7 +66,7 @@ export default function SettingsView() {
       parentId: string;
       nameKey?: string;
     }[],
-    error: "",
+    error: "" as DisplayMessage,
     busy: false,
     clear: false,
     loading: true,
@@ -93,7 +95,7 @@ export default function SettingsView() {
       }
       store.setState({ error: "" });
     } catch (e) {
-      store.setState({ error: (e as Error).message });
+      store.setState({ error: errorMessage(e) });
     } finally {
       store.setState({ loading: false });
     }
@@ -114,9 +116,9 @@ export default function SettingsView() {
       await api("/settings", "PATCH", store.getState().form);
       await load();
       await refreshNavigation();
-      notify(t("系统设置已保存"));
+      notify(notice("系统设置已保存"));
     } catch (e) {
-      store.setState({ error: (e as Error).message });
+      store.setState({ error: errorMessage(e) });
     } finally {
       store.setState({ busy: false });
     }
@@ -128,9 +130,9 @@ export default function SettingsView() {
         removed: number;
       }>("/files/cache/clear", "POST", {});
       store.setState({ clear: false });
-      notify(t("已清理 {p0} 个缓存文件", { p0: v.removed }));
+      notify(notice("已清理 {p0} 个缓存文件", { p0: v.removed }));
     } catch (e) {
-      store.setState({ error: (e as Error).message });
+      store.setState({ error: errorMessage(e) });
     } finally {
       store.setState({ busy: false });
     }
@@ -178,7 +180,7 @@ export default function SettingsView() {
         </div>
       ) : null}
       <div className="settings">
-        <form
+        <Form
           id="system-settings"
           className="settings-main"
           onSubmit={(event) => {
@@ -457,7 +459,7 @@ export default function SettingsView() {
               {t("当前账号只能查看设置，修改需要“修改系统设置”权限。")}
             </p>
           ) : null}
-        </form>
+        </Form>
         <aside className="settings-side">
           <section className="panel">
             <header className="panel-head ruled">

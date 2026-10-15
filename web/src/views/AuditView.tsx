@@ -1,3 +1,5 @@
+import { errorMessage, type DisplayMessage } from "../lib/messages";
+import Form from "../components/Form";
 import { Fragment, useEffect, useRef, useState } from "react";
 import { createStore, useStore } from "zustand";
 import Icon from "../components/Icon";
@@ -22,7 +24,7 @@ export default function AuditView() {
     to: "",
     more: false,
     loading: false,
-    error: "",
+    error: "" as DisplayMessage,
     expanded: "",
   };
   type LocalState = typeof initialState;
@@ -71,7 +73,7 @@ export default function AuditView() {
       store.setState({ more: result.hasMore });
     } catch (e) {
       if (request === sequence.current)
-        store.setState({ error: (e as Error).message });
+        store.setState({ error: errorMessage(e) });
     } finally {
       if (request === sequence.current) store.setState({ loading: false });
     }
@@ -119,7 +121,7 @@ export default function AuditView() {
         </div>
       ) : null}
       <section className="panel">
-        <form
+        <Form
           className="toolbar audit-filter"
           onSubmit={(event) => {
             event.preventDefault();
@@ -175,7 +177,7 @@ export default function AuditView() {
               {t("清除条件")}
             </button>
           ) : null}
-        </form>
+        </Form>
         {viewState.items.length ? (
           <div className="table-wrap">
             <table className="table">

@@ -57,12 +57,16 @@ const availabilityQuery = `WITH samples AS (
  FROM check_results WHERE rolled_up=0 AND at>=? AND at<? GROUP BY monitor_id,at/3600000
 )
 SELECT s.monitor_id,s.at,sum(s.total),sum(s.good),sum(s.latency_sum),max(s.latency_max)
-FROM samples s JOIN monitors m ON m.id=s.monitor_id WHERE m.deleted_at IS NULL AND (?='' OR m.group_name=?)
+FROM samples s JOIN monitors m ON m.id=s.monitor_id WHERE m.deleted_at IS NULL AND (?=0 OR m.group_name=?)
 GROUP BY s.monitor_id,s.at ORDER BY s.monitor_id,s.at`
 
 func (s *Server) availability(ctx context.Context, hours, at int64, group string) (AvailabilityReport, error) {
+	return s.availabilityFiltered(ctx, hours, at, group, group != "")
+}
+
+func (s *Server) availabilityFiltered(ctx context.Context, hours, at int64, group string, filter bool) (AvailabilityReport, error) {
 	report := AvailabilityReport{From: (at - hours*hourMillis) / hourMillis * hourMillis, To: at, Hours: hours, Items: []Availability{}, Points: []Point{}}
-	rows, err := s.Store.reader().QueryContext(ctx, availabilityQuery, report.From, at, report.From, at, group, group)
+	rows, err := s.Store.reader().QueryContext(ctx, availabilityQuery, report.From, at, report.From, at, filter, group)
 	if err != nil {
 		return report, err
 	}
@@ -129,5 +133,6 @@ func (s *Server) monitorAvailability(w http.ResponseWriter, r *http.Request, u *
 	if hours != 720 && hours != 2160 {
 		return nil, bad("长期可用率仅支持 30 天或 90 天")
 	}
-	return s.availability(r.Context(), hours, now(), r.URL.Query().Get("group"))
+	group := r.URL.Query().Get("group")
+	return s.availabilityFiltered(r.Context(), hours, now(), group, group != "" || r.URL.Query().Get("ungrouped") == "1")
 }

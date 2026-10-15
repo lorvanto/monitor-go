@@ -12,6 +12,9 @@ export { locales, type Locale } from "./locale";
 
 // Source messages are stable gettext-style IDs. Catalogs never contain HTML.
 export type MessageKey = keyof typeof zhCN;
+export function isMessageKey(value: unknown): value is MessageKey {
+  return typeof value === "string" && Object.hasOwn(enUS, value);
+}
 type Catalog = Record<MessageKey, string>;
 const catalogs: Partial<Record<Locale, Catalog>> = { "en-US": enUS };
 const loaders = {

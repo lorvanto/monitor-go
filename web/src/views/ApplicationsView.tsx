@@ -1,3 +1,5 @@
+import { notice, errorMessage, type DisplayMessage } from "../lib/messages";
+import Form from "../components/Form";
 import { useEffect, useRef, useState } from "react";
 import { createStore, useStore } from "zustand";
 import Icon from "../components/Icon";
@@ -17,7 +19,7 @@ export default function ApplicationsView() {
     items: [] as Application[],
     selected: "",
     search: "",
-    error: "",
+    error: "" as DisplayMessage,
     loading: true,
     busy: false,
     editing: false,
@@ -73,7 +75,7 @@ export default function ApplicationsView() {
       store.setState({ error: "" });
     } catch (e) {
       if (request === loadSequence.current)
-        store.setState({ error: (e as Error).message });
+        store.setState({ error: errorMessage(e) });
     } finally {
       if (request === loadSequence.current) store.setState({ loading: false });
     }
@@ -98,7 +100,7 @@ export default function ApplicationsView() {
       }
     } catch (e) {
       if (request === keysSequence.current && id === store.getState().selected)
-        store.setState({ error: (e as Error).message });
+        store.setState({ error: errorMessage(e) });
     } finally {
       if (request === keysSequence.current && id === store.getState().selected)
         store.setState({ keyLoading: false });
@@ -135,9 +137,9 @@ export default function ApplicationsView() {
       store.setState({ editing: false });
       store.setState({ selected: v.id });
       await load();
-      notify(t("应用已保存"));
+      notify(notice("应用已保存"));
     } catch (e) {
-      store.setState({ error: (e as Error).message });
+      store.setState({ error: errorMessage(e) });
     } finally {
       store.setState({ busy: false });
     }
@@ -174,7 +176,7 @@ export default function ApplicationsView() {
       await load();
       await loadKeys();
     } catch (e) {
-      store.setState({ error: (e as Error).message });
+      store.setState({ error: errorMessage(e) });
     } finally {
       store.setState({ busy: false });
     }
@@ -196,9 +198,9 @@ export default function ApplicationsView() {
       store.setState({ confirm: "" });
       await load();
       await loadKeys();
-      notify(t("操作已完成"));
+      notify(notice("操作已完成"));
     } catch (e) {
-      store.setState({ error: (e as Error).message });
+      store.setState({ error: errorMessage(e) });
     } finally {
       store.setState({ busy: false });
     }
@@ -206,9 +208,9 @@ export default function ApplicationsView() {
   async function copy(value: string) {
     try {
       await navigator.clipboard.writeText(value);
-      notify(t("已复制"));
+      notify(notice("已复制"));
     } catch {
-      notify(t("复制失败，请手动选择复制"), true);
+      notify(notice("复制失败，请手动选择复制"), true);
     }
   }
   function status(k: ApplicationKey) {
@@ -674,7 +676,7 @@ export default function ApplicationsView() {
             </>
           }
         >
-          <form
+          <Form
             id="application-form"
             className="form"
             onSubmit={(event) => {
@@ -766,7 +768,7 @@ export default function ApplicationsView() {
                 {viewState.error}
               </p>
             ) : null}
-          </form>
+          </Form>
         </Modal>
       ) : null}
       {viewState.keyEditing ? (
@@ -801,7 +803,7 @@ export default function ApplicationsView() {
             </>
           }
         >
-          <form
+          <Form
             id="key-form"
             className="form"
             onSubmit={(event) => {
@@ -891,7 +893,7 @@ export default function ApplicationsView() {
                 {viewState.error}
               </p>
             ) : null}
-          </form>
+          </Form>
         </Modal>
       ) : null}
       {viewState.secret ? (

@@ -1,3 +1,5 @@
+import { notice, errorMessage, type DisplayMessage } from "../lib/messages";
+import Form from "../components/Form";
 import { resourceName } from "../lib/resourceLabels";
 import { useEffect, useState } from "react";
 import { createStore, useStore } from "zustand";
@@ -28,7 +30,7 @@ export default function RolesView() {
     busy: false,
     newName: "",
     newDescription: "",
-    error: "",
+    error: "" as DisplayMessage,
     userOpen: false,
     editing: null as User | null,
     username: "",
@@ -36,7 +38,7 @@ export default function RolesView() {
     password: "",
     enabled: true,
     userRoles: [] as string[],
-    userError: "",
+    userError: "" as DisplayMessage,
   };
   type LocalState = typeof initialState;
   const [store] = useState(() => createStore<LocalState>(() => initialState));
@@ -96,7 +98,7 @@ export default function RolesView() {
           permissions: store.getState().draft,
           version: store.getState().baseVersion,
         }),
-      t("角色权限已保存，受影响成员需要重新登录"),
+      notice("角色权限已保存，受影响成员需要重新登录"),
     );
     if (ok) {
       store.setState({ sensitiveConfirm: false });
@@ -123,9 +125,9 @@ export default function RolesView() {
       store.setState({ createOpen: false });
       store.setState({ newName: "" });
       store.setState({ newDescription: "" });
-      notify(t("角色已创建，请分配权限"));
+      notify(notice("角色已创建，请分配权限"));
     } catch (e) {
-      store.setState({ error: (e as Error).message });
+      store.setState({ error: errorMessage(e) });
     } finally {
       store.setState({ busy: false });
     }
@@ -173,9 +175,9 @@ export default function RolesView() {
         },
       );
       store.setState({ userOpen: false });
-      await action(async () => {}, t("成员资料与授权已保存"));
+      await action(async () => {}, notice("成员资料与授权已保存"));
     } catch (e) {
-      store.setState({ userError: (e as Error).message });
+      store.setState({ userError: errorMessage(e) });
     } finally {
       store.setState({ busy: false });
     }
@@ -545,7 +547,7 @@ export default function RolesView() {
             </>
           }
         >
-          <form
+          <Form
             id="role-form"
             className="form"
             onSubmit={(event) => {
@@ -586,7 +588,7 @@ export default function RolesView() {
                 {viewState.error}
               </p>
             ) : null}
-          </form>
+          </Form>
         </Modal>
       ) : null}
       {viewState.sensitiveConfirm && role ? (
@@ -702,7 +704,7 @@ export default function RolesView() {
             </>
           }
         >
-          <form
+          <Form
             id="user-form"
             className="form"
             onSubmit={(event) => {
@@ -793,7 +795,7 @@ export default function RolesView() {
                 {viewState.userError}
               </p>
             ) : null}
-          </form>
+          </Form>
         </Modal>
       ) : null}
     </>

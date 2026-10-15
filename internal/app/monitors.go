@@ -132,9 +132,7 @@ func (i *monitorInput) validate() error {
 	if len(i.Name) == 0 || len(i.Name) > 100 || len(i.Target) == 0 || len(i.Target) > 2048 || len(i.Group) > 80 || len(i.Username) > 128 || len(i.Password) > 1024 {
 		return bad("检测名称、地址或分组长度不正确")
 	}
-	if i.Group == "" {
-		i.Group = "默认分组"
-	}
+	// Empty groups use a localized display default; never persist a translated label.
 	if i.Interval < 15 || i.Interval > 86400 || i.Timeout < 1 || i.Timeout > 30 || i.Timeout >= i.Interval || i.Threshold < 1 || i.Threshold > 10 || i.SSLDays < 1 || i.SSLDays > 90 {
 		return bad("周期 15–86400 秒；超时 1–30 秒且短于周期；失败阈值 1–10 次；证书提醒 1–90 天")
 	}

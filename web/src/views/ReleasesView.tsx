@@ -1,3 +1,12 @@
+import { apiLink } from "../lib/apiLinks";
+import {
+  errorMessage,
+  LocalizedError,
+  notice,
+  responseMessage,
+  type DisplayMessage,
+} from "../lib/messages";
+import Form from "../components/Form";
 import { resourceName } from "../lib/resourceLabels";
 import { useEffect, useRef, useState } from "react";
 import { createStore, useStore } from "zustand";
@@ -55,7 +64,7 @@ export default function ReleasesView() {
     state: "",
     loading: true,
     busy: false,
-    error: "",
+    error: "" as DisplayMessage,
     editing: false,
     target: undefined as Release | undefined,
     detail: undefined as Release | undefined,
@@ -111,8 +120,7 @@ export default function ReleasesView() {
         await load();
       }
     } catch (e) {
-      if (seq === loadSeq.current)
-        store.setState({ error: (e as Error).message });
+      if (seq === loadSeq.current) store.setState({ error: errorMessage(e) });
     } finally {
       if (seq === loadSeq.current) store.setState({ loading: false });
     }
@@ -150,8 +158,7 @@ export default function ReleasesView() {
       store.setState({ files: v.items });
       store.setState({ fileTotal: v.total });
     } catch (e) {
-      if (seq === fileSeq.current)
-        store.setState({ error: (e as Error).message });
+      if (seq === fileSeq.current) store.setState({ error: errorMessage(e) });
     } finally {
       if (seq === fileSeq.current) store.setState({ fileLoading: false });
     }
@@ -222,7 +229,7 @@ export default function ReleasesView() {
         await loadFiles();
       } catch (e) {
         if (request === editSeq.current)
-          store.setState({ error: (e as Error).message });
+          store.setState({ error: errorMessage(e) });
       }
     }
   }
@@ -244,7 +251,7 @@ export default function ReleasesView() {
     if (!file || store.getState().uploading || store.getState().busy) return;
     if (!file.size || file.size > store.getState().uploadLimit * 1048576) {
       store.setState({
-        error: t("文件不能为空，且不能超过 {p0} MB", {
+        error: notice("文件不能为空，且不能超过 {p0} MB", {
           p0: store.getState().uploadLimit,
         }),
       });
@@ -273,12 +280,12 @@ export default function ReleasesView() {
       try {
         const v = JSON.parse(request.responseText);
         if (request.status !== 200)
-          throw new Error(v.error?.message || t("上传失败"));
+          throw new LocalizedError(responseMessage(v.error, "上传失败"));
         selectFile(v.data);
-        notify(t("安装文件已上传"));
+        notify(notice("安装文件已上传"));
         loadFiles();
       } catch (e) {
-        store.setState({ error: (e as Error).message });
+        store.setState({ error: errorMessage(e) });
       } finally {
         store.setState({ uploading: false });
         xhr.current = undefined;
@@ -286,7 +293,7 @@ export default function ReleasesView() {
     };
     request.onerror = request.ontimeout = () => {
       store.setState({
-        error: t("上传失败或超时，请检查网络并刷新文件列表"),
+        error: notice("上传失败或超时，请检查网络并刷新文件列表"),
       });
       store.setState({ uploading: false });
       xhr.current = undefined;
@@ -312,9 +319,9 @@ export default function ReleasesView() {
       fileSeq.current++;
       store.setState({ editing: false, fileLoading: false });
       await load();
-      notify(t("安装包已保存"));
+      notify(notice("安装包已保存"));
     } catch (e) {
-      store.setState({ error: (e as Error).message });
+      store.setState({ error: errorMessage(e) });
     } finally {
       store.setState({ busy: false });
     }
@@ -329,9 +336,9 @@ export default function ReleasesView() {
       });
       store.setState({ archive: undefined });
       await load();
-      notify(t("安装包已归档，原文件仍保留在文件管理中"));
+      notify(notice("安装包已归档，原文件仍保留在文件管理中"));
     } catch (e) {
-      store.setState({ error: (e as Error).message });
+      store.setState({ error: errorMessage(e) });
     } finally {
       store.setState({ busy: false });
     }
@@ -410,7 +417,7 @@ export default function ReleasesView() {
         </div>
       ) : (
         <section className="panel">
-          <form
+          <Form
             className="toolbar"
             onSubmit={(event) => {
               event.preventDefault();
@@ -466,7 +473,7 @@ export default function ReleasesView() {
             <button disabled={viewState.loading} className="btn">
               {t("搜索")}
             </button>
-          </form>
+          </Form>
           {viewState.items.length ? (
             <div className="table-wrap">
               <table className="table">
@@ -527,7 +534,9 @@ export default function ReleasesView() {
                           <div className="row-actions tight">
                             {downloadable(v) ? (
                               <a
-                                href={`/api/v1/releases/${v.id}/download`}
+                                href={apiLink(
+                                  `/api/v1/releases/${v.id}/download`,
+                                )}
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 aria-label={t("下载 {p0} {p1}", {
@@ -664,7 +673,7 @@ export default function ReleasesView() {
             </>
           }
         >
-          <form
+          <Form
             id="release-form"
             className="form"
             onSubmit={(event) => {
@@ -1050,7 +1059,7 @@ export default function ReleasesView() {
                 {viewState.error}
               </p>
             ) : null}
-          </form>
+          </Form>
         </Modal>
       ) : null}
       {viewState.detail ? (
@@ -1073,7 +1082,9 @@ export default function ReleasesView() {
               </button>
               {downloadable(viewState.detail) ? (
                 <a
-                  href={`/api/v1/releases/${viewState.detail.id}/download`}
+                  href={apiLink(
+                    `/api/v1/releases/${viewState.detail.id}/download`,
+                  )}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="btn primary"

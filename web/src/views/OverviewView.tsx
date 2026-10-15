@@ -1,3 +1,10 @@
+import {
+  groupName,
+  groupOption,
+  matchesGroup,
+  groupQuery,
+} from "../lib/monitorGroups";
+import { errorMessage, type DisplayMessage } from "../lib/messages";
 import { hostName } from "../lib/resourceLabels";
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { createStore, useStore } from "zustand";
@@ -31,7 +38,7 @@ export default function OverviewView() {
     scope: "",
     summary: { at: 0, points: [], activity: [] } as Overview,
     overall: null as Overview | null,
-    error: "",
+    error: "" as DisplayMessage,
   };
   type LocalState = typeof initialState;
   const [store] = useState(() => createStore<LocalState>(() => initialState));
@@ -45,8 +52,8 @@ export default function OverviewView() {
   const getScoped = () =>
     appStore
       .getState()
-      .data.monitors.filter(
-        (m) => !store.getState().scope || m.group === store.getState().scope,
+      .data.monitors.filter((m) =>
+        matchesGroup(m.group, store.getState().scope),
       );
   const getTotals = () => store.getState().overall || store.getState().summary;
   const count = (status: string) =>
@@ -245,7 +252,7 @@ export default function OverviewView() {
         // Short-range availability stays at 24 hours; long ranges use hourly summaries.
         const [v, all] = await Promise.all([
           api<Overview>(
-            `/overview?hours=${hours(store.getState().period)}&group=${encodeURIComponent(store.getState().scope)}`,
+            `/overview?hours=${hours(store.getState().period)}${groupQuery(store.getState().scope)}`,
           ),
           store.getState().scope
             ? api<Overview>(
@@ -260,7 +267,7 @@ export default function OverviewView() {
         }
       } catch (e) {
         if (request === sequence.current)
-          store.setState({ error: (e as Error).message });
+          store.setState({ error: errorMessage(e) });
       }
     })();
   }, [viewState.period, viewState.scope, appState.updatedAt]);
@@ -454,7 +461,9 @@ export default function OverviewView() {
                 <h2>{t("服务检测")}</h2>
                 <p>
                   {t("{p0}的平均响应时间与最近检测结果", {
-                    p0: viewState.scope || t("全部分组"),
+                    p0: viewState.scope
+                      ? groupName(viewState.scope.slice("group:".length))
+                      : t("全部分组"),
                   })}
                 </p>
               </div>
@@ -499,8 +508,8 @@ export default function OverviewView() {
                       <option value="">{t("全部分组")}</option>
                       <>
                         {groups.map((g) => (
-                          <option key={g} value={g}>
-                            {g}
+                          <option key={g} value={groupOption(g)}>
+                            {groupName(g)}
                           </option>
                         ))}
                       </>

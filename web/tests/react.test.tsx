@@ -1314,3 +1314,180 @@ it("keeps explicit menu-name drafts unchanged through all five locales", async (
   );
   await act(async () => {});
 });
+
+// These fixtures model untouched defaults from a fresh installation, not translated user data.
+function englishDialogFixtures() {
+  for (const key of ["/files", "/files/tree"]) {
+    fixtures[key].items.forEach((f: any) => {
+      f.nameKey = f.name;
+      if (f.creator === "系统") f.creatorKey = "系统";
+    });
+  }
+  fixtures["/image-styles"].forEach((s: any) => (s.nameKey = s.name));
+  fixtures["/applications"] = [
+    {
+      id: "1",
+      name: "Test application",
+      slug: "test",
+      enabled: true,
+      version: 1,
+      description: "",
+    },
+  ];
+  fixtures["/applications/1/keys"] = { items: [], scopes: [] };
+  const roles = fixtures["/roles"].map((r: any) => ({
+    ...r,
+    nameKey: r.name,
+    descriptionKey: r.description,
+  }));
+  appStore.setState({ data: { ...appStore.getState().data, roles } });
+}
+function assertEnglishDialog(dialog: HTMLElement) {
+  const text = [
+    dialog.textContent,
+    ...Array.from(
+      dialog.querySelectorAll<HTMLInputElement | HTMLTextAreaElement>(
+        "input, textarea",
+      ),
+    )
+      .filter((f) => f.type !== "password")
+      .map((f) => f.value),
+    ...Array.from(
+      dialog.querySelectorAll("[title], [placeholder], [aria-label]"),
+    ).flatMap((f) => [
+      f.getAttribute("title"),
+      f.getAttribute("placeholder"),
+      f.getAttribute("aria-label"),
+    ]),
+  ].join("\n");
+  expect(text).not.toMatch(/[\u3400-\u9fff]/u);
+}
+it.each([
+  [MonitorsView, "新增检测"],
+  [FilesView, "新建文件夹"],
+  [RolesView, "新建角色"],
+  [RolesView, "添加成员"],
+  [MenusView, "新增菜单"],
+  [ApplicationsView, "创建应用"],
+  [ReleasesView, "新建版本"],
+  [SettingsView, "清理图片缓存"],
+] as const)(
+  "renders an English dialog and dropdowns (%#)",
+  async (Page, key) => {
+    englishDialogFixtures();
+    render(<Page />);
+    await act(async () => {});
+    const buttons = screen.getAllByRole("button", {
+      name: t(key),
+    });
+    fireEvent.click(buttons[0]);
+    assertEnglishDialog(await screen.findByRole("dialog"));
+  },
+);
+
+it("keeps seeded file rename and image-style drafts localized until explicitly edited", async () => {
+  englishDialogFixtures();
+  await setLocale("zh-CN");
+  render(<FilesView />);
+  await act(async () => {});
+  fireEvent.click(screen.getAllByRole("button", { name: t("编辑") })[0]);
+  const name = within(screen.getByRole("dialog")).getByPlaceholderText(
+    t("输入名称"),
+  ) as HTMLInputElement;
+  for (const locale of locales) {
+    await act(() => setLocale(locale.code));
+    expect(name.value).toBe(t("未分类"));
+  }
+  fireEvent.change(name, { target: { value: "自定义目录" } });
+  await act(() => setLocale("en-US"));
+  expect(name.value).toBe("自定义目录");
+  fireEvent.click(
+    within(screen.getByRole("dialog")).getByRole("button", { name: t("取消") }),
+  );
+  fireEvent.click(screen.getByRole("button", { name: /Image styles/ }));
+  fireEvent.click(screen.getAllByRole("button", { name: t("编辑") })[0]);
+  const style = screen.getByPlaceholderText(
+    t("例如：文章封面"),
+  ) as HTMLInputElement;
+  for (const locale of locales) {
+    await act(() => setLocale(locale.code));
+    expect(style.value).toBe(t("列表缩略图"));
+  }
+  fireEvent.change(style, { target: { value: "自定义样式" } });
+  await act(() => setLocale("en-US"));
+  expect(style.value).toBe("自定义样式");
+});
+
+it("keeps the default monitor group dynamic and custom group drafts intact", async () => {
+  await setLocale("zh-CN");
+  render(<MonitorsView />);
+  fireEvent.click(screen.getAllByRole("button", { name: t("新增检测") })[0]);
+  const group = within(screen.getByRole("dialog")).getByLabelText(t("分组"), {
+    exact: true,
+  }) as HTMLInputElement;
+  for (const locale of locales) {
+    await act(() => setLocale(locale.code));
+    expect(group.value).toBe("");
+    expect(group.placeholder).toBe(t("默认分组"));
+  }
+  fireEvent.change(group, { target: { value: "生产环境" } });
+  await act(() => setLocale("en-US"));
+  expect(group.value).toBe("生产环境");
+});
+
+it("translates audit action metadata, including release states, while retaining resource names", async () => {
+  const actions = [
+    "切换检测启停",
+    "更新角色权限",
+    "保存通知渠道",
+    "保存安装包（草稿）",
+    "保存安装包（已发布）",
+    "保存安装包（已下架）",
+    "调整事件静默时间",
+    "轮换应用密钥",
+  ];
+  fixtures["/audit"] = {
+    items: actions.map((action, i) => ({
+      id: String(i),
+      at: 1,
+      actor: "Test admin",
+      action,
+      resource: "用户原文",
+      requestId: "",
+      method: "POST",
+      path: "/test",
+    })),
+    hasMore: false,
+  };
+  render(<AuditView />);
+  await act(async () => {});
+  for (const action of actions)
+    expect(screen.getByText(t(action as Parameters<typeof t>[0]))).toBeTruthy();
+  expect(
+    screen.getByRole("table").textContent?.replaceAll("用户原文", ""),
+  ).not.toMatch(/[\u3400-\u9fff]/u);
+});
+
+it("filters the default monitor group separately from all and explicitly named groups", async () => {
+  const monitors = [
+    { ...editableMonitor(), id: "default", name: "Default target", group: "" },
+    {
+      ...editableMonitor(),
+      id: "named",
+      name: "Named target",
+      group: "Production",
+    },
+  ];
+  appStore.setState({ data: { ...appStore.getState().data, monitors } });
+  render(<MonitorsView />);
+  fireEvent.change(screen.getByRole("combobox", { name: t("分组") }), {
+    target: { value: "group:" },
+  });
+  expect(screen.getByText("Default target", { exact: true })).toBeTruthy();
+  expect(screen.queryByText("Named target", { exact: true })).toBeNull();
+  await act(() => setLocale("ja-JP"));
+  expect(
+    (screen.getByRole("combobox", { name: t("分组") }) as HTMLSelectElement)
+      .value,
+  ).toBe("group:");
+});

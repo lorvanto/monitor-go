@@ -1,3 +1,5 @@
+import { notice, errorMessage, type DisplayMessage } from "../lib/messages";
+import Form from "../components/Form";
 import { useState } from "react";
 import { createStore, useStore } from "zustand";
 import Icon from "../components/Icon";
@@ -26,7 +28,7 @@ export default function CodesView() {
     },
     result: undefined as Result | undefined,
     busy: false,
-    error: "",
+    error: "" as DisplayMessage,
     generatedInput: "",
   };
   type LocalState = typeof initialState;
@@ -75,7 +77,7 @@ export default function CodesView() {
       });
       store.setState({ generatedInput: snapshot });
     } catch (e) {
-      store.setState({ error: (e as Error).message });
+      store.setState({ error: errorMessage(e) });
     } finally {
       store.setState({ busy: false });
     }
@@ -118,7 +120,7 @@ export default function CodesView() {
     a.click();
     a.remove();
     setTimeout(() => URL.revokeObjectURL(url), 10000);
-    notify(t("{p0} 已导出", { p0: format.toUpperCase() }));
+    notify(notice("{p0} 已导出", { p0: format.toUpperCase() }));
   }
 
   const dirty = getDirty();
@@ -164,7 +166,7 @@ export default function CodesView() {
           <header className="panel-head ruled">
             <h2>{t("内容与尺寸")}</h2>
           </header>
-          <form
+          <Form
             className="form panel-body pad"
             onSubmit={(event) => {
               event.preventDefault();
@@ -315,7 +317,7 @@ export default function CodesView() {
                     p0: viewState.mode === "qr" ? t("二维码") : t("条码"),
                   })}
             </button>
-          </form>
+          </Form>
         </section>
         <section className="panel">
           <header className="panel-head">

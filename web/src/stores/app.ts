@@ -1,3 +1,12 @@
+import {
+  notice,
+  errorMessage,
+  message,
+  responseMessage,
+  LocalizedError,
+  type Message,
+  type DisplayMessage,
+} from "../lib/messages";
 import { create } from "zustand";
 import { i18nStore, localizedLabels, metadataLabel, t, useI18n } from "../i18n";
 import type {
@@ -55,7 +64,7 @@ interface AppState {
   user: User | null;
   initialized: boolean;
   booting: boolean;
-  connectionError: string;
+  connectionError: DisplayMessage;
   updatedAt: number;
   openAlertCount: number;
   page: Page;
@@ -64,7 +73,7 @@ interface AppState {
   activeHost: string;
   activeMonitor: string;
   createMonitorRequested: boolean;
-  toasts: { id: number; message: string; error: boolean }[];
+  toasts: { id: number; message: DisplayMessage; error: boolean }[];
   checking: string[];
 }
 const emptyData = (): AppData => ({
@@ -162,7 +171,7 @@ export function syncLocation() {
 }
 export function navigate(target: Page) {
   if (!can(pagePermissions[target])) {
-    notify(t("当前账号没有该页面的权限"), true);
+    notify(notice("当前账号没有该页面的权限"), true);
     return;
   }
   appStore.setState({ page: target, menuOpen: false });
@@ -173,7 +182,7 @@ export function startMonitorCreate() {
   appStore.setState({ createMonitorRequested: true });
   navigate("monitors");
 }
-export function notify(message: string, error = false) {
+export function notify(message: DisplayMessage, error = false) {
   const id = Date.now() + Math.random();
   appStore.setState((state) => ({
     toasts: [...state.toasts, { id, message, error }],
@@ -186,10 +195,10 @@ export function notify(message: string, error = false) {
     5000,
   );
 }
-export class APIError extends Error {
+export class APIError extends LocalizedError {
   constructor(
     public status: number,
-    message: string,
+    message: string | Message,
   ) {
     super(message);
   }
@@ -204,9 +213,9 @@ appStore.subscribe((state, previous) => {
   )
     sessionVersion++;
 });
-class SessionChangedError extends Error {
+class SessionChangedError extends LocalizedError {
   constructor() {
-    super(t("登录已失效，请重新登录"));
+    super(message("登录已失效，请重新登录"));
   }
 }
 function clearSession() {
@@ -251,19 +260,22 @@ export async function api<T>(
     });
   } catch {
     if (session !== sessionVersion) throw new SessionChangedError();
-    throw new APIError(0, t("无法连接服务，请检查 Go 后端是否正在运行"));
+    throw new APIError(0, message("无法连接服务，请检查 Go 后端是否正在运行"));
   }
   if (session !== sessionVersion) throw new SessionChangedError();
-  let json: { data: T; error?: { message?: string } };
+  let json: {
+    data: T;
+    error?: { message?: string; key?: string; args?: (string | number)[] };
+  };
   try {
     json = await response.json();
   } catch {
-    throw new APIError(response.status, t("服务返回异常，请稍后重试"));
+    throw new APIError(response.status, message("服务返回异常，请稍后重试"));
   }
   if (session !== sessionVersion) throw new SessionChangedError();
   if (!response.ok) {
     if (response.status === 401 && path !== "/auth/login") clearSession();
-    throw new APIError(response.status, json.error?.message || t("请求失败"));
+    throw new APIError(response.status, responseMessage(json.error));
   }
   return json.data;
 }
@@ -396,7 +408,7 @@ async function loadAll(session: number, page: Page, afterMutation: boolean) {
       e instanceof SessionChangedError
     )
       return;
-    const message = (e as Error).message;
+    const message = errorMessage(e);
     appStore.setState({ connectionError: message });
     if (!(e instanceof APIError && e.status === 401)) notify(message, true);
   }
@@ -420,7 +432,7 @@ export async function boot() {
     }
   } catch (e) {
     if (attempt === authAttempt && !(e instanceof SessionChangedError))
-      appStore.setState({ connectionError: (e as Error).message });
+      appStore.setState({ connectionError: errorMessage(e) });
   } finally {
     if (attempt === authAttempt) appStore.setState({ booting: false });
   }
@@ -438,11 +450,11 @@ export async function signIn(input: unknown, setup = false) {
 export async function logout() {
   const attempt = ++authAttempt;
   sessionVersion++;
-  let error = "";
+  let error: DisplayMessage = "";
   try {
     await api("/auth/logout", "POST", {});
   } catch (e) {
-    if (!(e instanceof SessionChangedError)) error = (e as Error).message;
+    if (!(e instanceof SessionChangedError)) error = errorMessage(e);
   } finally {
     if (attempt === authAttempt) {
       clearSession();
@@ -450,7 +462,10 @@ export async function logout() {
     }
   }
 }
-export async function action(fn: () => Promise<unknown>, message?: string) {
+export async function action(
+  fn: () => Promise<unknown>,
+  message?: DisplayMessage,
+) {
   const session = sessionVersion;
   try {
     await fn();
@@ -461,7 +476,7 @@ export async function action(fn: () => Promise<unknown>, message?: string) {
     return true;
   } catch (e) {
     if (session === sessionVersion && !(e instanceof SessionChangedError))
-      notify((e as Error).message, true);
+      notify(errorMessage(e), true);
     return false;
   }
 }
@@ -479,8 +494,9 @@ export async function runCheck(ids: string[]) {
     if (session !== sessionVersion) return;
     const ok = results.filter((r) => r.status === "fulfilled").length;
     const failed = results.find((r) => r.status === "rejected");
-    if (ok) notify(t("已提交 {p0} 项检测，结果将自动刷新", { p0: ok }));
-    if (failed?.status === "rejected") notify(failed.reason.message, true);
+    if (ok) notify(notice("已提交 {p0} 项检测，结果将自动刷新", { p0: ok }));
+    if (failed?.status === "rejected")
+      notify(errorMessage(failed.reason), true);
   } finally {
     if (session === sessionVersion)
       appStore.setState((state) => ({

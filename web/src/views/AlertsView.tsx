@@ -1,3 +1,4 @@
+import { notice } from "../lib/messages";
 import { useEffect, useState } from "react";
 import { createStore, useStore } from "zustand";
 import Icon from "../components/Icon";
@@ -141,7 +142,7 @@ export default function AlertsView() {
         api(`/alerts/${getSelected()!.id}/acknowledgements`, "POST", {
           version: getSelected()!.version,
         }),
-      t("已确认并接手告警"),
+      notice("已确认并接手告警"),
     );
     store.setState({ busy: false });
   }
@@ -160,7 +161,7 @@ export default function AlertsView() {
             version: target.version,
             minutes: store.getState().minutes,
           }),
-        t("事件静默状态已保存"),
+        notice("事件静默状态已保存"),
       )
     )
       store.setState({ silenceOpen: false });

@@ -1,3 +1,5 @@
+import { notice, errorMessage, type DisplayMessage } from "../lib/messages";
+import Form from "../components/Form";
 import { hostName } from "../lib/resourceLabels";
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { createStore, useStore } from "zustand";
@@ -32,10 +34,11 @@ export default function HostView() {
     period: "24h",
     edit: false,
     draft: "",
+    nameEdited: false,
     editTarget: undefined as Host | undefined,
     metricsFor: "",
     metrics: [] as HostMetric[],
-    error: "",
+    error: "" as DisplayMessage,
     saving: false,
     hostQuery: "",
   };
@@ -82,7 +85,7 @@ export default function HostView() {
   function startEdit() {
     if (!getHost()) return;
     store.setState({ draft: hostName(getHost()) });
-    store.setState({ editTarget: getHost() });
+    store.setState({ editTarget: getHost(), nameEdited: false });
     store.setState({ edit: true });
   }
   async function save() {
@@ -93,10 +96,13 @@ export default function HostView() {
       await action(
         () =>
           api(`/hosts/${target.id}`, "PATCH", {
-            alias: store.getState().draft,
+            alias:
+              !store.getState().nameEdited && target.aliasKey
+                ? hostName(target)
+                : store.getState().draft,
             version: target.version,
           }),
-        t("主机备注已保存"),
+        notice("主机备注已保存"),
       )
     )
       store.setState({ edit: false });
@@ -106,7 +112,7 @@ export default function HostView() {
     const ip = getHost()?.inventory.ips.join(", ") || t("无可用地址");
     try {
       await navigator.clipboard.writeText(ip);
-      notify(t("已复制主机地址"));
+      notify(notice("已复制主机地址"));
     } catch {
       notify(ip);
     }
@@ -145,7 +151,7 @@ export default function HostView() {
           store.setState({ error: "" });
         }
       } catch (e) {
-        if (id === seq.current) store.setState({ error: (e as Error).message });
+        if (id === seq.current) store.setState({ error: errorMessage(e) });
       }
     })();
     return () => {
@@ -681,7 +687,7 @@ export default function HostView() {
             </>
           }
         >
-          <form
+          <Form
             id="host-form"
             className="form"
             onSubmit={(event) => {
@@ -694,16 +700,23 @@ export default function HostView() {
               <input
                 maxLength={60}
                 placeholder={t("例如：生产应用服务器")}
-                value={viewState.draft}
+                value={
+                  !viewState.nameEdited && viewState.editTarget?.aliasKey
+                    ? hostName(viewState.editTarget)
+                    : viewState.draft
+                }
                 onChange={(event) => {
-                  store.setState({ draft: event.currentTarget.value });
+                  store.setState({
+                    draft: event.currentTarget.value,
+                    nameEdited: true,
+                  });
                 }}
               />
               <small>
                 {t("备注显示在主机列表和总览中，留空时显示主机名。")}
               </small>
             </label>
-          </form>
+          </Form>
         </Modal>
       ) : null}
     </>

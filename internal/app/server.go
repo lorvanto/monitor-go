@@ -188,20 +188,24 @@ func (s *Server) Handler() http.Handler {
 			}
 			if err != nil {
 				status := 500
-				message := "操作失败，请稍后重试"
+				key := "操作失败，请稍后重试"
+				var args []any
 				var ae *apiError
 				var fe *formattedError
 				if errors.As(err, &ae) {
 					status = ae.Status
-					message = locales.Text(language, ae.Message)
+					key = ae.Message
 				} else if errors.As(err, &fe) {
 					status = 422
-					message = locales.Format(language, fe.key, fe.args...)
+					key, args = fe.key, fe.args
 				} else {
-					message = locales.Text(language, message)
 					slog.Error("API 请求失败", "request_id", requestID, "path", r.URL.Path, "error", err)
 				}
-				output(w, status, map[string]any{"error": map[string]any{"message": message}, "request_id": requestID})
+				message := locales.Text(language, key)
+				if len(args) > 0 {
+					message = locales.Format(language, key, args...)
+				}
+				output(w, status, map[string]any{"error": map[string]any{"message": message, "key": key, "args": args}, "request_id": requestID})
 				return
 			}
 			if _, ok := data.(streamed); ok {

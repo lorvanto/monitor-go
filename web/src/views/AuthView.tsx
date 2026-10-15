@@ -1,3 +1,5 @@
+import { errorMessage, type DisplayMessage } from "../lib/messages";
+import Form from "../components/Form";
 import { useState } from "react";
 import { createStore, useStore } from "zustand";
 import BrandMark from "../components/BrandMark";
@@ -11,7 +13,7 @@ export default function AuthView() {
     password: "",
     name: "",
     token: "",
-    error: "",
+    error: "" as DisplayMessage,
     busy: false,
   };
   type LocalState = typeof initialState;
@@ -38,7 +40,7 @@ export default function AuthView() {
         !appStore.getState().initialized,
       );
     } catch (e) {
-      store.setState({ error: (e as Error).message });
+      store.setState({ error: errorMessage(e) });
     } finally {
       store.setState({ busy: false });
     }
@@ -78,7 +80,7 @@ export default function AuthView() {
               </button>
             </div>
           ) : null}
-          <form
+          <Form
             className="panel auth-panel form"
             onSubmit={(event) => {
               event.preventDefault();
@@ -165,7 +167,7 @@ export default function AuthView() {
                   ? t("正在创建…")
                   : t("创建管理员并进入")}
             </button>
-          </form>
+          </Form>
           <p className="auth-foot">
             {t("数据保存在这台服务器的 SQLite 文件中")}
           </p>

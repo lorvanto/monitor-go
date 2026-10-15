@@ -1,3 +1,4 @@
+import { notice, errorMessage, type DisplayMessage } from "../lib/messages";
 import { useState } from "react";
 import { createStore, useStore } from "zustand";
 import { t, useI18n } from "../i18n";
@@ -21,7 +22,7 @@ export default function AgentAccess(inputProps: { host?: Host }) {
     mode: "create",
     alias: "",
     busy: false,
-    failure: "",
+    failure: "" as DisplayMessage,
     target: undefined as Host | undefined,
     result: undefined as
       | { id: string; token: string; expiresAt: number }
@@ -70,13 +71,13 @@ export default function AgentAccess(inputProps: { host?: Host }) {
       await refreshAll(true);
       if (store.getState().mode === "revoke") {
         store.setState({ open: false });
-        notify(t("Agent 接入已撤销，旧凭据立即失效"));
+        notify(notice("Agent 接入已撤销，旧凭据立即失效"));
       } else {
         appStore.setState({ activeHost: store.getState().result!.id });
-        notify(t("接入码已生成，有效期 15 分钟"));
+        notify(notice("接入码已生成，有效期 15 分钟"));
       }
     } catch (e) {
-      store.setState({ failure: (e as Error).message });
+      store.setState({ failure: errorMessage(e) });
     } finally {
       store.setState({ busy: false });
     }
@@ -84,9 +85,9 @@ export default function AgentAccess(inputProps: { host?: Host }) {
   async function copy(text: string) {
     try {
       await navigator.clipboard.writeText(text);
-      notify(t("已复制"));
+      notify(notice("已复制"));
     } catch {
-      notify(t("无法访问剪贴板，请手动复制"), true);
+      notify(notice("无法访问剪贴板，请手动复制"), true);
     }
   }
   function download() {

@@ -29,6 +29,11 @@ for (const code of codes) {
     const value = catalogs[code][key];
     assert.equal(typeof value, "string", `${code}: ${key}`);
     assert.ok(value.trim(), `${code}: empty message ${key}`);
+    if (code === "en-US")
+      assert.ok(
+        !/[\u3400-\u9fff]/u.test(value),
+        `English catalog contains Chinese text: ${key}`,
+      );
     assert.deepEqual(
       tokens(value),
       tokens(key),
@@ -39,6 +44,12 @@ for (const code of codes) {
 // JSX visible text and literal attributes must use the shared catalogs.
 // Message keys in expressions are checked by TypeScript.
 function inspect(node, file) {
+  if (ts.isJsxOpeningElement(node) && node.tagName.getText() === "form")
+    assert.equal(
+      file,
+      path.join("components", "Form.tsx"),
+      `${file}: use Form for localized browser validation`,
+    );
   if (ts.isJsxText(node)) {
     assert.ok(
       !/[\u3400-\u9fff]/u.test(node.text),

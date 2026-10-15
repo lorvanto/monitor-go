@@ -1,3 +1,6 @@
+import { groupName, groupOption, matchesGroup } from "../lib/monitorGroups";
+import { notice, errorMessage, type DisplayMessage } from "../lib/messages";
+import Form from "../components/Form";
 import { useEffect, useRef, useState } from "react";
 import { createStore, useStore } from "zustand";
 import Icon from "../components/Icon";
@@ -28,7 +31,7 @@ export default function MonitorsView() {
     query: "",
     availabilityPeriod: "24h",
     availability: {} as Record<string, number | null>,
-    availabilityError: "",
+    availabilityError: "" as DisplayMessage,
     type: "",
     group: "",
     tab: "all",
@@ -39,12 +42,12 @@ export default function MonitorsView() {
     archiving: null as Monitor | null,
     clearPassword: false,
     busy: false,
-    error: "",
+    error: "" as DisplayMessage,
     form: {
       name: "",
       target: "",
       type: "HTTP",
-      group: t("默认分组"),
+      group: "",
       interval: 60,
       timeout: 10,
       expected: 200,
@@ -85,7 +88,7 @@ export default function MonitorsView() {
           if (active && request === availabilitySequence.current)
             store.setState({
               availability: {},
-              availabilityError: (error as Error).message,
+              availabilityError: errorMessage(error),
             });
         });
     }
@@ -155,7 +158,7 @@ export default function MonitorsView() {
               .toLowerCase()
               .includes(store.getState().query.toLowerCase())) &&
           (!store.getState().type || m.type === store.getState().type) &&
-          (!store.getState().group || m.group === store.getState().group) &&
+          matchesGroup(m.group, store.getState().group) &&
           (store.getState().tab === "all" ||
             (store.getState().tab === "attention"
               ? ["failed", "warning", "unknown"].includes(m.status)
@@ -178,7 +181,7 @@ export default function MonitorsView() {
           version: m.version,
           enabled: !m.enabled,
         }),
-      m.enabled ? t("检测已暂停") : t("已启用，等待真实检测"),
+      m.enabled ? notice("检测已暂停") : notice("已启用，等待真实检测"),
     );
   }
   function openCreate() {
@@ -223,9 +226,9 @@ export default function MonitorsView() {
     try {
       await api(`/monitors/${m.id}`, "DELETE", { version: m.version });
       store.setState({ archiving: null, detailID: "" });
-      await action(async () => {}, t("检测目标已归档"));
+      await action(async () => {}, notice("检测目标已归档"));
     } catch (e) {
-      store.setState({ error: (e as Error).message });
+      store.setState({ error: errorMessage(e) });
       if (e instanceof APIError && e.status === 409) await refreshAll(true);
     } finally {
       store.setState({ busy: false });
@@ -253,9 +256,9 @@ export default function MonitorsView() {
       store.setState((current) => ({
         form: { ...current.form, password: "" },
       }));
-      await action(async () => {}, t("检测目标已保存，调度器将自动执行"));
+      await action(async () => {}, notice("检测目标已保存，调度器将自动执行"));
     } catch (e) {
-      store.setState({ error: (e as Error).message });
+      store.setState({ error: errorMessage(e) });
       if (e instanceof APIError && e.status === 409) await refreshAll(true);
     } finally {
       store.setState({ busy: false });
@@ -269,7 +272,7 @@ export default function MonitorsView() {
         m.type,
         m.target,
         statusLabel(m.status),
-        m.group,
+        groupName(m.group),
         dateTime(m.checkedAt),
       ]),
     ];
@@ -298,7 +301,7 @@ export default function MonitorsView() {
     a.download = t("监控检测.csv");
     a.click();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
-    notify(t("已导出 {p0} 项检测", { p0: getFiltered().length }));
+    notify(notice("已导出 {p0} 项检测", { p0: getFiltered().length }));
   }
   function resetFilter() {
     store.setState({ query: "" });
@@ -467,7 +470,9 @@ export default function MonitorsView() {
             <option value="">{t("全部分组")}</option>
             <>
               {groups.map((g) => (
-                <option key={g}>{g}</option>
+                <option key={g} value={groupOption(g)}>
+                  {groupName(g)}
+                </option>
               ))}
             </>
           </select>
@@ -762,7 +767,7 @@ export default function MonitorsView() {
             </>
           }
         >
-          <form
+          <Form
             id="monitor-form"
             className="form"
             onSubmit={(event) => {
@@ -815,6 +820,7 @@ export default function MonitorsView() {
                 {t("分组")}
                 <input
                   maxLength={80}
+                  placeholder={t("默认分组")}
                   value={viewState.form.group}
                   onChange={(event) => {
                     store.setState((current) => ({
@@ -1095,7 +1101,7 @@ export default function MonitorsView() {
                 {viewState.error}
               </p>
             ) : null}
-          </form>
+          </Form>
         </Modal>
       ) : null}
       {viewState.archiving ? (
@@ -1139,7 +1145,10 @@ export default function MonitorsView() {
         <Modal
           drawer
           title={detail.name}
-          subtitle={t("{p0} 检测，{p1}", { p0: detail.type, p1: detail.group })}
+          subtitle={t("{p0} 检测，{p1}", {
+            p0: detail.type,
+            p1: groupName(detail.group),
+          })}
           onClose={() => {
             store.setState({ detailID: "" });
           }}

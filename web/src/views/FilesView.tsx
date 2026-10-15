@@ -1,3 +1,13 @@
+import { apiLink } from "../lib/apiLinks";
+import {
+  errorMessage,
+  LocalizedError,
+  message,
+  notice,
+  responseMessage,
+  type DisplayMessage,
+} from "../lib/messages";
+import Form from "../components/Form";
 import { resourceName } from "../lib/resourceLabels";
 import {
   Fragment,
@@ -77,13 +87,13 @@ export default function FilesView() {
     total: 0,
     layout: "grid" as "grid" | "list",
     loading: true,
-    error: "",
+    error: "" as DisplayMessage,
     busy: false,
     dragging: false,
     uploading: false,
     progress: 0,
     uploadName: "",
-    uploadFailures: [] as string[],
+    uploadFailures: [] as DisplayMessage[],
     mode: "" as
       | ""
       | "folder"
@@ -95,7 +105,9 @@ export default function FilesView() {
       | "archive-style",
     target: undefined as Entry | undefined,
     styleTarget: undefined as Style | undefined,
-    modalError: "",
+    modalError: "" as DisplayMessage,
+    nameEdited: false,
+    styleNameEdited: false,
     form: { name: "", parentId: "1", confirm: "" },
     styleForm: {
       name: "",
@@ -186,7 +198,9 @@ export default function FilesView() {
   const getImageURL = () => {
     const { preview, previewStyle } = store.getState();
     return preview
-      ? `/api/v1/files/${preview.file.id}/image${previewStyle ? "?style=" + previewStyle : ""}`
+      ? apiLink(
+          `/api/v1/files/${preview.file.id}/image${previewStyle ? "?style=" + previewStyle : ""}`,
+        )
       : "";
   };
 
@@ -211,8 +225,7 @@ export default function FilesView() {
       const lastPage = Math.max(1, Math.ceil(v.total / 50));
       if (store.getState().page > lastPage) store.setState({ page: lastPage });
     } catch (e) {
-      if (request === seq.current)
-        store.setState({ error: (e as Error).message });
+      if (request === seq.current) store.setState({ error: errorMessage(e) });
     } finally {
       if (request === seq.current) store.setState({ loading: false });
     }
@@ -232,7 +245,7 @@ export default function FilesView() {
       await load();
     } catch (e) {
       if (request !== reloadSeq.current || disposed.current) return;
-      store.setState({ error: (e as Error).message });
+      store.setState({ error: errorMessage(e) });
       store.setState({ loading: false });
     }
   }
@@ -270,7 +283,7 @@ export default function FilesView() {
     );
   }
   function openAction(action: LocalState["mode"], item?: Entry) {
-    store.setState({ mode: action });
+    store.setState({ mode: action, nameEdited: false });
     store.setState({ target: item });
     store.setState((current) => ({
       form: { ...current.form, name: resourceName(item) },
@@ -290,7 +303,7 @@ export default function FilesView() {
     store.setState({ modalError: "" });
   }
   function openStyle(item?: Style) {
-    store.setState({ styleTarget: item });
+    store.setState({ styleTarget: item, styleNameEdited: false });
     store.setState({
       styleForm: {
         ...store.getState().styleForm,
@@ -321,12 +334,18 @@ export default function FilesView() {
       const f = store.getState().target;
       if (store.getState().mode === "folder")
         await api("/files/folders", "POST", {
-          name: store.getState().form.name,
+          name:
+            !store.getState().nameEdited && store.getState().target?.nameKey
+              ? resourceName(store.getState().target)
+              : store.getState().form.name,
           parentId: store.getState().form.parentId,
         });
       if (store.getState().mode === "edit" && f)
         await api(`/files/${f.id}`, "PATCH", {
-          name: store.getState().form.name,
+          name:
+            !store.getState().nameEdited && store.getState().target?.nameKey
+              ? resourceName(store.getState().target)
+              : store.getState().form.name,
           parentId: store.getState().form.parentId,
           version: f.version,
         });
@@ -334,7 +353,10 @@ export default function FilesView() {
         await api(`/files/${f.id}`, "DELETE", { version: f.version });
       if (store.getState().mode === "restore" && f)
         await api(`/files/${f.id}/restore`, "POST", {
-          name: store.getState().form.name,
+          name:
+            !store.getState().nameEdited && store.getState().target?.nameKey
+              ? resourceName(store.getState().target)
+              : store.getState().form.name,
           parentId: store.getState().form.parentId,
           version: f.version,
         });
@@ -347,7 +369,13 @@ export default function FilesView() {
         await api(
           styleTarget ? `/image-styles/${styleTarget.id}` : "/image-styles",
           styleTarget ? "PATCH" : "POST",
-          store.getState().styleForm,
+          {
+            ...store.getState().styleForm,
+            name:
+              !store.getState().styleNameEdited && styleTarget?.nameKey
+                ? resourceName(styleTarget)
+                : store.getState().styleForm.name,
+          },
         );
       if (store.getState().mode === "archive-style" && styleTarget)
         await api(`/image-styles/${styleTarget.id}`, "DELETE", {
@@ -355,9 +383,9 @@ export default function FilesView() {
         });
       store.setState({ mode: "" });
       await reload();
-      notify(t("操作已保存"));
+      notify(notice("操作已保存"));
     } catch (e) {
-      store.setState({ modalError: (e as Error).message });
+      store.setState({ modalError: errorMessage(e) });
     } finally {
       store.setState({ busy: false });
     }
@@ -383,7 +411,7 @@ export default function FilesView() {
       store.setState({ imageError: false });
     } catch (e) {
       if (request === previewSeq.current && !disposed.current)
-        notify((e as Error).message, true);
+        notify(errorMessage(e), true);
     }
   }
   function uploadOne(file: File, folder: string) {
@@ -405,14 +433,14 @@ export default function FilesView() {
         try {
           const v = JSON.parse(xhr.responseText);
           if (xhr.status >= 200 && xhr.status < 300) resolve();
-          else reject(new Error(v.error?.message || t("上传失败")));
+          else reject(new LocalizedError(responseMessage(v.error, "上传失败")));
         } catch {
-          reject(new Error(t("上传响应异常")));
+          reject(new LocalizedError(message("上传响应异常")));
         }
       };
-      xhr.onerror = () => reject(new Error(t("连接中断")));
-      xhr.ontimeout = () => reject(new Error(t("上传超时")));
-      xhr.onabort = () => reject(new Error(t("上传已取消")));
+      xhr.onerror = () => reject(new LocalizedError(message("连接中断")));
+      xhr.ontimeout = () => reject(new LocalizedError(message("上传超时")));
+      xhr.onabort = () => reject(new LocalizedError(message("上传已取消")));
       const body = new FormData();
       body.append("file", file);
       xhr.send(body);
@@ -428,7 +456,7 @@ export default function FilesView() {
       return;
     const selected = Array.from(files);
     if (selected.length > 50) {
-      notify(t("每批最多上传 50 个文件"), true);
+      notify(notice("每批最多上传 50 个文件"), true);
       return;
     }
     store.setState({ uploading: true });
@@ -446,7 +474,7 @@ export default function FilesView() {
         store.setState({
           uploadFailures: [
             ...store.getState().uploadFailures,
-            t("{p0}：文件为空或超过 {p1} MB", {
+            notice("{p0}：文件为空或超过 {p1} MB", {
               p0: file.name,
               p1: store.getState().tree.uploadLimitMB,
             }),
@@ -461,7 +489,9 @@ export default function FilesView() {
         store.setState({
           uploadFailures: [
             ...store.getState().uploadFailures,
-            `${file.name}：${(e as Error).message}`,
+            <>
+              {file.name}: {errorMessage(e)}
+            </>,
           ],
         });
       }
@@ -471,7 +501,7 @@ export default function FilesView() {
     if (input.current) input.current.value = "";
     if (!disposed.current) {
       await reload();
-      if (count) notify(t("已上传 {p0} 个文件", { p0: count }));
+      if (count) notify(notice("已上传 {p0} 个文件", { p0: count }));
     }
   }
   function dropped(e: React.DragEvent<HTMLDivElement>) {
@@ -608,8 +638,8 @@ export default function FilesView() {
           <div className="banner-text">
             <strong>{t("以下文件没有上传成功")}</strong>
             <>
-              {viewState.uploadFailures.map((f) => (
-                <p key={f}>{f}</p>
+              {viewState.uploadFailures.map((f, index) => (
+                <p key={index}>{f}</p>
               ))}
             </>
           </div>
@@ -835,7 +865,9 @@ export default function FilesView() {
                               imageFile(f) &&
                               can("file:read") ? (
                                 <img
-                                  src={`/api/v1/files/${f.id}/image?size=thumb`}
+                                  src={apiLink(
+                                    `/api/v1/files/${f.id}/image?size=thumb`,
+                                  )}
                                   alt={resourceName(f)}
                                   loading="lazy"
                                 />
@@ -883,7 +915,9 @@ export default function FilesView() {
                                   ) : null}
                                   {f.kind === "file" && can("file:download") ? (
                                     <a
-                                      href={`/api/v1/files/${f.id}/download`}
+                                      href={apiLink(
+                                        `/api/v1/files/${f.id}/download`,
+                                      )}
                                       download
                                       className="link"
                                     >
@@ -997,7 +1031,9 @@ export default function FilesView() {
                                         {f.kind === "file" &&
                                         can("file:download") ? (
                                           <a
-                                            href={`/api/v1/files/${f.id}/download`}
+                                            href={apiLink(
+                                              `/api/v1/files/${f.id}/download`,
+                                            )}
                                             download
                                             className="link"
                                           >
@@ -1248,7 +1284,7 @@ export default function FilesView() {
             </>
           }
         >
-          <form
+          <Form
             id="file-action"
             className="form"
             onSubmit={(event) => {
@@ -1264,13 +1300,18 @@ export default function FilesView() {
                     required
                     maxLength={66}
                     placeholder={t("输入名称")}
-                    value={viewState.form.name}
+                    value={
+                      !viewState.nameEdited && viewState.target?.nameKey
+                        ? resourceName(viewState.target)
+                        : viewState.form.name
+                    }
                     onChange={(event) => {
                       store.setState((current) => ({
                         form: {
                           ...current.form,
                           name: event.currentTarget.value,
                         },
+                        nameEdited: true,
                       }));
                     }}
                   />
@@ -1309,13 +1350,19 @@ export default function FilesView() {
                     required
                     maxLength={33}
                     placeholder={t("例如：文章封面")}
-                    value={viewState.styleForm.name}
+                    value={
+                      !viewState.styleNameEdited &&
+                      viewState.styleTarget?.nameKey
+                        ? resourceName(viewState.styleTarget)
+                        : viewState.styleForm.name
+                    }
                     onChange={(event) => {
                       store.setState((current) => ({
                         styleForm: {
                           ...current.styleForm,
                           name: event.currentTarget.value,
                         },
+                        styleNameEdited: true,
                       }));
                     }}
                   />
@@ -1444,7 +1491,7 @@ export default function FilesView() {
                 {viewState.modalError}
               </p>
             ) : null}
-          </form>
+          </Form>
         </Modal>
       ) : null}
       {viewState.preview ? (
@@ -1475,7 +1522,9 @@ export default function FilesView() {
               ) : null}
               {can("file:download") ? (
                 <a
-                  href={`/api/v1/files/${viewState.preview.file.id}/download`}
+                  href={apiLink(
+                    `/api/v1/files/${viewState.preview.file.id}/download`,
+                  )}
                   download
                   className="btn primary"
                 >

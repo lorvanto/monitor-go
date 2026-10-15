@@ -55,7 +55,11 @@ func TestLocalizedHTTPAndPersistedNames(t *testing.T) {
 	}
 	raw, _ := io.ReadAll(res.Body)
 	res.Body.Close()
-	if res.StatusCode != 422 || !bytes.Contains(raw, []byte("12")) || !bytes.Contains(raw, []byte("13")) || bytes.Contains(raw, []byte("请输入")) {
+	var validation struct{ Error struct{ Message string } }
+	if err := json.Unmarshal(raw, &validation); err != nil {
+		t.Fatal(err)
+	}
+	if res.StatusCode != 422 || !strings.Contains(validation.Error.Message, "12") || !strings.Contains(validation.Error.Message, "13") || strings.Contains(validation.Error.Message, "请输入") {
 		t.Fatalf("parameterized error: %d %s", res.StatusCode, raw)
 	}
 }

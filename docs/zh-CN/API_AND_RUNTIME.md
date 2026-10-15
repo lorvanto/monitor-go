@@ -6,7 +6,9 @@
 
 ## 当前实际接口与实现边界
 
-文件、本地安装包下载与图片接口返回二进制；其余 JSON 接口成功返回 `data`，失败返回 `error.message`，附带 `request_id`。资源 ID 为字符串，实际时间字段为 UTC Unix 毫秒，前端按浏览器时区显示。此处明确取代下文建议的 RFC3339 时间字段；后续协议变更需统一前后端。
+前端 JSON 与上传请求携带 `Accept-Language`。下载和图片链接通过 `lang` 明确当前显示语言；有效 GET/HEAD 参数优先于请求头，并返回 `Content-Language`。不改变鉴权、状态码、业务数据与文件内容。
+
+文件、本地安装包下载与图片接口返回二进制；其余 JSON 接口成功返回 `data`，失败返回 `error.message`，并携带用于界面切换语言的 `error.key` / `error.args`，附带 `request_id`。资源 ID 为字符串，实际时间字段为 UTC Unix 毫秒，前端按浏览器时区显示。此处明确取代下文建议的 RFC3339 时间字段；后续协议变更需统一前后端。
 
 | 接口 | 已实现行为 |
 |---|---|
@@ -18,12 +20,14 @@
 | `POST /api/v1/tools/codes` | 生成 PNG/SVG base64、返回标准化内容与尺寸；需 `tool:generate` |
 | `GET /api/v1/status`、`POST /api/v1/setup` | 安装状态、一次性初始化码创建管理员 |
 | `POST /api/v1/auth/login`、`POST /api/v1/auth/logout`、`GET /api/v1/me` | Cookie 会话、CSRF、注销、当前权限 |
-| `GET /api/v1/overview?hours=1\|24\|168&group=...` | 权限范围内的真实检测聚合和操作审计 |
+| `GET /api/v1/overview?hours=1\|24\|168\|720\|2160&group=...` | 权限范围内的真实检测聚合和操作审计 |
 | `GET /api/v1/hosts`、`PATCH /api/v1/hosts/{id}` | 本机与远程 Agent、连接状态、备注保存与版本冲突 |
 | `GET /api/v1/hosts/{id}/metrics?hours=1\|24\|168` | CPU、内存、网络时间桶平均值，最多约 181 点 |
-| `GET/POST /api/v1/monitors` | 检测列表与创建，最多 500 个有效目标 |
+| `GET/POST /api/v1/monitors` | 检测列表与创建，最多 500 个有效目标；空分组按界面语言显示默认名称 |
+| `GET /api/v1/monitors/availability?hours=720\|2160` | 30/90 天检测可用率；与总览相同，`group` 非空时筛选指定分组，`ungrouped=1` 筛选空默认分组，省略条件表示全部 |
+| `PUT /api/v1/monitors/{id}` | `{version,...配置,clearPassword}` 完整编辑并检查冲突，保留历史 |
 | `PATCH /api/v1/monitors/{id}` | `{version,enabled}` 启停；不用于其他配置编辑 |
-| `DELETE /api/v1/monitors/{id}` | `{version}` 软归档，当前界面尚无归档入口 |
+| `DELETE /api/v1/monitors/{id}` | `{version}` 软归档，界面提供确认弹窗 |
 | `POST /api/v1/monitors/{id}/checks` | 返回 202 和 `jobId`；同一目标活动任务合并 |
 | `GET /api/v1/alerts` | 活动与最近历史最多 200 条，每条包含最多 100 条时间线 |
 | `POST /api/v1/alerts/{id}/acknowledgements` | `{version}` 认领，保留真实故障状态 |

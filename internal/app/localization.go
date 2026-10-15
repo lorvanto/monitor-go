@@ -16,6 +16,12 @@ func badf(key string, args ...any) error { return &formattedError{key, args} }
 
 func requestLocale(w http.ResponseWriter, r *http.Request) string {
 	code := locales.Negotiate(r.Header.Get("Accept-Language"))
+	// Links and image requests cannot set Accept-Language to the UI preference.
+	if r.Method == http.MethodGet || r.Method == http.MethodHead {
+		if selected := locales.Match(r.URL.Query().Get("lang")); selected != "" {
+			code = selected
+		}
+	}
 	w.Header().Set("Content-Language", code)
 	w.Header().Add("Vary", "Accept-Language")
 	return code

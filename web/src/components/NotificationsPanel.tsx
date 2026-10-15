@@ -1,3 +1,4 @@
+import { notice, errorMessage, type DisplayMessage } from "../lib/messages";
 import { useEffect, useRef, useState } from "react";
 import { createStore, useStore } from "zustand";
 import { t, useI18n } from "../i18n";
@@ -68,10 +69,10 @@ export default function NotificationsPanel(inputProps: {
     channels: [] as Channel[],
     deliveries: [] as Delivery[],
     loading: false,
-    error: "",
+    error: "" as DisplayMessage,
     editing: false,
     busy: false,
-    formError: "",
+    formError: "" as DisplayMessage,
     recipients: "",
     clearSecret: false,
     draft: blank() as Channel,
@@ -101,7 +102,7 @@ export default function NotificationsPanel(inputProps: {
         store.setState({ error: "" });
       }
     } catch (e) {
-      if (n === seq.current) store.setState({ error: (e as Error).message });
+      if (n === seq.current) store.setState({ error: errorMessage(e) });
     } finally {
       if (n === seq.current) store.setState({ loading: false });
     }
@@ -138,10 +139,10 @@ export default function NotificationsPanel(inputProps: {
         },
       );
       store.setState({ editing: false });
-      notify(t("通知渠道已保存"));
+      notify(notice("通知渠道已保存"));
       await load();
     } catch (e) {
-      store.setState({ formError: (e as Error).message });
+      store.setState({ formError: errorMessage(e) });
     } finally {
       store.setState({ busy: false });
     }
@@ -160,12 +161,12 @@ export default function NotificationsPanel(inputProps: {
       store.setState({ confirmation: undefined });
       notify(
         kind === "test"
-          ? t("测试通知已进入队列，请查看投递记录")
-          : t("渠道已归档，投递记录保留"),
+          ? notice("测试通知已进入队列，请查看投递记录")
+          : notice("渠道已归档，投递记录保留"),
       );
       await load();
     } catch (e) {
-      notify((e as Error).message, true);
+      notify(errorMessage(e), true);
     } finally {
       store.setState({ busy: false });
     }
@@ -177,10 +178,10 @@ export default function NotificationsPanel(inputProps: {
         ...{ name: c.name, kind: c.kind, version: c.version, config: c.config },
         enabled: !c.enabled,
       });
-      notify(c.enabled ? t("渠道已停用") : t("渠道已启用"));
+      notify(c.enabled ? notice("渠道已停用") : notice("渠道已启用"));
       await load();
     } catch (e) {
-      notify((e as Error).message, true);
+      notify(errorMessage(e), true);
     } finally {
       store.setState({ busy: false });
     }
@@ -189,10 +190,10 @@ export default function NotificationsPanel(inputProps: {
     store.setState({ busy: true });
     try {
       await api(`/notification-deliveries/${d.id}/retry`, "POST", {});
-      notify(t("已重新加入投递队列"));
+      notify(notice("已重新加入投递队列"));
       await load();
     } catch (e) {
-      notify((e as Error).message, true);
+      notify(errorMessage(e), true);
     } finally {
       store.setState({ busy: false });
     }
