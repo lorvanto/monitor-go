@@ -62,7 +62,7 @@ GROUP BY s.monitor_id,s.at ORDER BY s.monitor_id,s.at`
 
 func (s *Server) availability(ctx context.Context, hours, at int64, group string) (AvailabilityReport, error) {
 	report := AvailabilityReport{From: (at - hours*hourMillis) / hourMillis * hourMillis, To: at, Hours: hours, Items: []Availability{}, Points: []Point{}}
-	rows, err := s.Store.DB.QueryContext(ctx, availabilityQuery, report.From, at, report.From, at, group, group)
+	rows, err := s.Store.reader().QueryContext(ctx, availabilityQuery, report.From, at, report.From, at, group, group)
 	if err != nil {
 		return report, err
 	}

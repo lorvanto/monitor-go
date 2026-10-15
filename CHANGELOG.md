@@ -4,6 +4,11 @@ User-visible changes belong here. Entries under **Unreleased** describe the curr
 
 ## Unreleased
 
+### Bounded read concurrency
+
+- Keep one writer and route reporting queries through two read-only SQLite connections, protected by URI mode and per-connection query-only pragmas. Preserve transactional reads, authorization and scheduling paths, migrations, seed and backup behavior.
+- Add a reproducible concurrent polling/write benchmark and regression coverage for read-only enforcement, WAL snapshots, rollback, connection replacement and shutdown. No schema or dependency change.
+
 ### Hourly history and long-term availability
 
 - Schema 8 adds transactional hourly rollups and pending-row tracking, including idempotent reruns and late results. Raw host/check retention defaults to 7 days (1–30 configurable), check summaries to 90 days (90–730 configurable). Roll up before cleanup; no host summary table is added.

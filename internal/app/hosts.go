@@ -56,7 +56,7 @@ func (s *Server) collect(ctx context.Context) error {
 }
 func (s *Server) hosts(ctx context.Context) ([]Host, error) {
 	out := []Host{}
-	rows, e := s.Store.DB.QueryContext(ctx, "SELECT id,hostname,alias,inventory,snapshot,last_seen,version,source,agent_enabled,agent_version,enrolled_at,enrollment_expires FROM hosts ORDER BY id")
+	rows, e := s.Store.reader().QueryContext(ctx, "SELECT id,hostname,alias,inventory,snapshot,last_seen,version,source,agent_enabled,agent_version,enrolled_at,enrollment_expires FROM hosts ORDER BY id")
 	if e != nil {
 		return nil, e
 	}
@@ -127,7 +127,7 @@ func (s *Server) hostMetrics(w http.ResponseWriter, r *http.Request, u *User) (a
 		return nil, e
 	}
 	bucket := rangeHours(r) * 3600000 / 180
-	rows, e := s.Store.DB.QueryContext(r.Context(), "SELECT (at/?)*?,avg(cpu),avg(memory),avg(net_in),avg(net_out) FROM host_samples WHERE host_id=? AND at>=? GROUP BY at/? ORDER BY at/?", bucket, bucket, id, since(r), bucket, bucket)
+	rows, e := s.Store.reader().QueryContext(r.Context(), "SELECT (at/?)*?,avg(cpu),avg(memory),avg(net_in),avg(net_out) FROM host_samples WHERE host_id=? AND at>=? GROUP BY at/? ORDER BY at/?", bucket, bucket, id, since(r), bucket, bucket)
 	if e != nil {
 		return nil, e
 	}

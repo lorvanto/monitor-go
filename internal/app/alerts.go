@@ -42,7 +42,7 @@ func transitionAlert(tx *sql.Tx, fingerprint, kind string, resourceID int64, res
 }
 func (s *Server) listAlerts(w http.ResponseWriter, r *http.Request, u *User) (any, error) {
 	out := []Alert{}
-	rows, e := s.Store.DB.QueryContext(r.Context(), `SELECT a.id,a.resource_kind,a.resource_id,a.resource,a.title,a.description,a.severity,a.state,a.opened_at,a.recovered_at,coalesce(u.display_name,''),a.silence_until,a.version FROM alerts a LEFT JOIN users u ON u.id=a.ack_by ORDER BY a.state='resolved',a.opened_at DESC LIMIT 200`)
+	rows, e := s.Store.reader().QueryContext(r.Context(), `SELECT a.id,a.resource_kind,a.resource_id,a.resource,a.title,a.description,a.severity,a.state,a.opened_at,a.recovered_at,coalesce(u.display_name,''),a.silence_until,a.version FROM alerts a LEFT JOIN users u ON u.id=a.ack_by ORDER BY a.state='resolved',a.opened_at DESC LIMIT 200`)
 	if e != nil {
 		return nil, e
 	}
@@ -73,7 +73,7 @@ func (s *Server) listAlerts(w http.ResponseWriter, r *http.Request, u *User) (an
         SELECT alert_id,at,actor,message,ROW_NUMBER() OVER(PARTITION BY alert_id ORDER BY id DESC) AS rank
         FROM alert_activity WHERE alert_id IN (` + strings.TrimSuffix(strings.Repeat("?,", len(out)), ",") + `)
     ) WHERE rank<=100 ORDER BY alert_id,rank`
-	rows, e = s.Store.DB.QueryContext(r.Context(), query, args...)
+	rows, e = s.Store.reader().QueryContext(r.Context(), query, args...)
 	if e != nil {
 		return nil, e
 	}
@@ -159,6 +159,6 @@ func (s *Server) changeAlert(r *http.Request, u *User, silence bool) (any, error
 // descriptions and activity histories on unrelated pages.
 func (s *Server) alertSummary(w http.ResponseWriter, r *http.Request, u *User) (any, error) {
 	var count int
-	err := s.Store.DB.QueryRowContext(r.Context(), `SELECT count(*) FROM (SELECT state FROM alerts ORDER BY state='resolved',opened_at DESC LIMIT 200) WHERE state<>'resolved'`).Scan(&count)
+	err := s.Store.reader().QueryRowContext(r.Context(), `SELECT count(*) FROM (SELECT state FROM alerts ORDER BY state='resolved',opened_at DESC LIMIT 200) WHERE state<>'resolved'`).Scan(&count)
 	return map[string]int{"open": count}, err
 }

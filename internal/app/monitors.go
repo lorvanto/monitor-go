@@ -35,7 +35,7 @@ const monitorHistoryQuery = `SELECT monitor_id,at,state,latency,detail FROM (
 ) WHERE rank<=32 ORDER BY monitor_id,rank`
 
 func (s *Server) monitors(ctx context.Context) ([]Monitor, error) {
-	rows, e := s.Store.DB.QueryContext(ctx, "SELECT "+monitorColumns+" FROM monitors WHERE deleted_at IS NULL ORDER BY id DESC")
+	rows, e := s.Store.reader().QueryContext(ctx, "SELECT "+monitorColumns+" FROM monitors WHERE deleted_at IS NULL ORDER BY id DESC")
 	if e != nil {
 		return nil, e
 	}
@@ -58,7 +58,7 @@ func (s *Server) monitors(ctx context.Context) ([]Monitor, error) {
 	for i := range out {
 		byID[out[i].ID] = &out[i]
 	}
-	rows, e = s.Store.DB.QueryContext(ctx, monitorUptimeQuery, now()-86400000)
+	rows, e = s.Store.reader().QueryContext(ctx, monitorUptimeQuery, now()-86400000)
 	if e != nil {
 		return nil, e
 	}
@@ -79,7 +79,7 @@ func (s *Server) monitors(ctx context.Context) ([]Monitor, error) {
 	if e != nil {
 		return nil, e
 	}
-	rows, e = s.Store.DB.QueryContext(ctx, monitorHistoryQuery)
+	rows, e = s.Store.reader().QueryContext(ctx, monitorHistoryQuery)
 	if e != nil {
 		return nil, e
 	}

@@ -46,11 +46,12 @@ var migration8 string
 const currentSchemaVersion = 8
 
 type Store struct {
-	DB    *sql.DB
-	lock  *flock.Flock
-	seal  cipher.AEAD
-	Dir   string
-	Files *os.Root
+	DB     *sql.DB
+	readDB *sql.DB
+	lock   *flock.Flock
+	seal   cipher.AEAD
+	Dir    string
+	Files  *os.Root
 }
 
 func OpenStore(dir string) (*Store, error) {
@@ -87,7 +88,7 @@ func OpenStore(dir string) (*Store, error) {
 		return nil, err
 	}
 	s.DB = db
-	// A single bounded pool serializes writes; transactions never include network I/O.
+	// The writer remains single-connection; transactions never include network I/O.
 	db.SetMaxOpenConns(1)
 	db.SetMaxIdleConns(1)
 	if err = db.Ping(); err != nil {
@@ -178,10 +179,38 @@ func OpenStore(dir string) (*Store, error) {
 			return nil, err
 		}
 	}
+	// Open readers only after migrations and seed have committed. Both URI mode and
+	// per-connection query_only prevent accidental writes through this pool.
+	s.readDB, err = sql.Open("sqlite", (&url.URL{Scheme: "file", Path: path}).String()+"?mode=ro&_pragma=query_only(1)&_pragma=foreign_keys(1)&_pragma=busy_timeout(5000)")
+	if err != nil {
+		return nil, err
+	}
+	s.readDB.SetMaxOpenConns(2)
+	s.readDB.SetMaxIdleConns(2)
+	if err = s.readDB.Ping(); err != nil {
+		return nil, err
+	}
 	success = true
 	return s, nil
 }
+
+// Only reporting queries use readers. Transaction callbacks must read through tx
+// to observe their own uncommitted writes; authorization and coordination stay on DB.
+type readQueries interface {
+	QueryContext(context.Context, string, ...any) (*sql.Rows, error)
+	QueryRowContext(context.Context, string, ...any) *sql.Row
+}
+
+func (s *Store) reader() readQueries {
+	if s.readDB != nil {
+		return s.readDB
+	}
+	return s.DB
+}
 func (s *Store) Close() {
+	if s.readDB != nil && s.readDB != s.DB {
+		s.readDB.Close()
+	}
 	if s.Files != nil {
 		s.Files.Close()
 	}
