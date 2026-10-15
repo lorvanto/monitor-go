@@ -229,3 +229,7 @@ Every shared dialog includes a language selector, so you can switch without clos
 ## Phone layouts and dialogs
 
 On narrow screens, time-range controls wrap and long application, host and alert names break within their panels. Dialog content scrolls independently while close and footer actions remain available. Long context text scrolls with the body; long titles have a bounded scroll area. File/image preview selectors and package-directory controls fit the available width.
+
+## Host operating-system names
+
+The local collector and updated Agents report Apple computers as `macOS <product version>`, using the actual macOS product version. The Darwin kernel release remains separate under System information → Kernel version. Go build/runtime identifiers such as `darwin/arm64` remain technical platform identifiers. Existing remote hosts receive the new name after updating the Agent and its next report; stored history is not rewritten. Docker reports its Linux container environment.

@@ -93,7 +93,12 @@ func (c *Collector) Collect(ctx context.Context) (Report, error) {
 	if e != nil {
 		return Report{}, e
 	}
-	inv := Inventory{OS: strings.TrimSpace(info.Platform + " " + info.PlatformVersion), Kernel: info.KernelVersion, Arch: runtime.GOARCH, Cores: runtime.NumCPU(), BootTime: info.BootTime, Source: "服务端本机采集", IPs: []string{}}
+	platform := info.Platform
+	if strings.EqualFold(platform, "darwin") {
+		// gopsutil reports the kernel name as the platform and sw_vers as its version.
+		platform = "macOS"
+	}
+	inv := Inventory{OS: strings.TrimSpace(platform + " " + info.PlatformVersion), Kernel: info.KernelVersion, Arch: runtime.GOARCH, Cores: runtime.NumCPU(), BootTime: info.BootTime, Source: "服务端本机采集", IPs: []string{}}
 	snap := Snapshot{Uptime: info.Uptime, Disks: []DiskInfo{}, Errors: []string{}}
 	if cpus, e := deps.cpuInfo(ctx); e == nil && len(cpus) > 0 {
 		inv.CPU = cpus[0].ModelName

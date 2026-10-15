@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"runtime"
 	"sync"
 	"testing"
 	"time"
@@ -39,6 +40,44 @@ func fakeDependencies() collectorDependencies {
 		},
 	}
 }
+
+func TestCollectorOperatingSystemProductNameAndVersion(t *testing.T) {
+	for _, tc := range []struct {
+		name     string
+		platform string
+		version  string
+		kernel   string
+		wantOS   string
+	}{
+		{"macOS product version", "darwin", "27.0.1", "27.0.0", "macOS 27.0.1"},
+		{"Darwin case", "Darwin", "15.7", "24.6.0", "macOS 15.7"},
+		{"macOS version unavailable", "darwin", "", "27.0.0", "macOS"},
+		{"Linux distribution", "ubuntu", "24.04", "6.8.0-90-generic", "ubuntu 24.04"},
+		{"Windows product", "Microsoft Windows 11 Pro", "10.0.26100", "10.0.26100.4652", "Microsoft Windows 11 Pro 10.0.26100"},
+		{"FreeBSD", "freebsd", "14.3-RELEASE", "14.3-RELEASE-p1", "freebsd 14.3-RELEASE"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			deps := fakeDependencies()
+			info := &host.InfoStat{OS: "unchanged", Platform: tc.platform, PlatformVersion: tc.version, KernelVersion: tc.kernel}
+			deps.hostInfo = func(context.Context) (*host.InfoStat, error) { return info, nil }
+			collector := Collector{dependencies: &deps}
+			report, err := collector.Collect(context.Background())
+			if err != nil {
+				t.Fatal(err)
+			}
+			if report.Inventory.OS != tc.wantOS || report.Inventory.Kernel != tc.kernel {
+				t.Fatalf("product/kernel display: got %q / %q, want %q / %q", report.Inventory.OS, report.Inventory.Kernel, tc.wantOS, tc.kernel)
+			}
+			if info.OS != "unchanged" || info.Platform != tc.platform || info.PlatformVersion != tc.version || info.KernelVersion != tc.kernel {
+				t.Fatalf("source platform information was modified: %+v", info)
+			}
+			if report.Protocol != 1 || report.Inventory.Arch != runtime.GOARCH {
+				t.Fatalf("report protocol or architecture changed: %+v", report)
+			}
+		})
+	}
+}
+
 func TestCollectorDiskFilteringLimitAndPartialErrors(t *testing.T) {
 	deps := fakeDependencies()
 	calls := map[string]int{}

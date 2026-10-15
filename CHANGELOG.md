@@ -4,6 +4,10 @@ User-visible changes belong here. Entries under **Unreleased** describe the curr
 
 ## Unreleased
 
+### macOS host identity
+
+- Report Apple host inventory as `macOS` with its actual product version, keeping the Darwin kernel release separate. Apply this to local collection and updated Agents without changing Go platform identifiers, Linux/Windows names or stored history.
+
 ### Language selector spacing
 
 - Reserve space between language labels and dropdown arrows in dialogs, sign-in and navigation controls, including narrow layouts.
