@@ -8,6 +8,8 @@ import { i18nStore, t, useI18n } from "../i18n";
 import { classNames } from "../lib/react";
 import {
   action,
+  APIError,
+  refreshAll,
   api,
   appStore,
   can,
@@ -30,6 +32,9 @@ export default function MonitorsView() {
     selected: [] as string[],
     creating: appStore.getState().createMonitorRequested,
     detailID: appStore.getState().activeMonitor,
+    editing: null as { id: string; version: number } | null,
+    archiving: null as Monitor | null,
+    clearPassword: false,
     busy: false,
     error: "",
     form: {
@@ -128,11 +133,65 @@ export default function MonitorsView() {
       m.enabled ? t("检测已暂停") : t("已启用，等待真实检测"),
     );
   }
+  function openCreate() {
+    store.setState({
+      creating: true,
+      editing: null,
+      clearPassword: false,
+      error: "",
+      form: { ...initialState.form },
+    });
+  }
+  function edit(m: Monitor) {
+    store.setState({
+      creating: true,
+      detailID: "",
+      editing: { id: m.id, version: m.version },
+      clearPassword: false,
+      error: "",
+      form: {
+        name: m.name,
+        target: m.target,
+        type: m.type,
+        group: m.group,
+        interval: m.interval,
+        timeout: m.timeout,
+        expected: m.expected,
+        threshold: m.threshold,
+        sslDays: m.sslDays,
+        username: m.username,
+        password: "",
+        tls: m.tls,
+      },
+    });
+  }
+  async function archive() {
+    const m = store.getState().archiving;
+    if (!m) return;
+    store.setState({ busy: true, error: "" });
+    try {
+      await api(`/monitors/${m.id}`, "DELETE", { version: m.version });
+      store.setState({ archiving: null, detailID: "" });
+      await action(async () => {}, t("检测目标已归档"));
+    } catch (e) {
+      store.setState({ error: (e as Error).message });
+      if (e instanceof APIError && e.status === 409) await refreshAll(true);
+    } finally {
+      store.setState({ busy: false });
+    }
+  }
   async function create() {
     store.setState({ error: "" });
     store.setState({ busy: true });
     try {
-      await api("/monitors", "POST", store.getState().form);
+      const { editing, form, clearPassword } = store.getState();
+      if (editing)
+        await api(`/monitors/${editing.id}`, "PUT", {
+          ...form,
+          version: editing.version,
+          clearPassword,
+        });
+      else await api("/monitors", "POST", form);
       store.setState({ creating: false });
       store.setState({ query: "" });
       store.setState({ tab: "all" });
@@ -146,6 +205,7 @@ export default function MonitorsView() {
       await action(async () => {}, t("检测目标已保存，调度器将自动执行"));
     } catch (e) {
       store.setState({ error: (e as Error).message });
+      if (e instanceof APIError && e.status === 409) await refreshAll(true);
     } finally {
       store.setState({ busy: false });
     }
@@ -262,7 +322,7 @@ export default function MonitorsView() {
             <button
               className="btn primary"
               onClick={() => {
-                store.setState({ creating: true, error: "" });
+                openCreate();
               }}
             >
               <Icon name="Plus"></Icon>
@@ -504,6 +564,31 @@ export default function MonitorsView() {
                               ></Icon>
                             </button>
                           ) : null}
+                          {can("monitor:update") ? (
+                            <>
+                              <button
+                                className="icon-btn"
+                                aria-label={t("编辑检测{p0}", { p0: m.name })}
+                                title={t("编辑检测")}
+                                onClick={() => edit(m)}
+                              >
+                                <Icon name="Pencil" size={15} />
+                              </button>
+                              <button
+                                className="icon-btn"
+                                aria-label={t("归档检测{p0}", { p0: m.name })}
+                                title={t("归档检测目标")}
+                                onClick={() =>
+                                  store.setState({
+                                    archiving: { ...m },
+                                    error: "",
+                                  })
+                                }
+                              >
+                                <Icon name="Archive" size={15} />
+                              </button>
+                            </>
+                          ) : null}
                           {!can("monitor:run") && !can("monitor:update") ? (
                             <span className="muted">{t("只读")}</span>
                           ) : null}
@@ -541,7 +626,7 @@ export default function MonitorsView() {
               <button
                 className="btn primary"
                 onClick={() => {
-                  store.setState({ creating: true, error: "" });
+                  openCreate();
                 }}
               >
                 <Icon name="Plus"></Icon>
@@ -570,7 +655,7 @@ export default function MonitorsView() {
       </p>
       {viewState.creating ? (
         <Modal
-          title={t("新增检测")}
+          title={viewState.editing ? t("编辑检测") : t("新增检测")}
           subtitle={t("检测由当前服务器执行，请确认服务器能访问目标地址。")}
           wide
           onClose={() => {
@@ -593,7 +678,11 @@ export default function MonitorsView() {
                 disabled={viewState.busy}
                 className="btn primary"
               >
-                {viewState.busy ? t("正在保存…") : t("创建检测")}
+                {viewState.busy
+                  ? t("正在保存…")
+                  : viewState.editing
+                    ? t("保存")
+                    : t("创建检测")}
               </button>
             </>
           }
@@ -634,7 +723,7 @@ export default function MonitorsView() {
                 {t("名称")}
                 <input
                   required
-                  maxLength={50}
+                  maxLength={100}
                   placeholder={t("例如：订单服务")}
                   value={viewState.form.name}
                   onChange={(event) => {
@@ -650,7 +739,7 @@ export default function MonitorsView() {
               <label className="field">
                 {t("分组")}
                 <input
-                  maxLength={30}
+                  maxLength={80}
                   value={viewState.form.group}
                   onChange={(event) => {
                     store.setState((current) => ({
@@ -812,6 +901,7 @@ export default function MonitorsView() {
                     <input
                       type="password"
                       autoComplete="new-password"
+                      disabled={viewState.clearPassword}
                       value={viewState.form.password}
                       onChange={(event) => {
                         store.setState((current) => ({
@@ -822,9 +912,27 @@ export default function MonitorsView() {
                         }));
                       }}
                     />
-                    <small>{t("加密保存，接口不会返回明文。")}</small>
+                    <small>
+                      {viewState.editing
+                        ? t("留空保持已保存凭据不变")
+                        : t("加密保存，接口不会返回明文。")}
+                    </small>
                   </label>
                 </div>
+                {viewState.editing ? (
+                  <label className="check">
+                    <input
+                      type="checkbox"
+                      checked={viewState.clearPassword}
+                      onChange={(event) =>
+                        store.setState({
+                          clearPassword: event.currentTarget.checked,
+                        })
+                      }
+                    />
+                    {t("清除已保存凭据")}
+                  </label>
+                ) : null}
                 <label className="check">
                   <input
                     type="checkbox"
@@ -854,6 +962,43 @@ export default function MonitorsView() {
               </p>
             ) : null}
           </form>
+        </Modal>
+      ) : null}
+      {viewState.archiving ? (
+        <Modal
+          title={t("归档检测目标")}
+          onClose={() => {
+            if (!viewState.busy) store.setState({ archiving: null });
+          }}
+          footer={
+            <>
+              <button
+                className="btn"
+                disabled={viewState.busy}
+                onClick={() => store.setState({ archiving: null })}
+              >
+                {t("取消")}
+              </button>
+              <button
+                className="btn danger"
+                disabled={viewState.busy}
+                onClick={archive}
+              >
+                {t("确认归档")}
+              </button>
+            </>
+          }
+        >
+          <p>
+            {t("归档 {p0} 后将停止检测，历史记录和未恢复告警仍会保留。", {
+              p0: viewState.archiving.name,
+            })}
+          </p>
+          {viewState.error ? (
+            <p role="alert" className="form-error">
+              {viewState.error}
+            </p>
+          ) : null}
         </Modal>
       ) : null}
       {detail ? (

@@ -1153,5 +1153,14 @@
   "未分类": "Uncategorized",
   "页面加载失败": "Unable to load this page",
   "请刷新页面后重试。未保存的修改将丢失。": "Reload the page to try again. Unsaved changes will be lost.",
-  "刷新页面": "Reload page"
+  "刷新页面": "Reload page",
+  "编辑检测": "Edit monitor",
+  "编辑检测{p0}": "Edit monitor {p0}",
+  "归档检测{p0}": "Archive monitor {p0}",
+  "留空保持已保存凭据不变": "Leave blank to keep saved credentials",
+  "清除已保存凭据": "Clear saved credentials",
+  "归档检测目标": "Archive monitor",
+  "确认归档": "Confirm archive",
+  "检测目标已归档": "Monitor archived",
+  "归档 {p0} 后将停止检测，历史记录和未恢复告警仍会保留。": "Archiving {p0} stops checks and preserves history and unresolved alerts."
 }

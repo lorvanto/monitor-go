@@ -46,6 +46,11 @@ User-visible changes belong here. Entries under **Unreleased** describe the curr
 - Count only failed logins by client IP (30/5 minutes) and normalized username (10/5 minutes). Successful logins do not consume or reset the budgets. Setup counts all attempts separately.
 - Read forwarded addresses only through explicitly configured `-trusted-proxy` CIDRs (`MONITOR_TRUSTED_PROXY` in Compose); invalid CIDRs prevent startup. Full limiter tables reject new keys while preserving existing clients.
 
+### Monitor editing and archiving
+
+- Add permission-checked full monitor updates, explicit credential retention/replacement/removal, optimistic conflicts, audit records and queued-job cancellation. Preserve history and existing incidents.
+- Add translated React edit forms and archive confirmation; conflicts preserve unsaved input while refreshing server data.
+
 ### Upgrade considerations
 
 - SQLite migrations support schema versions 1 → 2 → 3 → 4 → 5. Stop the service and back up the entire data directory before upgrading. Older binaries cannot read schema 5 directly; rollback requires the complete pre-upgrade backup.

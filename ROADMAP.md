@@ -5,7 +5,6 @@ The [README](README.md) and current guides describe implemented behavior. The it
 | Area | Next work to consider | Evidence needed before claiming completion |
 |---|---|---|
 | First public release | Confirm release version, supported targets and repeatable packaging | Clean-checkout build, target-machine smoke tests, checksums and complete notices |
-| Monitor management | Full editing and archival workflows for existing targets | Permission, concurrency, scheduling and browser regression checks |
 | Linux deployment | Service and Agent runtime verification on intended architectures | Real-machine sampling, restart/reconnect and TLS checks |
 | Operations | Backup/restore tools and measured capacity guidance | Recovery rehearsal and workload/hardware-specific results |
 | Notifications | Resource routing, maintenance windows and additional channel formats | Delivery, suppression, retry and duplicate-handling tests |

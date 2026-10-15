@@ -131,7 +131,7 @@ Database versions 1 → 2 → 3 → 4 → 5 migrate transactionally. Older binar
 
 ## Current limits
 
-There is no multitenancy, external storage adapter, remote command execution, agent auto-update, online backup UI, public file sharing or proprietary chat-channel templates. Complete editing of existing monitor targets and certificate issuance remain planned. Configured ceilings of 500 checks and 1000 agents are not load-test claims. Production Linux sampling, real email-provider delivery and capacity testing require deployment-specific validation.
+There is no multitenancy, external storage adapter, remote command execution, agent auto-update, online backup UI, public file sharing or proprietary chat-channel templates. Certificate issuance remains planned. Configured ceilings of 500 checks and 1000 agents are not load-test claims. Production Linux sampling, real email-provider delivery and capacity testing require deployment-specific validation.
 
 Historical design proposals and detailed validation records remain in the [Chinese documentation index](../zh-CN/INDEX.md); they are not all implemented product features. Source repository: [lorvanto/monitor-go](https://github.com/lorvanto/monitor-go). Release tags and target-platform commitments remain to be selected. Project-owned code and documentation use [Apache-2.0](../../LICENSE); dependencies retain their own licenses. See [contribution guidance](../../CONTRIBUTING.md), [security policy](../../SECURITY.md), [third-party notices](../../THIRD_PARTY_NOTICES.md) and [release preparation](RELEASING.md).
 
@@ -140,3 +140,7 @@ All current guides use `docs/<locale>/` with English directory and file names. S
 ## Trusted proxies and login limits
 
 `-trusted-proxy` accepts comma-separated proxy CIDRs and defaults to empty (no trusted proxies). Invalid CIDRs prevent startup. Trust only the actual proxy addresses as seen by this process; the proxy must overwrite or safely append `X-Forwarded-For`. The server walks that header from right to left, stopping at the first untrusted address. Headers from other peers are ignored. Login counts only failures: 30 per client IP and 10 per normalized username per five minutes; successful logins neither consume nor reset those budgets. Setup counts every attempt (10 per IP per five minutes).
+
+## Monitor editing and archiving
+
+Use Edit on a monitor to change its complete configuration. Blank passwords keep saved credentials; a new password replaces them, and Clear saved credentials removes them. HTTP/TCP/SSL clear database credentials. Updates use optimistic versions and reset the current state and schedule, cancelling queued jobs. Existing history and unresolved alerts are retained. Archive requires confirmation and stops future checks. Read-only members have neither action. A 409 conflict refreshes server data while retaining your form; reopen the editor to review the latest configuration before saving again.

@@ -685,3 +685,154 @@ it.each(locales)(
     expect(appStore.getState().activeAlert).toBe("alert-1");
   },
 );
+
+function editableMonitor() {
+  return {
+    id: "71",
+    name: "Database probe",
+    type: "MySQL",
+    target: "db.example.com:3306",
+    group: "Operations",
+    interval: 120,
+    timeout: 5,
+    expected: 200,
+    threshold: 2,
+    sslDays: 14,
+    username: "probe",
+    hasSecret: true,
+    tls: true,
+    enabled: true,
+    status: "healthy" as const,
+    latency: 10,
+    detail: "OK",
+    checkedAt: 1,
+    nextCheck: 2,
+    version: 4,
+    uptime: 100,
+    history: [],
+  };
+}
+function showEditableMonitor() {
+  const monitor = editableMonitor();
+  fixtures["/monitors"] = [monitor];
+  appStore.setState((state) => ({
+    data: { ...state.data, monitors: [monitor] },
+  }));
+  render(<MonitorsView />);
+  return monitor;
+}
+it("prefills monitor edits, keeps blank credentials and preserves input across languages", async () => {
+  const monitor = showEditableMonitor();
+  fireEvent.click(
+    screen.getByRole("button", {
+      name: t("编辑检测{p0}", { p0: monitor.name }),
+    }),
+  );
+  const dialog = screen.getByRole("dialog");
+  const name = within(dialog).getByLabelText(t("名称")) as HTMLInputElement;
+  const password = within(dialog).getByLabelText(t("密码"), {
+    exact: false,
+  }) as HTMLInputElement;
+  expect(name.value).toBe(monitor.name);
+  expect(password.value).toBe("");
+  fireEvent.change(name, { target: { value: "Edited probe" } });
+  for (const locale of locales) {
+    await act(() => setLocale(locale.code));
+    expect(name.value).toBe("Edited probe");
+    expect(password.value).toBe("");
+  }
+  await act(() => setLocale("en-US"));
+  fireEvent.submit(name.closest("form")!);
+  await waitFor(() =>
+    expect(requests.some((r) => r.method === "PUT")).toBe(true),
+  );
+  const sent = requests.find((r) => r.method === "PUT");
+  expect(sent?.path).toBe("/monitors/71");
+  expect(sent?.body).toMatchObject({
+    name: "Edited probe",
+    target: monitor.target,
+    version: 4,
+    password: "",
+    clearPassword: false,
+  });
+  await act(async () => {});
+});
+it("confirms archive and submits the version captured when opened", async () => {
+  const monitor = showEditableMonitor();
+  fireEvent.click(
+    screen.getByRole("button", {
+      name: t("归档检测{p0}", { p0: monitor.name }),
+    }),
+  );
+  expect(requests.some((r) => r.method === "DELETE")).toBe(false);
+  await act(async () => {
+    appStore.setState((state) => ({
+      data: { ...state.data, monitors: [{ ...monitor, version: 5 }] },
+    }));
+  });
+  fireEvent.click(screen.getByRole("button", { name: t("确认归档") }));
+  await waitFor(() =>
+    expect(requests.find((r) => r.method === "DELETE")?.body).toEqual({
+      version: 4,
+    }),
+  );
+  await act(async () => {});
+});
+it("preserves monitor edits and shows a conflict while refreshing server data", async () => {
+  const monitor = showEditableMonitor();
+  const normalFetch = globalThis.fetch;
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (input: string, init?: RequestInit) => {
+      if (init?.method === "PUT")
+        return new Response(
+          JSON.stringify({
+            error: {
+              message:
+                "Configuration changed; reopen the editor to review the latest version.",
+            },
+          }),
+          { status: 409 },
+        );
+      return normalFetch(input, init);
+    }),
+  );
+  fireEvent.click(
+    screen.getByRole("button", {
+      name: t("编辑检测{p0}", { p0: monitor.name }),
+    }),
+  );
+  const dialog = screen.getByRole("dialog");
+  const target = within(dialog).getByLabelText(t("目标地址"), {
+    exact: false,
+  }) as HTMLInputElement;
+  fireEvent.change(target, { target: { value: "new.example.com:3306" } });
+  fireEvent.submit(target.closest("form")!);
+  await waitFor(() =>
+    expect(screen.getByRole("alert").textContent).toContain(
+      "Configuration changed",
+    ),
+  );
+  await waitFor(() =>
+    expect(requests.some((r) => r.path === "/monitors")).toBe(true),
+  );
+  expect(target.value).toBe("new.example.com:3306");
+});
+it("hides monitor edit and archive controls for readers", () => {
+  const monitor = showEditableMonitor();
+  act(() => {
+    appStore.setState((state) => ({
+      user: { ...state.user!, permissions: ["monitor:read"] },
+    }));
+  });
+  expect(
+    screen.queryByRole("button", {
+      name: t("编辑检测{p0}", { p0: monitor.name }),
+    }),
+  ).toBeNull();
+  expect(
+    screen.queryByRole("button", {
+      name: t("归档检测{p0}", { p0: monitor.name }),
+    }),
+  ).toBeNull();
+});
