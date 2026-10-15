@@ -1184,5 +1184,8 @@
     "activity": []
   },
   "/notification-channels": [],
-  "/notification-deliveries": []
+  "/notification-deliveries": [],
+  "/alerts/summary": {
+    "open": 0
+  }
 }

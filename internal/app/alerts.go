@@ -3,6 +3,7 @@ package app
 import (
 	"database/sql"
 	"net/http"
+	"strings"
 )
 
 func transitionAlert(tx *sql.Tx, fingerprint, kind string, resourceID int64, resource, title, description, severity string, active bool) error {
@@ -58,25 +59,39 @@ func (s *Server) listAlerts(w http.ResponseWriter, r *http.Request, u *User) (an
 	if e != nil {
 		return nil, e
 	}
-	for i := range out {
-		rows, e = s.Store.DB.QueryContext(r.Context(), "SELECT at,actor,message FROM alert_activity WHERE alert_id=? ORDER BY id DESC LIMIT 100", out[i].ID)
-		if e != nil {
-			return nil, e
-		}
-		for rows.Next() {
-			var a Activity
-			if e = rows.Scan(&a.At, &a.Actor, &a.Message); e != nil {
-				rows.Close()
-				return nil, e
-			}
-			out[i].Activity = append(out[i].Activity, a)
-		}
-		e = rows.Err()
-		rows.Close()
-		if e != nil {
-			return nil, e
-		}
+
+	if len(out) == 0 {
+		return out, nil
 	}
+	byID := make(map[int64]*Alert, len(out))
+	args := make([]any, len(out))
+	for i := range out {
+		byID[out[i].ID] = &out[i]
+		args[i] = out[i].ID
+	}
+	query := `SELECT alert_id,at,actor,message FROM (
+        SELECT alert_id,at,actor,message,ROW_NUMBER() OVER(PARTITION BY alert_id ORDER BY id DESC) AS rank
+        FROM alert_activity WHERE alert_id IN (` + strings.TrimSuffix(strings.Repeat("?,", len(out)), ",") + `)
+    ) WHERE rank<=100 ORDER BY alert_id,rank`
+	rows, e = s.Store.DB.QueryContext(r.Context(), query, args...)
+	if e != nil {
+		return nil, e
+	}
+	for rows.Next() {
+		var id int64
+		var activity Activity
+		if e = rows.Scan(&id, &activity.At, &activity.Actor, &activity.Message); e != nil {
+			rows.Close()
+			return nil, e
+		}
+		byID[id].Activity = append(byID[id].Activity, activity)
+	}
+	e = rows.Err()
+	rows.Close()
+	if e != nil {
+		return nil, e
+	}
+
 	return out, nil
 }
 func (s *Server) ackAlert(w http.ResponseWriter, r *http.Request, u *User) (any, error) {
@@ -138,4 +153,12 @@ func (s *Server) changeAlert(r *http.Request, u *User, silence bool) (any, error
 		return auditRequest(tx, r, u.Name, message, idText(id))
 	})
 	return true, e
+}
+
+// Keep the badge consistent with the retained 200-event list without loading
+// descriptions and activity histories on unrelated pages.
+func (s *Server) alertSummary(w http.ResponseWriter, r *http.Request, u *User) (any, error) {
+	var count int
+	err := s.Store.DB.QueryRowContext(r.Context(), `SELECT count(*) FROM (SELECT state FROM alerts ORDER BY state='resolved',opened_at DESC LIMIT 200) WHERE state<>'resolved'`).Scan(&count)
+	return map[string]int{"open": count}, err
 }

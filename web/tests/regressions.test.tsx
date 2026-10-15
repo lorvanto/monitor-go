@@ -507,3 +507,64 @@ it("does not append a failed audit query to results from an older filter", async
   expect(screen.queryByText("Old query row")).toBeNull();
   expect(screen.queryByRole("button", { name: t("加载更多") })).toBeNull();
 });
+
+it("polls only page dependencies and a small global alert badge", async () => {
+  appStore.setState({ page: "monitors" });
+  await refreshAll();
+  const paths = () =>
+    vi
+      .mocked(fetch)
+      .mock.calls.map(([path]) => String(path).replace("/api/v1", ""));
+  expect(paths()).toEqual(
+    expect.arrayContaining([
+      "/me",
+      "/me/navigation",
+      "/monitors",
+      "/alerts/summary",
+    ]),
+  );
+  expect(paths()).not.toEqual(expect.arrayContaining(["/hosts"]));
+  for (const path of ["/hosts", "/alerts", "/roles", "/users", "/permissions"])
+    expect(paths()).not.toContain(path);
+  vi.mocked(fetch).mockClear();
+  appStore.setState({ page: "host" });
+  await refreshAll();
+  expect(paths()).toEqual(expect.arrayContaining(["/hosts", "/alerts"]));
+  expect(paths()).not.toContain("/monitors");
+  expect(paths()).not.toContain("/alerts/summary");
+});
+
+it("loads team data on entry and after writes, but not periodic refresh", async () => {
+  appStore.setState({ page: "roles" });
+  await refreshAll(true);
+  for (const path of ["/roles", "/users", "/permissions"])
+    expect(fetch).toHaveBeenCalledWith("/api/v1" + path, expect.anything());
+  vi.mocked(fetch).mockClear();
+  await refreshAll();
+  for (const path of ["/roles", "/users", "/permissions"])
+    expect(vi.mocked(fetch).mock.calls.map(([p]) => p)).not.toContain(
+      "/api/v1" + path,
+    );
+  await action(async () => {});
+  for (const path of ["/roles", "/users", "/permissions"])
+    expect(fetch).toHaveBeenCalledWith("/api/v1" + path, expect.anything());
+});
+
+it("loads the new page after an older page's pending refresh without applying stale data", async () => {
+  appStore.setState({ page: "monitors" });
+  const pending = deferred();
+  const base = vi.mocked(fetch).getMockImplementation()!;
+  vi.mocked(fetch).mockImplementation((input, init) =>
+    String(input) === "/api/v1/monitors" ? pending.promise : base(input, init),
+  );
+  const first = refreshAll();
+  await waitFor(() =>
+    expect(fetch).toHaveBeenCalledWith("/api/v1/monitors", expect.anything()),
+  );
+  appStore.setState({ page: "roles" });
+  const second = refreshAll(true);
+  pending.resolve(response([{ id: "stale" }]));
+  await Promise.all([first, second]);
+  expect(appStore.getState().data.monitors).toEqual([]);
+  expect(appStore.getState().data.roles).toEqual(fixtures["/roles"]);
+});

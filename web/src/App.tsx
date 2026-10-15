@@ -241,6 +241,9 @@ export default function App() {
       window.removeEventListener("hashchange", syncLocation);
     };
   }, []);
+  useEffect(() => {
+    if (appState.user && !appState.booting) void refreshAll(true);
+  }, [appState.page]);
   const results = getResults();
   const initial = getInitial();
   const instanceName =
@@ -425,7 +428,7 @@ export default function App() {
                 {can("alert:access") ? (
                   <button
                     aria-label={t("告警中心，{p0} 条未恢复", {
-                      p0: appState.openAlerts.length,
+                      p0: appState.openAlertCount,
                     })}
                     className="icon-btn mobile-alerts"
                     onClick={() => {
@@ -433,9 +436,9 @@ export default function App() {
                     }}
                   >
                     <Icon name="Bell" size={17}></Icon>
-                    {appState.openAlerts.length ? (
+                    {appState.openAlertCount ? (
                       <span className="nav-count">
-                        {appState.openAlerts.length}
+                        {appState.openAlertCount}
                       </span>
                     ) : null}
                   </button>

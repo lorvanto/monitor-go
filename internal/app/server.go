@@ -273,6 +273,7 @@ func (s *Server) Handler() http.Handler {
 	add("PUT /api/v1/monitors/{id}", "monitor:update", false, s.editMonitor)
 	add("DELETE /api/v1/monitors/{id}", "monitor:update", false, s.deleteMonitor)
 	add("POST /api/v1/monitors/{id}/checks", "monitor:run", false, s.manualCheck)
+	add("GET /api/v1/alerts/summary", "alert:read", false, s.alertSummary)
 	add("GET /api/v1/alerts", "alert:read", false, s.listAlerts)
 	add("POST /api/v1/alerts/{id}/acknowledgements", "alert:handle", false, s.ackAlert)
 	add("POST /api/v1/alerts/{id}/silences", "alert:handle", false, s.silenceAlert)

@@ -4,6 +4,12 @@ User-visible changes belong here. Entries under **Unreleased** describe the curr
 
 ## Unreleased
 
+### Page refresh and batched lists
+
+- Poll only the active page’s required data, session, navigation and a lightweight mobile alert badge. Load team metadata on entry or mutation; preserve session and page race protection.
+- Batch monitor availability/history into three SQL queries and alert activity into two, preserving response contents and limits. Indexed history candidates bound window-function work to the latest 32 results per monitor.
+
+
 ### Configurable host thresholds
 
 - Schema 6 adds global CPU, memory, disk and sustained-duration settings. Local and remote hosts share continuous-window validation, recovery and disable rules. Settings retain authorization, optimistic locking and audit records.

@@ -22,6 +22,17 @@ func scanMonitor(row interface{ Scan(...any) error }) (Monitor, error) {
 	}
 	return m, e
 }
+
+const monitorUptimeQuery = `SELECT m.id,count(*) FILTER (WHERE r.state IN ('healthy','warning')),count(*)
+FROM monitors m JOIN check_results r ON r.monitor_id=m.id AND r.at>=? WHERE m.deleted_at IS NULL GROUP BY m.id`
+const monitorHistoryQuery = `SELECT monitor_id,at,state,latency,detail FROM (
+ SELECT r.monitor_id,r.at,r.state,r.latency,r.detail,
+ ROW_NUMBER() OVER (PARTITION BY r.monitor_id ORDER BY r.at DESC,r.id DESC) AS rank
+ FROM monitors m JOIN check_results r ON r.id IN (
+  SELECT id FROM check_results WHERE monitor_id=m.id ORDER BY at DESC,id DESC LIMIT 32
+ ) WHERE m.deleted_at IS NULL
+) WHERE rank<=32 ORDER BY monitor_id,rank`
+
 func (s *Server) monitors(ctx context.Context) ([]Monitor, error) {
 	rows, e := s.Store.DB.QueryContext(ctx, "SELECT "+monitorColumns+" FROM monitors WHERE deleted_at IS NULL ORDER BY id DESC")
 	if e != nil {
@@ -41,35 +52,53 @@ func (s *Server) monitors(ctx context.Context) ([]Monitor, error) {
 	if e != nil {
 		return nil, e
 	}
+
+	byID := make(map[int64]*Monitor, len(out))
 	for i := range out {
-		m := &out[i]
+		byID[out[i].ID] = &out[i]
+	}
+	rows, e = s.Store.DB.QueryContext(ctx, monitorUptimeQuery, now()-86400000)
+	if e != nil {
+		return nil, e
+	}
+	for rows.Next() {
+		var id int64
 		var good, total int
-		e = s.Store.DB.QueryRowContext(ctx, "SELECT coalesce(sum(state IN ('healthy','warning')),0),count(*) FROM check_results WHERE monitor_id=? AND at>=?", m.ID, now()-86400000).Scan(&good, &total)
-		if e != nil {
+		if e = rows.Scan(&id, &good, &total); e != nil {
+			rows.Close()
 			return nil, e
 		}
-		if total > 0 {
-			v := float64(good) * 100 / float64(total)
-			m.Uptime = &v
-		}
-		rows, e = s.Store.DB.QueryContext(ctx, "SELECT at,state,latency,detail FROM check_results WHERE monitor_id=? ORDER BY at DESC,id DESC LIMIT 32", m.ID)
-		if e != nil {
-			return nil, e
-		}
-		for rows.Next() {
-			var v CheckResult
-			if e = rows.Scan(&v.At, &v.State, &v.Latency, &v.Detail); e != nil {
-				rows.Close()
-				return nil, e
-			}
-			m.History = append(m.History, v)
-		}
-		e = rows.Err()
-		rows.Close()
-		if e != nil {
-			return nil, e
+		if m := byID[id]; m != nil && total > 0 {
+			value := float64(good) * 100 / float64(total)
+			m.Uptime = &value
 		}
 	}
+	e = rows.Err()
+	rows.Close()
+	if e != nil {
+		return nil, e
+	}
+	rows, e = s.Store.DB.QueryContext(ctx, monitorHistoryQuery)
+	if e != nil {
+		return nil, e
+	}
+	for rows.Next() {
+		var id int64
+		var result CheckResult
+		if e = rows.Scan(&id, &result.At, &result.State, &result.Latency, &result.Detail); e != nil {
+			rows.Close()
+			return nil, e
+		}
+		if m := byID[id]; m != nil {
+			m.History = append(m.History, result)
+		}
+	}
+	e = rows.Err()
+	rows.Close()
+	if e != nil {
+		return nil, e
+	}
+
 	return out, nil
 }
 func (s *Server) listMonitors(w http.ResponseWriter, r *http.Request, u *User) (any, error) {

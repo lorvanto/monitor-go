@@ -57,6 +57,7 @@ interface AppState {
   booting: boolean;
   connectionError: string;
   updatedAt: number;
+  openAlertCount: number;
   page: Page;
   menuOpen: boolean;
   activeAlert: string;
@@ -84,6 +85,7 @@ export const appStore = create<AppState>(() => ({
   booting: true,
   connectionError: "",
   updatedAt: 0,
+  openAlertCount: 0,
   page: resolvePage(),
   menuOpen: false,
   activeAlert: "",
@@ -214,6 +216,7 @@ function clearSession() {
     navigation: [],
     data: emptyData(),
     updatedAt: 0,
+    openAlertCount: 0,
     instanceName: "",
     instanceNameKey: "我的监控中心",
     menuOpen: false,
@@ -278,49 +281,108 @@ export async function refreshNavigation() {
 }
 interface RefreshTask {
   session: number;
+  page: Page;
   promise: Promise<void>;
 }
 let refreshing: RefreshTask | undefined;
+let teamCache = "";
+let lastRefreshPage: Page | undefined;
 export function refreshAll(afterMutation = false): Promise<void> {
   if (!appStore.getState().user) return Promise.resolve();
   const session = sessionVersion;
+  const page = appStore.getState().page;
+  if (afterMutation) teamCache = "";
   const current = refreshing;
   if (current?.session === session) {
-    return afterMutation
+    return afterMutation || current.page !== page
       ? current.promise.then(() => {
-          if (session === sessionVersion) return refreshAll();
+          if (session === sessionVersion) return refreshAll(true);
         })
       : current.promise;
   }
-  const task: RefreshTask = { session, promise: Promise.resolve() };
-  task.promise = loadAll(session).finally(() => {
+  const task: RefreshTask = { session, page, promise: Promise.resolve() };
+  task.promise = loadAll(session, page, afterMutation).finally(() => {
     if (refreshing === task) refreshing = undefined;
   });
   refreshing = task;
   return task.promise;
 }
-async function loadAll(session: number) {
+async function loadAll(session: number, page: Page, afterMutation: boolean) {
   try {
     const user = await api<User>("/me");
     if (session !== sessionVersion) return;
     appStore.setState({ user });
-    const [hosts, monitors, alerts, roles, users, permissions, navigation] =
-      await Promise.all([
-        can("host:read") ? api<Host[]>("/hosts") : [],
-        can("monitor:read") ? api<Monitor[]>("/monitors") : [],
-        can("alert:read") ? api<Alert[]>("/alerts") : [],
-        can("team:read") ? api<Role[]>("/roles") : [],
-        can("team:read") ? api<User[]>("/users") : [],
-        can("team:read") ? api<PermissionGroup[]>("/permissions") : [],
-        api<{
-          items: NavItem[];
-          instanceName: string;
-          instanceNameKey?: string;
-        }>("/me/navigation"),
-      ]);
-    if (session !== sessionVersion || !appStore.getState().user) return;
+    const current = appStore.getState().data;
+    const needHosts = page === "overview" || page === "host";
+    const needMonitors = page === "overview" || page === "monitors";
+    const needAlerts =
+      page === "overview" || page === "host" || page === "alerts";
+    const cacheKey = `${session}:${[...user.permissions].sort().join(",")}`;
+    const needTeam =
+      page === "roles" &&
+      (afterMutation || lastRefreshPage !== "roles" || teamCache !== cacheKey);
+    const [
+      hosts,
+      monitors,
+      alerts,
+      roles,
+      users,
+      permissions,
+      navigation,
+      summary,
+    ] = await Promise.all([
+      can("host:read")
+        ? needHosts
+          ? api<Host[]>("/hosts")
+          : current.hosts
+        : [],
+      can("monitor:read")
+        ? needMonitors
+          ? api<Monitor[]>("/monitors")
+          : current.monitors
+        : [],
+      can("alert:read")
+        ? needAlerts
+          ? api<Alert[]>("/alerts")
+          : current.alerts
+        : [],
+      can("team:read")
+        ? needTeam
+          ? api<Role[]>("/roles")
+          : current.roles
+        : [],
+      can("team:read")
+        ? needTeam
+          ? api<User[]>("/users")
+          : current.users
+        : [],
+      can("team:read")
+        ? needTeam
+          ? api<PermissionGroup[]>("/permissions")
+          : current.permissions
+        : [],
+      api<{
+        items: NavItem[];
+        instanceName: string;
+        instanceNameKey?: string;
+      }>("/me/navigation"),
+      can("alert:read") && !needAlerts
+        ? api<{ open: number }>("/alerts/summary")
+        : null,
+    ]);
+    if (
+      session !== sessionVersion ||
+      !appStore.getState().user ||
+      page !== appStore.getState().page
+    )
+      return;
+    if (needTeam) teamCache = cacheKey;
+    lastRefreshPage = page;
     appStore.setState({
       data: { hosts, monitors, alerts, roles, users, permissions },
+      openAlertCount: can("alert:read")
+        ? (summary?.open ?? alerts.filter((a) => a.state !== "resolved").length)
+        : 0,
       navigation: navigation.items,
       instanceName: navigation.instanceName,
       instanceNameKey: navigation.instanceNameKey || "",
@@ -328,7 +390,12 @@ async function loadAll(session: number) {
       connectionError: "",
     });
   } catch (e) {
-    if (session !== sessionVersion || e instanceof SessionChangedError) return;
+    if (
+      session !== sessionVersion ||
+      page !== appStore.getState().page ||
+      e instanceof SessionChangedError
+    )
+      return;
     const message = (e as Error).message;
     appStore.setState({ connectionError: message });
     if (!(e instanceof APIError && e.status === 401)) notify(message, true);
@@ -365,10 +432,8 @@ export async function signIn(input: unknown, setup = false) {
   const user = await api<User>("/me");
   if (attempt !== authAttempt) return;
   appStore.setState({ initialized: true, user });
-  const session = sessionVersion;
+  navigate("overview");
   await refreshAll();
-  if (session === sessionVersion && appStore.getState().user)
-    navigate("overview");
 }
 export async function logout() {
   const attempt = ++authAttempt;
