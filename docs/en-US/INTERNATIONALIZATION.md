@@ -70,3 +70,16 @@ The catalog policy also detects Korean/Chinese/Japanese script contamination and
 On narrow screens, time-range controls wrap and long application, host and alert names break within their panels. Dialog content scrolls independently while close and footer actions remain available. Long context text scrolls with the body; long titles have a bounded scroll area. File/image preview selectors and package-directory controls fit the available width.
 
 Dialogs follow the browser visual viewport during keyboard opening and panning, and scroll the focused input into view without resetting drafts. Mobile form controls use readable font sizes, and footer actions have larger tap areas with wrapping labels. Verify all five locales at 320px and 390px portrait widths, 640px landscape, and a reduced-height viewport; check actual control hit targets as well as page and dialog scroll widths.
+
+## Mobile workflow verification (2026-10-15)
+
+Recheck complete operations in a disposable installation, not only screenshots. At 320×568 and 390×844 browser viewports, use all five interface languages and synthetic files:
+
+1. Check the English first-run default, required-field messages and setup drafts while switching languages. Complete initialization through real HTTP; verify the administrator in SQLite and removal of `setup-token`.
+2. Sign in and sign out in each language. Reload the sign-in page to verify the saved language, and switch an existing login error without clearing the entered credentials.
+3. Create applications and a folder; save settings and create/edit an HTTP check. Switch languages before saving, including text, number and directory selections. Reopen or reload, then cross-check persisted values through HTTP and SQLite. Run the check against a local fixture.
+4. Select and upload a file in each language, preview it and download it through the UI. Compare SHA-256 with the source. Preserve multilingual filenames and content. Reject an empty file while accepting a valid file in the same batch; verify translated duplicate-name errors. Retry a corrected file and recover an upload after a test-service interruption. Rename/move a file and verify its downloaded name and bytes again.
+
+This pass used build `2a5674c` on isolated port `62538`: five applications, one folder, settings, one healthy HTTP check and eight stored files were verified. All five locale downloads matched their sources; SQLite integrity and foreign-key checks passed. No new product defect was reproduced, so this follow-up changes documentation only.
+
+Setup submission was checked over HTTP; setup validation and draft switching were checked in the browser. These are desktop-browser viewport and file-chooser checks, not certification on physical phones, native mobile pickers or device keyboards. Never use a live installation's data for interruption tests.
