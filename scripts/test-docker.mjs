@@ -181,6 +181,29 @@ try {
     ]).toString(),
     keyHash,
   );
+  compose([
+    "exec",
+    "-T",
+    "monitor",
+    "monitor",
+    "backup",
+    "-data",
+    "/data",
+    "-out",
+    "/data/online-backup",
+  ]);
+  const onlineArchive = compose([
+    "exec",
+    "-T",
+    "monitor",
+    "tar",
+    "-C",
+    "/data/online-backup",
+    "-czf",
+    "-",
+    ".",
+  ]);
+  await verifyPersistence();
   await run(["stop", "monitor"]);
   const archive = compose([
     "run",
@@ -225,8 +248,37 @@ try {
     ).toString(),
     keyHash,
   );
+  await run(["down", "--volumes", "--remove-orphans"], restoredProject);
+  compose(
+    [
+      "run",
+      "--rm",
+      "--no-deps",
+      "-T",
+      "--entrypoint",
+      "sh",
+      "monitor",
+      "-c",
+      'test -z "$(ls -A /data)" && tar -xzf - -C /data',
+    ],
+    { input: onlineArchive },
+    restoredProject,
+  );
+  await run(
+    ["up", "-d", "--no-build", "--wait", "--wait-timeout", "120"],
+    restoredProject,
+  );
+  await verifyPersistence();
+  assert.equal(
+    compose(
+      ["exec", "-T", "monitor", "sha256sum", "/data/master.key"],
+      {},
+      restoredProject,
+    ).toString(),
+    keyHash,
+  );
   console.log(
-    `Docker verified on port ${port}: non-root, read-only root, health, English setup, SQLite/session/upload persistence, recreation, and cold backup/restore.`,
+    `Docker verified on port ${port}: non-root, read-only root, health, English setup, SQLite/session/upload persistence, recreation, cold backup/restore, and online backup/restore.`,
   );
 } finally {
   for (const name of [restoredProject, project]) {

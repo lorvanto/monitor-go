@@ -172,3 +172,14 @@ npm --prefix web run format:check
 サーバー、Agent報告と送信User-Agentは`internal/buildinfo.Version`を共有します。直接の`go build`は`0.4.0-dev`、`make build`は`git describe --tags --always --dirty`を注入し、Git情報がなければ既定値に戻ります。`make build VERSION=0.4.0-dev`で明示指定でき、両バイナリの`-version`で確認できます。フロントエンドのパッケージは開発基準を使い、システム設定には実際のサーバービルドを表示します。GitHub CIはpushとpull requestで起動し、go.modのGo、Node 22、コミット固定のActionを使ってraceテスト、型検査、ビルドと書式検査を実行します。設定ファイルの存在はリモート実行の成功やリリース公開を意味しません。
 
 `make docker-build`はGit由来のバージョンを注入します。Composeを直接使う場合は`MONITOR_VERSION`を指定でき、省略時は`0.4.0-dev`です。直接ビルドする場合は`docker build --build-arg VERSION="$(git describe --tags --always --dirty 2>/dev/null || printf 0.4.0-dev)" -t monitor-go:local .`を使えます。Git履歴はDockerビルドコンテキストに含めません。
+
+## オンラインバックアップと復元
+
+コマンド実行中もサービスを継続できます。出力先は存在しないディレクトリとし、親ディレクトリを先に作成します。ソースを読み取り専用で開き、インスタンスロックの取得や移行は行いません（スキーマ 3 から現行版まで対応）。整合性のある SQLite スナップショット、主鍵、スナップショットが参照する全オブジェクト（ごみ箱を含む）を保存します。以降の新規アップロードは含みません。欠落を再試行し、欠落・破損・変更が残れば非ゼロ終了と BACKUP_INCOMPLETE を残します。このディレクトリは復元できません。完了マニフェストには UTC 時刻、ビルド/スキーマ、件数と SHA-256 を記録します。初期化トークン、ロック、一時ファイル、画像キャッシュは除外します。
+
+```sh
+mkdir -p backups
+./bin/monitor backup -data data -out backups/snapshot-001
+```
+
+復元時はサービスを停止し、データディレクトリ全体を完全なバックアップに置き換え、そのスキーマ以上に対応するバイナリで起動します。検証完了まで旧ディレクトリを保持してください。復元はオフラインのみで、稼働中のデータに混在させません。認証情報を含むため非公開で保管し、独立したストレージにコピーします。コールドバックアップも引き続き利用できます。

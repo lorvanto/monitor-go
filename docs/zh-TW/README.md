@@ -268,3 +268,14 @@ Webhook 格式支援通用、釘釘、飛書和企業微信，舊渠道預設沿
 伺服器、Agent 回報及外送請求 User-Agent 統一使用 `internal/buildinfo.Version`。直接 `go build` 預設為 `0.4.0-dev`；`make build` 注入 `git describe --tags --always --dirty`，沒有 Git 資訊時回退至預設值。可用 `make build VERSION=0.4.0-dev` 明確指定。兩個執行檔皆支援 `-version`。前端套件使用開發基線，系統設定顯示實際伺服器建置版本。GitHub CI 設定為 push 和 pull request 觸發，使用 go.mod 中的 Go、Node 22、固定提交的 Action，執行 race 測試、型別檢查、建置和格式檢查。工作流程檔案不代表遠端已執行成功或已發布版本。
 
 `make docker-build` 會注入 Git 衍生版本。直接使用 Compose 時可傳入 `MONITOR_VERSION`，未指定則顯示 `0.4.0-dev`。直接建置可用 `docker build --build-arg VERSION="$(git describe --tags --always --dirty 2>/dev/null || printf 0.4.0-dev)" -t monitor-go:local .`。Git 歷史不進入 Docker 建置內容。
+
+## 線上備份與還原
+
+執行命令時服務可繼續運行。輸出目錄必須不存在，父目錄必須已存在。命令唯讀開啟來源資料庫，不取得執行個體鎖、不執行移轉（支援結構版本 3 至目前版本），產生一致的 SQLite 快照並複製主密鑰與快照引用的全部物件，包括回收桶檔案。快照之後的新上傳不納入備份。遺失物件會重試；仍遺失、損壞或變更時以非零狀態結束並保留 BACKUP_INCOMPLETE，不能還原該目錄。完成清單記錄 UTC 時間、建置/結構版本、物件數量及 SHA-256。初始化碼、鎖、暫存檔與圖片快取不複製。
+
+```sh
+mkdir -p backups
+./bin/monitor backup -data data -out backups/snapshot-001
+```
+
+還原前先停服，以完整備份取代整個資料目錄，再使用支援該結構版本或更高版本的程式啟動。驗證成功前保留舊目錄。僅支援離線還原，不要將檔案合併至運行中的執行個體。備份包含憑據，應私密保存並複製到獨立儲存；原有冷備份仍可使用。

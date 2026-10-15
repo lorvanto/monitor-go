@@ -925,7 +925,7 @@
   "图片缓存": "Image cache",
   "缩略图和样式图的副本，上限 128 MB。清理后会在下次预览时重新生成，不影响原文件。": "Thumbnail and styled-image copies, up to 128 MB. Cleared images regenerate on preview; originals are unaffected.",
   "清理图片缓存": "Clear image cache",
-  "备份前请先停止服务，再完整复制数据目录，包括 SQLite 文件、加密主密钥和 uploads 原文件目录。": "Stop the service before backup, then copy the complete data directory including SQLite, the master encryption key and original uploads.",
+  "备份前请先停止服务，再完整复制数据目录，包括 SQLite 文件、加密主密钥和 uploads 原文件目录。": "For a live backup, use the backup CLI. For a manual data-directory copy, stop the service first and include SQLite, master.key and original uploads.",
   "已生成的缩略图和样式图会被删除，原文件保留；下次预览时会重新生成。": "Generated thumbnails and styled images will be deleted and regenerated on the next preview. Originals are retained.",
   "清理缓存": "Clear cache",
   "请输入 1–180 字节的主机名称": "Host name must be 1–180 bytes",

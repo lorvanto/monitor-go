@@ -111,3 +111,18 @@ node scripts/test-docker.mjs
 Compose 将 `MONITOR_TRUSTED_PROXY` 传给 `-trusted-proxy`；直连时保持为空。按容器实际看到的代理地址配置 CIDR，不要随意信任整个私网。例如，已确认代理地址为 `172.20.0.2` 时使用 `MONITOR_TRUSTED_PROXY=172.20.0.2/32`。宿主机到容器的转发可能改变来源地址，应先核实网络再启用信任。
 
 `-trusted-proxy` 接受逗号分隔的代理 CIDR，默认留空（不信任代理），非法值会阻止启动。只填写本进程实际看到的代理地址；代理必须覆盖或安全追加 `X-Forwarded-For`。服务端从右向左寻找首个不可信地址，忽略其他来源提供的转发头。登录只统计失败：每个客户端 IP 每 5 分钟 30 次、每个规范化用户名每 5 分钟 10 次；成功登录不消耗也不重置这些计数。初始化对所有尝试计数（每个 IP 每 5 分钟 10 次）。
+
+## 在线备份与恢复
+
+执行命令时服务可以继续运行。输出目录必须不存在，父目录必须已存在。命令只读打开源库，不获取实例锁、不执行迁移（支持结构版本 3 至当前版本），生成一致的 SQLite 快照，并复制主密钥及快照引用的全部对象，包括回收站文件。快照之后的新上传不纳入本次备份。缺失对象会重试；仍缺失、损坏或变更时以非零状态退出并保留 BACKUP_INCOMPLETE，不能恢复该目录。完成清单记录 UTC 时间、构建/结构版本、对象数量及 SHA-256。初始化码、锁、暂存文件和图片缓存不复制。
+
+容器命令先在数据卷中生成新快照，随后应立即复制到独立存储。每次使用唯一目录名。示例归档可按下方新数据卷恢复流程还原。
+
+```sh
+mkdir -p backups
+docker compose exec monitor mkdir -p /data/backups
+docker compose exec monitor monitor backup -data /data -out /data/backups/snapshot-001
+docker compose exec -T monitor tar -C /data/backups/snapshot-001 -czf - . > backups/monitor-go-online.tar.gz
+```
+
+恢复时先停服，用完整备份替换整个数据目录，再使用支持该结构版本或更高版本的程序启动。验证成功前保留旧目录。只支持离线恢复，不要向运行中的实例合并文件。备份包含凭据，应私密保存并复制到独立存储；原有冷备份方式仍可使用。

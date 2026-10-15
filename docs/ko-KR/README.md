@@ -172,3 +172,14 @@ npm --prefix web run format:check
 서버, Agent 보고와 발신 User-Agent는 `internal/buildinfo.Version`을 공유합니다. 직접 `go build`하면 `0.4.0-dev`를 사용하고, `make build`는 `git describe --tags --always --dirty`를 주입하며 Git 정보가 없으면 기본값을 사용합니다. `make build VERSION=0.4.0-dev`로 명시할 수 있으며 두 실행 파일은 `-version`을 지원합니다. 프런트엔드 패키지는 개발 기준 버전을 사용하고 시스템 설정에는 실제 서버 빌드를 표시합니다. GitHub CI는 push와 pull request에서 실행되도록 설정했으며 go.mod의 Go, Node 22, 커밋 고정 Action으로 race 테스트, 타입 검사, 빌드와 포맷 검사를 수행합니다. 설정 파일 자체가 원격 실행 성공이나 릴리스 게시를 의미하지는 않습니다.
 
 `make docker-build`는 Git 기반 버전을 주입합니다. Compose를 직접 쓸 때는 `MONITOR_VERSION`을 지정하며 생략하면 `0.4.0-dev`를 표시합니다. 직접 빌드할 때는 `docker build --build-arg VERSION="$(git describe --tags --always --dirty 2>/dev/null || printf 0.4.0-dev)" -t monitor-go:local .`을 사용할 수 있습니다. Git 이력은 Docker 빌드 컨텍스트에 포함하지 않습니다.
+
+## 온라인 백업 및 복원
+
+명령 실행 중에도 서비스를 계속 사용할 수 있습니다. 출력 디렉터리는 없어야 하며 부모 디렉터리는 미리 만들어야 합니다. 원본을 읽기 전용으로 열며 인스턴스 잠금이나 마이그레이션을 실행하지 않습니다(스키마 3부터 현재 버전까지 지원). 일관된 SQLite 스냅샷, 마스터 키, 스냅샷에서 참조하는 모든 객체(휴지통 포함)를 복사합니다. 스냅샷 이후의 새 업로드는 제외합니다. 누락 객체를 재시도하며 누락·손상·변경이 남으면 0이 아닌 종료 코드와 BACKUP_INCOMPLETE를 남깁니다. 이 디렉터리는 복원하면 안 됩니다. 완료 목록에는 UTC 시각, 빌드/스키마 버전, 객체 수 및 SHA-256을 기록합니다. 초기화 토큰, 잠금, 임시 파일과 이미지 캐시는 제외합니다.
+
+```sh
+mkdir -p backups
+./bin/monitor backup -data data -out backups/snapshot-001
+```
+
+복원 전에 서비스를 중지하고 전체 데이터 디렉터리를 완전한 백업으로 교체한 다음 해당 스키마 이상을 지원하는 바이너리로 시작합니다. 검증이 끝날 때까지 이전 디렉터리를 보관합니다. 오프라인 복원만 지원하며 실행 중인 데이터에 파일을 병합하지 않습니다. 백업에는 자격 증명이 포함되므로 비공개로 보관하고 독립 저장소에 복사합니다. 기존 콜드 백업도 계속 지원합니다.

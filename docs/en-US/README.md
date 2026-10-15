@@ -174,3 +174,14 @@ The server prepares strong ETags and gzip representations at startup using the G
 Server, Agent reports and outbound User-Agent headers share `internal/buildinfo.Version`. Direct `go build` uses `0.4.0-dev`; `make build` injects `git describe --tags --always --dirty`, falling back to that default without Git metadata. Use `make build VERSION=0.4.0-dev` to select a value explicitly. Both binaries support `-version`. The frontend package uses the development baseline; the System settings page reports the actual server build. GitHub CI is configured for push and pull requests, using Go from `go.mod`, Node 22, pinned Action commits, race tests, type checks, build and formatting checks. A workflow file does not establish a passing remote run or a published release.
 
 `make docker-build` injects the Git-derived version. With plain Compose, supply `MONITOR_VERSION` explicitly; without it, the image reports `0.4.0-dev`. For direct builds use `docker build --build-arg VERSION="$(git describe --tags --always --dirty 2>/dev/null || printf 0.4.0-dev)" -t monitor-go:local .`. Git history stays outside the Docker build context.
+
+## Online backup and restore
+
+The service may keep running during this command. The output directory must not exist and its parent must exist. The command opens the source read-only without acquiring the instance lock or migrating it (supported schemas: 3 through the current version). It creates a consistent SQLite snapshot and copies the master key and all objects referenced by that snapshot, including trash. New uploads after the snapshot are excluded. Missing objects are retried; missing, corrupt or changed objects fail with a nonzero exit status and retain BACKUP_INCOMPLETE. Never restore such a directory. The completion manifest records UTC time, build/schema versions, object count and SHA-256 hashes. Setup tokens, locks, staging and image caches are excluded.
+
+```sh
+mkdir -p backups
+./bin/monitor backup -data data -out backups/snapshot-001
+```
+
+To restore, stop the service, replace the entire data directory with a complete backup, and start a binary supporting at least its schema version. Keep the old directory until verification succeeds. Restore offline only; do not merge files into a running installation. Treat backups as private credentials and copy them to independent storage. Cold backups remain supported.

@@ -4,6 +4,11 @@ User-visible changes belong here. Entries under **Unreleased** describe the curr
 
 ## Unreleased
 
+### Online backup
+
+- Add a read-only `monitor backup` command that snapshots SQLite without the service lock or migrations, verifies each referenced object, and records hashes and versions. Failed backups retain an incomplete marker and cannot be opened as an installation. Restore only while stopped.
+
+
 ### Build metadata and continuous integration
 
 - Share one injectable build version across server status, system details, Agent reports and all outbound User-Agent headers. Add `-version` to both binaries and version build arguments for Make/Docker/Compose.

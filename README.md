@@ -123,3 +123,5 @@ Report reproducible bugs using the issue templates in [lorvanto/monitor-go](http
 ## License
 
 Project-owned source code and documentation are licensed under the [Apache License 2.0](LICENSE). See [NOTICE](NOTICE) and [third-party notices](THIRD_PARTY_NOTICES.md) for attribution and separately licensed dependencies, icons and fonts.
+
+Online backups are available through `monitor backup -data data -out backups/snapshot-001`; see the [backup and restore guide](docs/en-US/README.md#online-backup-and-restore). The output must be new and its parent must exist.

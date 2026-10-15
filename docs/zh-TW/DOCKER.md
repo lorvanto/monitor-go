@@ -111,3 +111,18 @@ node scripts/test-docker.mjs
 Compose 將 `MONITOR_TRUSTED_PROXY` 傳給 `-trusted-proxy`；直接連線時保持空白。依容器實際看到的代理位址設定 CIDR，不要任意信任整個私有網路。例如，已確認代理位址為 `172.20.0.2` 時使用 `MONITOR_TRUSTED_PROXY=172.20.0.2/32`。宿主機至容器的轉送可能改變來源位址，應先確認網路再啟用信任。
 
 `-trusted-proxy` 接受逗號分隔的代理 CIDR，預設留空（不信任代理），無效值會阻止啟動。只填寫本程序實際看到的代理位址；代理必須覆寫或安全追加 `X-Forwarded-For`。伺服器從右向左尋找首個不可信位址，忽略其他來源的轉送標頭。登入只統計失敗：每個用戶端 IP 每 5 分鐘 30 次、每個正規化使用者名稱每 5 分鐘 10 次；成功登入不消耗也不重設計數。初始化對所有嘗試計數（每個 IP 每 5 分鐘 10 次）。
+
+## 線上備份與還原
+
+執行命令時服務可繼續運行。輸出目錄必須不存在，父目錄必須已存在。命令唯讀開啟來源資料庫，不取得執行個體鎖、不執行移轉（支援結構版本 3 至目前版本），產生一致的 SQLite 快照並複製主密鑰與快照引用的全部物件，包括回收桶檔案。快照之後的新上傳不納入備份。遺失物件會重試；仍遺失、損壞或變更時以非零狀態結束並保留 BACKUP_INCOMPLETE，不能還原該目錄。完成清單記錄 UTC 時間、建置/結構版本、物件數量及 SHA-256。初始化碼、鎖、暫存檔與圖片快取不複製。
+
+容器命令先在資料卷中產生新快照，隨後應立即複製到獨立儲存。每次使用唯一目錄名稱。範例封存檔可按下方新資料卷還原流程操作。
+
+```sh
+mkdir -p backups
+docker compose exec monitor mkdir -p /data/backups
+docker compose exec monitor monitor backup -data /data -out /data/backups/snapshot-001
+docker compose exec -T monitor tar -C /data/backups/snapshot-001 -czf - . > backups/monitor-go-online.tar.gz
+```
+
+還原前先停服，以完整備份取代整個資料目錄，再使用支援該結構版本或更高版本的程式啟動。驗證成功前保留舊目錄。僅支援離線還原，不要將檔案合併至運行中的執行個體。備份包含憑據，應私密保存並複製到獨立儲存；原有冷備份仍可使用。

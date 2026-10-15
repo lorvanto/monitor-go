@@ -111,3 +111,18 @@ References: [Docker volumes](https://docs.docker.com/engine/storage/volumes/) ·
 Compose passes `MONITOR_TRUSTED_PROXY` to `-trusted-proxy`; leave it empty for direct access. Set it to the actual proxy CIDRs as seen inside the container, not an arbitrary whole private network. For example, a known proxy address `172.20.0.2` uses `MONITOR_TRUSTED_PROXY=172.20.0.2/32`. Host-to-container forwarding may change the peer address: verify your network before enabling trust.
 
 `-trusted-proxy` accepts comma-separated proxy CIDRs and defaults to empty (no trusted proxies). Invalid CIDRs prevent startup. Trust only the actual proxy addresses as seen by this process; the proxy must overwrite or safely append `X-Forwarded-For`. The server walks that header from right to left, stopping at the first untrusted address. Headers from other peers are ignored. Login counts only failures: 30 per client IP and 10 per normalized username per five minutes; successful logins neither consume nor reset those budgets. Setup counts every attempt (10 per IP per five minutes).
+
+## Online backup and restore
+
+The service may keep running during this command. The output directory must not exist and its parent must exist. The command opens the source read-only without acquiring the instance lock or migrating it (supported schemas: 3 through the current version). It creates a consistent SQLite snapshot and copies the master key and all objects referenced by that snapshot, including trash. New uploads after the snapshot are excluded. Missing objects are retried; missing, corrupt or changed objects fail with a nonzero exit status and retain BACKUP_INCOMPLETE. Never restore such a directory. The completion manifest records UTC time, build/schema versions, object count and SHA-256 hashes. Setup tokens, locks, staging and image caches are excluded.
+
+The container command writes a new snapshot inside the data volume; copy it out immediately to independent storage. Choose a unique directory name each time. The example archive can use the fresh-volume restore procedure below.
+
+```sh
+mkdir -p backups
+docker compose exec monitor mkdir -p /data/backups
+docker compose exec monitor monitor backup -data /data -out /data/backups/snapshot-001
+docker compose exec -T monitor tar -C /data/backups/snapshot-001 -czf - . > backups/monitor-go-online.tar.gz
+```
+
+To restore, stop the service, replace the entire data directory with a complete backup, and start a binary supporting at least its schema version. Keep the old directory until verification succeeds. Restore offline only; do not merge files into a running installation. Treat backups as private credentials and copy them to independent storage. Cold backups remain supported.

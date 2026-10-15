@@ -268,3 +268,14 @@ Webhook 消息格式支持通用、钉钉、飞书和企业微信，旧渠道默
 服务端、Agent 上报及外发请求 User-Agent 统一使用 `internal/buildinfo.Version`。直接 `go build` 默认为 `0.4.0-dev`；`make build` 注入 `git describe --tags --always --dirty`，无 Git 信息时回退到默认值。可用 `make build VERSION=0.4.0-dev` 明确指定。两个二进制均支持 `-version`。前端包使用开发基线，系统设置显示实际服务端构建版本。GitHub CI 配置为 push 和 pull request 触发，使用 go.mod 中的 Go、Node 22、固定提交的 Action，执行 race 测试、类型检查、构建和格式检查。工作流文件不代表远端已运行通过或已发布版本。
 
 `make docker-build` 会注入 Git 派生版本。直接使用 Compose 时可传入 `MONITOR_VERSION`，未指定则显示 `0.4.0-dev`。直接构建可用 `docker build --build-arg VERSION="$(git describe --tags --always --dirty 2>/dev/null || printf 0.4.0-dev)" -t monitor-go:local .`。Git 历史不进入 Docker 构建上下文。
+
+## 在线备份与恢复
+
+执行命令时服务可以继续运行。输出目录必须不存在，父目录必须已存在。命令只读打开源库，不获取实例锁、不执行迁移（支持结构版本 3 至当前版本），生成一致的 SQLite 快照，并复制主密钥及快照引用的全部对象，包括回收站文件。快照之后的新上传不纳入本次备份。缺失对象会重试；仍缺失、损坏或变更时以非零状态退出并保留 BACKUP_INCOMPLETE，不能恢复该目录。完成清单记录 UTC 时间、构建/结构版本、对象数量及 SHA-256。初始化码、锁、暂存文件和图片缓存不复制。
+
+```sh
+mkdir -p backups
+./bin/monitor backup -data data -out backups/snapshot-001
+```
+
+恢复时先停服，用完整备份替换整个数据目录，再使用支持该结构版本或更高版本的程序启动。验证成功前保留旧目录。只支持离线恢复，不要向运行中的实例合并文件。备份包含凭据，应私密保存并复制到独立存储；原有冷备份方式仍可使用。

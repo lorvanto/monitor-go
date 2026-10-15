@@ -52,6 +52,11 @@ func OpenStore(dir string) (*Store, error) {
 	if err != nil {
 		return nil, err
 	}
+	if _, markerErr := os.Lstat(filepath.Join(abs, backupIncomplete)); markerErr == nil {
+		return nil, errors.New("incomplete backup directory cannot be opened; create a new complete backup")
+	} else if !errors.Is(markerErr, os.ErrNotExist) {
+		return nil, markerErr
+	}
 	if err = os.MkdirAll(abs, 0700); err != nil {
 		return nil, err
 	}
