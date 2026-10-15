@@ -12,6 +12,7 @@ User-visible changes belong here. Entries under **Unreleased** describe the curr
 
 ### HTTP response rules
 
+- Use response-time incident titles for HTTP latency warnings; retain certificate titles for SSL warnings.
 - Schema 7 adds bounded response keyword matching, inverse matching and latency warnings to HTTP check creation/editing. Connection/status and keyword failures take precedence; details flag the 1 MiB inspection limit without exposing response bodies.
 - Stop the service and back up the full data directory before upgrading. Older binaries cannot read schema 7. Optional custom headers and method selection are not implemented.
 

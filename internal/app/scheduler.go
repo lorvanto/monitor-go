@@ -133,7 +133,10 @@ func (s *Server) execute(ctx context.Context, job int64) error {
 			title := fmt.Sprintf("%s 连续 %d 次检测异常", m.Name, failures)
 			if result.State == "warning" {
 				severity = "warning"
-				title = m.Name + " 证书即将到期"
+				title = m.Name + " response time exceeds the configured threshold"
+				if m.Type == "SSL" {
+					title = m.Name + " 证书即将到期"
+				}
 			}
 			return transitionAlert(tx, fingerprint, "monitor", m.ID, m.Name, title, result.Detail, severity, true)
 		}

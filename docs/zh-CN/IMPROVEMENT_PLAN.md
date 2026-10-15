@@ -567,3 +567,7 @@ SELECT id FROM jobs WHERE state='queued' ORDER BY id LIMIT 1
 - 同时复查并修复本机采集来源、系统创建者以及总览/审计页的固定操作标签。保留原始审计记录、操作者与资源文本，不翻译任意用户内容。
 - 真实 SQLite/API 回归覆盖默认值、保存同名自定义值、旧自定义角色、远程主机同名别名。完整 Go 测试、vet、名称专项 race、构建通过；128 项 React 测试及 7 项脚本测试、类型检查、生产构建、格式和五语检查通过。新增切换五语保留未保存设置、默认与自定义同名区分、图片样式与审计标签测试。
 - 独立服务端口 `49353` 的浏览器验证设置页显示 `All files / Uncategorized`，文件页显示 `All files` / `Uncategorized`，角色页显示三种英文角色与说明，图片样式为 `List thumbnail` / `Document illustration`。五语当前指南与 CHANGELOG 已同步更新。
+
+### T6 关联复查（2026-10-15）
+
+- 分支：`codex/t6-http-warning-title`。发现原调度器把所有 warning 命名为证书即将到期，现按 HTTP 耗时与 SSL 证书区分标题。真实 SQLite + HTTP 集成测试覆盖耗时告警触发及关闭阈值后的自动恢复；完整 Go 测试、专项 race、vet 通过，五语说明同步。

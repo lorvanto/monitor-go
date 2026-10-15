@@ -116,3 +116,41 @@ func TestHTTPRulesCreateEditAndTypeChange(t *testing.T) {
 		t.Fatalf("non-HTTP retained rules: %+v", m)
 	}
 }
+
+func TestHTTPLatencyWarningCreatesCorrectIncidentAndRecovers(t *testing.T) {
+	s, _, c := fixture(t)
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		time.Sleep(20 * time.Millisecond)
+		fmt.Fprint(w, "ready")
+	}))
+	defer upstream.Close()
+	in := monitorPayload(upstream.URL)
+	in.Keyword = "ready"
+	in.LatencyWarnMS = 1
+	in.Threshold = 1
+	id := decodeValue[map[string]string](t, c.call("POST", "/monitors", in, 201))["id"]
+	run := func() {
+		t.Helper()
+		c.call("POST", "/monitors/"+id+"/checks", map[string]any{}, 202)
+		var job int64
+		if err := s.Store.DB.QueryRow("SELECT id FROM jobs WHERE state='queued'").Scan(&job); err != nil {
+			t.Fatal(err)
+		}
+		if err := s.execute(context.Background(), job); err != nil {
+			t.Fatal(err)
+		}
+	}
+	run()
+	alerts := decodeValue[[]Alert](t, c.call("GET", "/alerts", nil, 200))
+	if len(alerts) != 1 || alerts[0].Severity != "warning" || !strings.Contains(alerts[0].Title, "response time") || strings.Contains(alerts[0].Title, "证书") {
+		t.Fatalf("wrong warning title: %+v", alerts)
+	}
+	monitors := decodeValue[[]Monitor](t, c.call("GET", "/monitors", nil, 200))
+	in.LatencyWarnMS = 0
+	c.call("PUT", "/monitors/"+id, monitorEditInput{monitorInput: in, Version: monitors[0].Version}, 200)
+	run()
+	alerts = decodeValue[[]Alert](t, c.call("GET", "/alerts", nil, 200))
+	if alerts[0].State != "resolved" {
+		t.Fatal("warning incident did not recover")
+	}
+}

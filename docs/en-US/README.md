@@ -197,3 +197,5 @@ Create and edit HTTP checks with an optional UTF-8 response keyword (up to 1024 
 ## Agent retry and collection verification
 
 Network/server failures use a linear delay of 5 seconds per consecutive failure, capped at 60 seconds; a successful report restores the normal 15-second interval. HTTP 401/403, and 409 during enrollment, stop the Agent because credentials are invalid or enrollment conflicts. Re-enroll with a new configuration instead of endlessly retrying revoked access. Automated tests use local HTTP/TLS servers and injected collectors/clocks, covering credential persistence, reports, retry cap/reset, redirects, private CAs, partition filtering (up to 16 usable unique mounts), partial metric errors and network counter/time resets.
+
+HTTP latency incidents use a response-time title; SSL certificate warnings keep their certificate-specific title.
