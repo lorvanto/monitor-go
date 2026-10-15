@@ -434,6 +434,7 @@
   }
   .field {
     display: grid;
+    align-content: start;
     gap: 6px;
     min-width: 0;
     color: var(--ink-2);

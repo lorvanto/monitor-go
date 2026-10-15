@@ -4,6 +4,10 @@ User-visible changes belong here. Entries under **Unreleased** describe the curr
 
 ## Unreleased
 
+### Form field alignment
+
+- Align labels and inputs at the top of each field, keeping helper text below its own input. This fixes the uneven application name/ID row and other side-by-side fields with different amounts of help text.
+
 ### macOS APFS capacity and disk alerts
 
 - Consolidate mounted APFS volumes by verified container identity, retaining mount details and explicit volume quotas. Preserve independent equal-valued disks and raw samples when identity collection is unavailable.
