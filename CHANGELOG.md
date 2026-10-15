@@ -4,6 +4,12 @@ User-visible changes belong here. Entries under **Unreleased** describe the curr
 
 ## Unreleased
 
+### Five-language phone layouts
+
+- Keep time-range buttons, long application/host/alert names and file/package selectors within narrow layouts. Bound dialog titles and move long context text into the scrolling body.
+- Keep dialog close/footer actions visible, enlarge mobile footer tap areas and wrap long action labels. Follow the visual viewport and reveal the focused field during keyboard resizing without losing drafts.
+- Add five-language viewport/focus regressions and browser checks across portrait, landscape and reduced-height layouts. No dependency or schema change.
+
 ### Japanese, Korean and Traditional Chinese audit
 
 - Standardize Japanese check/administrator terms, Korean Agent enrollment wording and Traditional Chinese sign-in, keys, archive and network terms across catalogs and current guides.

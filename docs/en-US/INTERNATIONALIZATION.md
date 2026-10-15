@@ -64,3 +64,9 @@ Use `Form` for native constraint validation and `notice()` / `errorMessage()` fo
 Every shared dialog includes a language selector, so you can switch without closing the editor. Typed names, notes, passwords, checkbox and dropdown selections remain intact. A deletion confirmation remains valid in the language used when it was typed; the server still receives the fixed `DELETE` token. Malformed API/upload responses use translated errors, and unknown-route errors carry the same translation key as other API failures.
 
 The catalog policy also detects Korean/Chinese/Japanese script contamination and copied English messages, with explicit exceptions for shared product/protocol names. It enforces consistent Traditional Chinese terminology (登入, 金鑰, 封存, 連接埠). Japanese kanji and language-selector autonyms are intentional. These checks apply to system messages, never to user data or stored diagnostics. Interaction tests exercise the visible dialog selector and preserve drafts without additional requests.
+
+## Phone layouts and dialogs
+
+On narrow screens, time-range controls wrap and long application, host and alert names break within their panels. Dialog content scrolls independently while close and footer actions remain available. Long context text scrolls with the body; long titles have a bounded scroll area. File/image preview selectors and package-directory controls fit the available width.
+
+Dialogs follow the browser visual viewport during keyboard opening and panning, and scroll the focused input into view without resetting drafts. Mobile form controls use readable font sizes, and footer actions have larger tap areas with wrapping labels. Verify all five locales at 320px and 390px portrait widths, 640px landscape, and a reduced-height viewport; check actual control hit targets as well as page and dialog scroll widths.

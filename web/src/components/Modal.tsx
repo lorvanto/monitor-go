@@ -1,4 +1,10 @@
-import { useId, useLayoutEffect, useRef, type ReactNode } from "react";
+import {
+  useId,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import { createPortal } from "react-dom";
 import { t, useI18n } from "../i18n";
 import { classNames } from "../lib/react";
@@ -28,8 +34,30 @@ export default function Modal({
   const panel = useRef<HTMLElement>(null);
   const close = useRef(onClose);
   const titleId = useId();
+  const [viewport, setViewport] = useState<{ height: number; top: number }>();
+  useLayoutEffect(() => {
+    const visual = window.visualViewport;
+    if (!visual) return;
+    const update = () =>
+      setViewport({ height: visual.height, top: visual.offsetTop });
+    update();
+    visual.addEventListener("resize", update);
+    visual.addEventListener("scroll", update);
+    return () => {
+      visual.removeEventListener("resize", update);
+      visual.removeEventListener("scroll", update);
+    };
+  }, []);
   useLayoutEffect(() => {
     close.current = onClose;
+    const active = document.activeElement;
+    const body = panel.current?.querySelector(".modal-body");
+    if (active instanceof HTMLElement && body?.contains(active)) {
+      const field = active.getBoundingClientRect(),
+        bounds = body.getBoundingClientRect();
+      if (field.top < bounds.top || field.bottom > bounds.bottom)
+        active.scrollIntoView({ block: "nearest", inline: "nearest" });
+    }
   });
   useLayoutEffect(() => {
     const previous = document.activeElement;
@@ -87,6 +115,11 @@ export default function Modal({
   return createPortal(
     <div
       className={classNames("overlay", { "overlay-drawer": drawer })}
+      style={
+        viewport
+          ? { height: viewport.height, top: viewport.top, bottom: "auto" }
+          : undefined
+      }
       onClick={(event) => {
         if (event.target === event.currentTarget) onClose();
       }}
@@ -102,7 +135,6 @@ export default function Modal({
         <header className="modal-head">
           <div>
             <h2 id={titleId}>{title}</h2>
-            {subtitle && <p>{subtitle}</p>}
           </div>
           <div className="modal-controls">
             <LanguageSelect />
@@ -116,7 +148,10 @@ export default function Modal({
             </button>
           </div>
         </header>
-        <div className="modal-body">{children}</div>
+        <div className="modal-body">
+          {subtitle && <p className="modal-subtitle">{subtitle}</p>}
+          {children}
+        </div>
         {footer && <footer className="modal-foot">{footer}</footer>}
       </section>
     </div>,

@@ -225,3 +225,7 @@ Setup, sign-in, dialogs, browser field-validation messages and transient notices
 ## Language switching inside dialogs
 
 Every shared dialog includes a language selector, so you can switch without closing the editor. Typed names, notes, passwords, checkbox and dropdown selections remain intact. A deletion confirmation remains valid in the language used when it was typed; the server still receives the fixed `DELETE` token. Malformed API/upload responses use translated errors, and unknown-route errors carry the same translation key as other API failures.
+
+## Phone layouts and dialogs
+
+On narrow screens, time-range controls wrap and long application, host and alert names break within their panels. Dialog content scrolls independently while close and footer actions remain available. Long context text scrolls with the body; long titles have a bounded scroll area. File/image preview selectors and package-directory controls fit the available width.
