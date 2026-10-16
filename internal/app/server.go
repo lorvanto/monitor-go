@@ -41,6 +41,7 @@ type Server struct {
 	trustedProxies []netip.Prefix
 	work           sync.WaitGroup
 	collector      hoststats.Collector
+	charts         pointCache
 	fileMu         sync.Mutex
 	imageMu        sync.Mutex
 	uploadSlots    chan struct{}
@@ -289,6 +290,7 @@ func (s *Server) Handler() http.Handler {
 	add("POST /api/v1/monitors/{id}/checks", "monitor:run", false, s.manualCheck)
 	add("GET /api/v1/alerts/summary", "alert:read", false, s.alertSummary)
 	add("GET /api/v1/alerts", "alert:read", false, s.listAlerts)
+	add("GET /api/v1/alerts/{id}/activity", "alert:read", false, s.alertActivity)
 	add("POST /api/v1/alerts/{id}/acknowledgements", "alert:handle", false, s.ackAlert)
 	add("POST /api/v1/alerts/{id}/silences", "alert:handle", false, s.silenceAlert)
 	add("POST /api/v1/hosts/agents", "host:agents", false, s.createAgent)
@@ -303,6 +305,7 @@ func (s *Server) Handler() http.Handler {
 	add("GET /api/v1/notification-deliveries", "alert:access", false, s.listDeliveries)
 	add("POST /api/v1/notification-deliveries/{id}/retry", "notification:manage", false, s.retryDelivery)
 	add("GET /api/v1/overview", "", false, s.overview)
+	add("GET /api/v1/poll", "", false, s.poll)
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) { output(w, 200, map[string]string{"status": "ok"}) })
 	mux.HandleFunc("GET /readyz", func(w http.ResponseWriter, r *http.Request) {
 		if e := s.Store.DB.PingContext(r.Context()); e != nil {

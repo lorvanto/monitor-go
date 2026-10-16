@@ -24,8 +24,24 @@ func scanMonitor(row interface{ Scan(...any) error }) (Monitor, error) {
 	return m, e
 }
 
-const monitorUptimeQuery = `SELECT m.id,count(*) FILTER (WHERE r.state IN ('healthy','warning')),count(*)
-FROM monitors m JOIN check_results r ON r.monitor_id=m.id AND r.at>=? WHERE m.deleted_at IS NULL GROUP BY m.id`
+// Summaries cover whole hours only. Already rolled-up rows in the first partial
+// hour stay raw; unconsumed rows (including late arrivals) are counted exactly
+// once in the same SQLite snapshot as the summaries.
+const recentCheckTotals = `WITH boundary AS (SELECT ? AS cutoff), samples AS (
+ SELECT h.monitor_id,h.good,h.total,h.latency_avg*h.total AS latency_sum
+ FROM check_hourly h,boundary b WHERE h.hour>=((b.cutoff+3599999)/3600000)*3600000
+ UNION ALL
+ SELECT r.monitor_id,sum(r.state IN ('healthy','warning')),count(*),sum(r.latency)
+ FROM boundary b CROSS JOIN check_results r INDEXED BY check_results_pending_rollup WHERE r.rolled_up=0 AND r.at>=b.cutoff GROUP BY r.monitor_id
+ UNION ALL
+ SELECT r.monitor_id,sum(r.state IN ('healthy','warning')),count(*),sum(r.latency)
+ FROM boundary b CROSS JOIN monitors m CROSS JOIN check_results r
+ WHERE r.monitor_id=m.id AND r.rolled_up=1 AND r.at>=b.cutoff AND r.at<((b.cutoff+3599999)/3600000)*3600000
+ GROUP BY r.monitor_id
+)
+`
+const monitorUptimeQuery = recentCheckTotals + `SELECT m.id,sum(s.good),sum(s.total)
+FROM samples s JOIN monitors m ON m.id=s.monitor_id WHERE m.deleted_at IS NULL GROUP BY m.id`
 const monitorHistoryQuery = `SELECT monitor_id,at,state,latency,detail FROM (
  SELECT r.monitor_id,r.at,r.state,r.latency,r.detail,
  ROW_NUMBER() OVER (PARTITION BY r.monitor_id ORDER BY r.at DESC,r.id DESC) AS rank

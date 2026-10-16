@@ -60,7 +60,7 @@ func (s *Server) listAlerts(w http.ResponseWriter, r *http.Request, u *User) (an
 		return nil, e
 	}
 
-	if len(out) == 0 {
+	if len(out) == 0 || r.URL.Query().Get("compact") == "1" {
 		return out, nil
 	}
 	byID := make(map[int64]*Alert, len(out))
@@ -93,6 +93,32 @@ func (s *Server) listAlerts(w http.ResponseWriter, r *http.Request, u *User) (an
 	}
 
 	return out, nil
+}
+func (s *Server) alertActivity(w http.ResponseWriter, r *http.Request, u *User) (any, error) {
+	id, err := pathID(r)
+	if err != nil {
+		return nil, err
+	}
+	var exists int
+	if err = s.Store.reader().QueryRowContext(r.Context(), "SELECT 1 FROM alerts WHERE id=?", id).Scan(&exists); err == sql.ErrNoRows {
+		return nil, missing()
+	} else if err != nil {
+		return nil, err
+	}
+	rows, err := s.Store.reader().QueryContext(r.Context(), "SELECT at,actor,message FROM alert_activity WHERE alert_id=? ORDER BY id DESC LIMIT 100", id)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := []Activity{}
+	for rows.Next() {
+		var a Activity
+		if err = rows.Scan(&a.At, &a.Actor, &a.Message); err != nil {
+			return nil, err
+		}
+		out = append(out, a)
+	}
+	return out, rows.Err()
 }
 func (s *Server) ackAlert(w http.ResponseWriter, r *http.Request, u *User) (any, error) {
 	return s.changeAlert(r, u, false)

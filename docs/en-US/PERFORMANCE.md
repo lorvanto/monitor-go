@@ -17,3 +17,9 @@ Use the same host, Go version, concurrency and dataset for comparisons. Heavy te
 ## Results
 
 Measurements and implementation progress are recorded in the [optimization plan](../zh-CN/PERFORMANCE_PLAN.md). Keep collection at 15 seconds, configured check intervals and alert thresholds unchanged while reducing redundant work. Existing authorization, unsaved drafts, language switching, APFS identity, notification suppression/retries and retention semantics remain regression requirements.
+
+## Query and polling behavior
+
+`GET /api/v1/poll?page=overview` (or another current page key) authenticates once and includes only resources allowed by that fresh identity, navigation and the open-alert badge. It uses compact alert rows; `GET /api/v1/alerts/{id}/activity` loads at most 100 timeline entries with `alert:read` authorization. Existing `/monitors` and `/alerts` responses remain compatible; `/alerts?compact=1` explicitly omits activities.
+
+Rolling 24-hour totals combine whole-hour summaries, the raw first partial hour and unconsumed results in a single SQLite snapshot, including late arrivals. Historical overview chart points use a bounded 32-entry, two-second cache and coalesce concurrent identical requests. Current check/host state, incidents, authentication and notification decisions are never served from that cache. No schema, durability, retention or sampling interval changes are required.
