@@ -88,6 +88,7 @@ func TestPollingPermissionsCompactAlertsAndActivity(t *testing.T) {
 		t.Fatal("poll leaked resources")
 	}
 	reader.call("GET", "/alerts/1/activity", nil, 403)
+	reader.call("GET", "/monitors/1/history", nil, 403)
 	c.call("PATCH", "/roles/"+role["id"], map[string]any{"version": 2, "permissions": []string{"monitor:read"}}, 200)
 	reader.call("GET", "/poll?page=overview", nil, 401)
 }
@@ -118,4 +119,36 @@ func TestOverviewPointQueriesPreserveGroups(t *testing.T) {
 			}
 		}
 	}
+}
+
+func TestCompactCheckSignalsAndOnDemandHistoryAreEquivalent(t *testing.T) {
+	s, ts, c := fixture(t)
+	t.Logf("HTTP address: %s", ts.URL)
+	mustSQL(t, s, "INSERT INTO monitors(id,name,type,target,group_name,interval_seconds,timeout_seconds) VALUES(1,'signals','TCP','localhost:80','',60,3)")
+	for i := 0; i < 40; i++ {
+		mustSQL(t, s, "INSERT INTO check_results(monitor_id,at,state,latency,detail) VALUES(1,?,'healthy',?,'Original diagnostic')", now()-int64(i/2)*1000, i)
+	}
+	full, e := s.monitors(context.Background())
+	if e != nil {
+		t.Fatal(e)
+	}
+	compact, e := s.monitorsWithDetails(context.Background(), false)
+	if e != nil {
+		t.Fatal(e)
+	}
+	if len(compact) != 1 || len(compact[0].History) != 32 {
+		t.Fatal("signals lost")
+	}
+	for i, h := range compact[0].History {
+		want := full[0].History[i]
+		if h.Detail != "" || h.At != want.At || h.Latency != want.Latency || h.State != want.State {
+			t.Fatal("compact signal changed")
+		}
+	}
+	details := decodeValue[[]CheckResult](t, c.call("GET", "/monitors/1/history", nil, 200))
+	if !reflect.DeepEqual(details, full[0].History) {
+		t.Fatal("diagnostics/order changed")
+	}
+	mustSQL(t, s, "UPDATE monitors SET deleted_at=1 WHERE id=1")
+	c.call("GET", "/monitors/1/history", nil, 404)
 }

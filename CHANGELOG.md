@@ -6,6 +6,9 @@ User-visible changes belong here. Entries under **Unreleased** describe the curr
 
 ### Performance optimization
 
+- Keep check-list signal samples lightweight and fetch full diagnostic history only for an open detail drawer, with unchanged legacy responses and permission enforcement.
+- Release the image generation lock before streaming cached content, and run resumable 2,000-row history rollups independently of check dispatch. Document constrained Linux before/after measurements and a separate 24MP image peak test.
+
 - Cache static collector inventory for five minutes while keeping dynamic metrics and APFS capacity fresh. Wake bounded check/notification workers on committed work, completion and due times, retaining notification grace and retry behavior.
 
 - Combine frontend page polling, load only the selected alert timeline, retain unchanged state references and memoize chart transforms. Refresh immediately after returning to a visible tab, preserving language choices, drafts and post-save refreshes.

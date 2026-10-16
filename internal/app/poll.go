@@ -23,7 +23,7 @@ func (s *Server) poll(w http.ResponseWriter, r *http.Request, u *User) (any, err
 		}
 	}
 	if u.Can("monitor:read") && (page == "overview" || page == "monitors") {
-		out["monitors"], err = s.monitors(r.Context())
+		out["monitors"], err = s.monitorsWithDetails(r.Context(), false)
 		if err != nil {
 			return nil, err
 		}

@@ -25,6 +25,7 @@ import {
   statusLabel,
   useApp,
   type Monitor,
+  type CheckResult,
 } from "../stores/app";
 export default function MonitorsView() {
   const initialState = {
@@ -38,6 +39,9 @@ export default function MonitorsView() {
     selected: [] as string[],
     creating: appStore.getState().createMonitorRequested,
     detailID: appStore.getState().activeMonitor,
+    detailHistory: [] as CheckResult[],
+    historyFor: "",
+    historyError: "" as DisplayMessage,
     editing: null as { id: string; version: number } | null,
     archiving: null as Monitor | null,
     clearPassword: false,
@@ -115,6 +119,32 @@ export default function MonitorsView() {
     appStore
       .getState()
       .data.monitors.find((m) => m.id === store.getState().detailID);
+  const historyScope = `${getDetail()?.id || ""}:${getDetail()?.checkedAt || 0}`;
+  useEffect(() => {
+    const id = getDetail()?.id;
+    let active = true;
+    if (!id || !can("monitor:read")) return;
+    void api<CheckResult[]>(`/monitors/${id}/history`)
+      .then((detailHistory) => {
+        if (active)
+          store.setState({
+            detailHistory,
+            historyFor: historyScope,
+            historyError: "",
+          });
+      })
+      .catch((error) => {
+        if (active)
+          store.setState({
+            detailHistory: [],
+            historyFor: historyScope,
+            historyError: errorMessage(error),
+          });
+      });
+    return () => {
+      active = false;
+    };
+  }, [historyScope, appState.user, appState.updatedAt]);
   const getGroups = () => [
     ...new Set(appStore.getState().data.monitors.map((m) => m.group)),
   ];
@@ -346,6 +376,10 @@ export default function MonitorsView() {
   }, [appState.data.monitors]);
 
   const detail = getDetail();
+  const detailHistory =
+    viewState.historyFor === historyScope
+      ? viewState.detailHistory
+      : detail?.history || [];
   const groups = getGroups();
   const tabs = getTabs();
   const filtered = getFiltered();
@@ -1268,10 +1302,15 @@ export default function MonitorsView() {
           </dl>
           <div>
             <h3 className="section-title">{t("检测记录")}</h3>
-            {detail.history.length ? (
+            {viewState.historyFor === historyScope && viewState.historyError ? (
+              <p role="alert" className="error-text">
+                {viewState.historyError}
+              </p>
+            ) : null}
+            {detailHistory.length ? (
               <ol className="history-list">
                 <>
-                  {detail.history.slice(0, 12).map((h) => (
+                  {detailHistory.slice(0, 12).map((h) => (
                     <li key={h.at}>
                       <time>{timeOnly(h.at)}</time>
                       <span className="state-text">

@@ -22,6 +22,13 @@ export function fixtureData(
       openAlertCount: fixtures["/alerts/summary"].open,
     };
   }
+  if (/^\/monitors\/[^/]+\/history$/.test(path))
+    return (
+      fixtures[path] ??
+      fixtures["/monitors"].find((m: any) => m.id === path.split("/")[2])
+        ?.history ??
+      []
+    );
   if (/^\/alerts\/[^/]+\/activity$/.test(path))
     return (
       fixtures[path] ??

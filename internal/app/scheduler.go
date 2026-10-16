@@ -14,23 +14,13 @@ const nextQueuedJobQuery = "SELECT id FROM jobs WHERE state='queued' ORDER BY id
 func (s *Server) scheduler(ctx context.Context) {
 	var workers sync.WaitGroup
 	defer workers.Wait()
-	s.cleanupUploadResidue(ctx)
-	s.collectPurgedFiles(ctx)
-	if err := s.rollupChecks(ctx, now()); err != nil {
-		slog.Error("Metric rollup failed", "error", err)
-	}
 	slots := make(chan struct{}, 4)
 	tick := time.NewTimer(0)
 	defer tick.Stop()
-	maintenance := time.NewTicker(time.Hour)
-	defer maintenance.Stop()
 	for {
 		select {
 		case <-ctx.Done():
 			return
-		case <-maintenance.C:
-			s.cleanup(ctx)
-			continue
 		case <-s.Store.checkWake:
 		case <-tick.C:
 		}
@@ -192,6 +182,26 @@ func (s *Server) cleanup(ctx context.Context) {
 			if n < 5000 {
 				break
 			}
+		}
+	}
+}
+
+// Maintenance has its own lifecycle so large backlogs never suspend dispatch.
+func (s *Server) maintenanceLoop(ctx context.Context) {
+	s.cleanupUploadResidue(ctx)
+	s.collectPurgedFiles(ctx)
+	if err := s.rollupChecks(ctx, now()); err != nil {
+		slog.Error("Metric rollup failed", "error", err)
+	}
+
+	tick := time.NewTicker(time.Hour)
+	defer tick.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-tick.C:
+			s.cleanup(ctx)
 		}
 	}
 }

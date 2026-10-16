@@ -51,6 +51,9 @@ const monitorHistoryQuery = `SELECT monitor_id,at,state,latency,detail FROM (
 ) WHERE rank<=32 ORDER BY monitor_id,rank`
 
 func (s *Server) monitors(ctx context.Context) ([]Monitor, error) {
+	return s.monitorsWithDetails(ctx, true)
+}
+func (s *Server) monitorsWithDetails(ctx context.Context, details bool) ([]Monitor, error) {
 	rows, e := s.Store.reader().QueryContext(ctx, "SELECT "+monitorColumns+" FROM monitors WHERE deleted_at IS NULL ORDER BY id DESC")
 	if e != nil {
 		return nil, e
@@ -95,7 +98,11 @@ func (s *Server) monitors(ctx context.Context) ([]Monitor, error) {
 	if e != nil {
 		return nil, e
 	}
-	rows, e = s.Store.reader().QueryContext(ctx, monitorHistoryQuery)
+	historyQuery := monitorHistoryQuery
+	if !details {
+		historyQuery = strings.Replace(historyQuery, "r.detail,", "'' AS detail,", 1)
+	}
+	rows, e = s.Store.reader().QueryContext(ctx, historyQuery)
 	if e != nil {
 		return nil, e
 	}
@@ -120,6 +127,33 @@ func (s *Server) monitors(ctx context.Context) ([]Monitor, error) {
 }
 func (s *Server) listMonitors(w http.ResponseWriter, r *http.Request, u *User) (any, error) {
 	return s.monitors(r.Context())
+}
+
+func (s *Server) monitorHistory(w http.ResponseWriter, r *http.Request, u *User) (any, error) {
+	id, err := pathID(r)
+	if err != nil {
+		return nil, err
+	}
+	var exists int
+	if err = s.Store.reader().QueryRowContext(r.Context(), "SELECT 1 FROM monitors WHERE id=? AND deleted_at IS NULL", id).Scan(&exists); err == sql.ErrNoRows {
+		return nil, missing()
+	} else if err != nil {
+		return nil, err
+	}
+	rows, err := s.Store.reader().QueryContext(r.Context(), "SELECT at,state,latency,detail FROM check_results WHERE monitor_id=? ORDER BY at DESC,id DESC LIMIT 32", id)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := []CheckResult{}
+	for rows.Next() {
+		var item CheckResult
+		if err = rows.Scan(&item.At, &item.State, &item.Latency, &item.Detail); err != nil {
+			return nil, err
+		}
+		out = append(out, item)
+	}
+	return out, rows.Err()
 }
 
 type monitorInput struct {

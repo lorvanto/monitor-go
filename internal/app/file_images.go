@@ -117,9 +117,15 @@ func (s *Server) deleteImageStyle(w http.ResponseWriter, r *http.Request, u *Use
 	return true, e
 }
 func (s *Server) fileImage(w http.ResponseWriter, r *http.Request, u *User) (any, error) {
-	// Serialize decoding to bound memory; the source and destination are both dimension-limited.
+	// Serialize generation/cache mutations, but never hold the lock while a
+	// potentially slow client downloads an already-open cached image.
 	s.imageMu.Lock()
-	defer s.imageMu.Unlock()
+	locked := true
+	defer func() {
+		if locked {
+			s.imageMu.Unlock()
+		}
+	}()
 	f, body, e := s.openFileContent(r)
 	if e != nil {
 		return nil, e
@@ -205,6 +211,9 @@ func (s *Server) fileImage(w http.ResponseWriter, r *http.Request, u *User) (any
 		return nil, e
 	}
 	defer cached.Close()
+	body.Close()
+	s.imageMu.Unlock()
+	locked = false
 	w.Header().Set("Content-Type", "image/png")
 	w.Header().Set("Cache-Control", "no-store")
 	if r.URL.Query().Get("download") == "1" {

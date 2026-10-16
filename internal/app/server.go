@@ -282,6 +282,7 @@ func (s *Server) Handler() http.Handler {
 	add("PATCH /api/v1/hosts/{id}", "host:update", false, s.updateHost)
 	add("GET /api/v1/hosts/{id}/metrics", "host:read", false, s.hostMetrics)
 	add("GET /api/v1/monitors/availability", "monitor:read", false, s.monitorAvailability)
+	add("GET /api/v1/monitors/{id}/history", "monitor:read", false, s.monitorHistory)
 	add("GET /api/v1/monitors", "monitor:read", false, s.listMonitors)
 	add("POST /api/v1/monitors", "monitor:update", false, s.createMonitor)
 	add("PATCH /api/v1/monitors/{id}", "monitor:update", false, s.updateMonitor)
@@ -328,8 +329,9 @@ func (s *Server) Handler() http.Handler {
 	})
 }
 func (s *Server) Start(ctx context.Context) {
-	s.work.Add(3)
+	s.work.Add(4)
 	go func() { defer s.work.Done(); s.scheduler(ctx) }()
+	go func() { defer s.work.Done(); s.maintenanceLoop(ctx) }()
 	go func() { defer s.work.Done(); s.agentLoop(ctx) }()
 	go func() { defer s.work.Done(); s.notificationLoop(ctx) }()
 	if s.cfg.Collect {

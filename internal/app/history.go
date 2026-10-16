@@ -11,22 +11,43 @@ const hourMillis int64 = 3600000
 
 // Marking consumed rows in the same transaction makes accumulation idempotent,
 // including late results for an already summarized hour and reused SQLite IDs.
+const rollupBatchSize = 2000
+
 func (s *Server) rollupChecks(ctx context.Context, at int64) error {
 	end := at / hourMillis * hourMillis
-	return s.Store.write(ctx, func(tx *sql.Tx) error {
-		_, err := tx.ExecContext(ctx, `INSERT INTO check_hourly(monitor_id,hour,total,good,latency_avg,latency_max)
+	// Both statements select the same deterministic batch in one transaction.
+	// Only the marker update changes batch membership; failures roll it all back.
+	const batch = `SELECT id FROM check_results WHERE rolled_up=0 AND at<? ORDER BY at,monitor_id,id LIMIT 2000`
+	for {
+		var consumed int64
+		err := s.Store.write(ctx, func(tx *sql.Tx) error {
+			_, err := tx.ExecContext(ctx, `INSERT INTO check_hourly(monitor_id,hour,total,good,latency_avg,latency_max)
  SELECT monitor_id,(at/3600000)*3600000,count(*),sum(state IN ('healthy','warning')),avg(latency),max(latency)
- FROM check_results WHERE rolled_up=0 AND at<? GROUP BY monitor_id,at/3600000
+ FROM check_results WHERE id IN (`+batch+`) GROUP BY monitor_id,at/3600000
  ON CONFLICT(monitor_id,hour) DO UPDATE SET
  latency_avg=(check_hourly.latency_avg*check_hourly.total+excluded.latency_avg*excluded.total)/(check_hourly.total+excluded.total),
  latency_max=max(check_hourly.latency_max,excluded.latency_max),
  total=check_hourly.total+excluded.total,good=check_hourly.good+excluded.good`, end)
+			if err != nil {
+				return err
+			}
+			result, err := tx.ExecContext(ctx, "UPDATE check_results SET rolled_up=1 WHERE id IN ("+batch+")", end)
+			if err != nil {
+				return err
+			}
+			consumed, err = result.RowsAffected()
+			return err
+		})
 		if err != nil {
 			return err
 		}
-		_, err = tx.ExecContext(ctx, "UPDATE check_results SET rolled_up=1 WHERE rolled_up=0 AND at<?", end)
-		return err
-	})
+		if consumed < rollupBatchSize {
+			return nil
+		}
+		if err = ctx.Err(); err != nil {
+			return err
+		}
+	}
 }
 
 type Availability struct {

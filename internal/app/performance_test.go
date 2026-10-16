@@ -56,6 +56,9 @@ func TestPerformanceBaseline(t *testing.T) {
 	defer upstream.Close()
 	mustSQL(t, s, "UPDATE monitors SET enabled=1,target=?,failure_threshold=1 WHERE id=1", upstream.URL)
 	paths := []string{"/monitors", "/alerts", "/overview?hours=24", "/hosts/1/metrics?hours=24"}
+	if os.Getenv("MONITOR_PERF_POLL") == "1" {
+		paths = []string{"/poll?page=overview", "/overview?hours=24", "/hosts/1/metrics?hours=24"}
+	}
 	if extra := os.Getenv("MONITOR_PERF_EXTRA"); extra != "" {
 		paths = append(paths, extra)
 	}

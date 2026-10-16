@@ -1764,3 +1764,47 @@ describe.each(["ja-JP", "ko-KR", "zh-TW"])("%s system text audit", (code) => {
     },
   );
 });
+
+it("loads full check diagnostics only when opening a detail drawer", async () => {
+  const monitor = editableMonitor();
+  const history = [
+    {
+      at: Date.now(),
+      state: "healthy",
+      latency: 12,
+      detail: "Original detailed diagnostic",
+    },
+  ];
+  fixtures["/monitors"] = [{ ...monitor, history }];
+  appStore.setState((state) => ({
+    data: {
+      ...state.data,
+      monitors: [
+        {
+          ...monitor,
+          history: history.map((h) => ({
+            ...h,
+            state: "healthy" as const,
+            detail: "",
+          })),
+        },
+      ],
+    },
+  }));
+  render(<MonitorsView />);
+  expect(requests.some((r) => r.path.endsWith("/history"))).toBe(false);
+  fireEvent.click(
+    screen.getByText(monitor.name, { exact: true }).closest("button")!,
+  );
+  await screen.findByText("Original detailed diagnostic");
+  expect(
+    requests.filter((r) => r.path === `/monitors/${monitor.id}/history`),
+  ).toHaveLength(1);
+  for (const locale of locales) {
+    await act(() => setLocale(locale.code));
+    expect(screen.getByText("Original detailed diagnostic")).toBeTruthy();
+  }
+  expect(
+    requests.filter((r) => r.path === `/monitors/${monitor.id}/history`),
+  ).toHaveLength(1);
+});

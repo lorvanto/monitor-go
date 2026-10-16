@@ -1,3 +1,4 @@
+import { memo } from "react";
 import { t, useI18n } from "../i18n";
 import {
   dateTime,
@@ -5,10 +6,7 @@ import {
   statusLabel,
   type CheckResult,
 } from "../stores/app";
-export default function SignalTrace(inputProps: {
-  history: CheckResult[];
-  slots?: number;
-}) {
+function SignalTrace(inputProps: { history: CheckResult[]; slots?: number }) {
   const props = { ...{ slots: 32 }, ...inputProps };
   useI18n();
   const getBars = () => {
@@ -50,3 +48,5 @@ export default function SignalTrace(inputProps: {
     </>
   );
 }
+
+export default memo(SignalTrace);
