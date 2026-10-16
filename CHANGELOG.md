@@ -4,6 +4,10 @@ User-visible changes belong here. Entries under **Unreleased** describe the curr
 
 ## Unreleased
 
+### Performance optimization
+
+- Add an opt-in synthetic HTTP / SQLite benchmark for 20 hosts, 100 checks, seven days of history and five concurrent viewers, with concurrent probe/alert persistence and documented measurement limits.
+
 ### Form field alignment
 
 - Align labels and inputs at the top of each field, keeping helper text below its own input. This fixes the uneven application name/ID row and other side-by-side fields with different amounts of help text.

@@ -241,3 +241,7 @@ APFS volumes share their container’s free space. The collector reads mounted-v
 Disk alerts use the configured global threshold (0 disables them), also shown in the host page and overview warning colors. A host keeps the same disk-alert identity when duplicate mount points are consolidated, so existing ownership and silence settings remain intact. Missing or incomplete disk samples may confirm a high reading but cannot establish recovery; a complete low reading or disabling the threshold can resolve the alert. If APFS identity collection fails, raw mount samples are retained and marked incomplete. A mount that cannot be read is not treated as healthy.
 
 Update the server before deploying the updated Agent. Current information changes on the next report; historical alerts and samples are not rewritten. No database migration or new dependency is required. The APFS container percentage includes shared allocation, so it can differ from a single volume’s `df` percentage. See [Apple’s APFS space-sharing explanation](https://support.apple.com/en-au/guide/disk-utility/dskua9e6a110/mac).
+
+## Performance verification
+
+[Reproducible synthetic workload, measurements and scope limits (English)](../en-US/PERFORMANCE.md)
