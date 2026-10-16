@@ -1,3 +1,4 @@
+import { fixtureData } from "./poll-fixture";
 import { StrictMode, useState } from "react";
 import {
   act,
@@ -64,7 +65,9 @@ beforeEach(async () => {
         body: init?.body ? JSON.parse(String(init.body)) : undefined,
       });
       return new Response(
-        JSON.stringify({ data: structuredClone(fixtures[path] ?? {}) }),
+        JSON.stringify({
+          data: structuredClone(fixtureData(fixtures, input) ?? {}),
+        }),
         { status: 200, headers: { "Content-Type": "application/json" } },
       );
     }),
@@ -819,7 +822,7 @@ it("preserves monitor edits and shows a conflict while refreshing server data", 
     ),
   );
   await waitFor(() =>
-    expect(requests.some((r) => r.path === "/monitors")).toBe(true),
+    expect(requests.some((r) => r.path === "/poll")).toBe(true),
   );
   expect(target.value).toBe("new.example.com:3306");
 });

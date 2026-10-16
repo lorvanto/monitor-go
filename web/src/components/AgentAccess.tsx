@@ -35,7 +35,7 @@ export default function AgentAccess(inputProps: { host?: Host }) {
   type LocalState = typeof initialState;
   const [store] = useState(() => createStore<LocalState>(() => initialState));
   const viewState = useStore(store);
-  useApp();
+  useApp((state) => state.user);
   useI18n();
   const quoted = (s: string) => "'" + s.replaceAll("'", "'\\''") + "'";
   const getCommand = () =>

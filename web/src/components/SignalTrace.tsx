@@ -3,7 +3,6 @@ import {
   dateTime,
   latencyParts,
   statusLabel,
-  useApp,
   type CheckResult,
 } from "../stores/app";
 export default function SignalTrace(inputProps: {
@@ -11,7 +10,6 @@ export default function SignalTrace(inputProps: {
   slots?: number;
 }) {
   const props = { ...{ slots: 32 }, ...inputProps };
-  useApp();
   useI18n();
   const getBars = () => {
     const recent = props.history.slice(0, props.slots).reverse();

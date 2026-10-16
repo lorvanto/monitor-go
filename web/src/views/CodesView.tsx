@@ -34,7 +34,7 @@ export default function CodesView() {
   type LocalState = typeof initialState;
   const [store] = useState(() => createStore<LocalState>(() => initialState));
   const viewState = useStore(store);
-  const appState = useApp();
+  const appState = useApp(({ pageTitle, user }) => ({ pageTitle, user }));
   useI18n();
   const getKind = () =>
     store.getState().mode === "qr" ? "qr" : store.getState().barcodeKind;

@@ -32,7 +32,7 @@ export default function AuditView() {
   const viewState = useStore(store);
   const sequence = useRef(0);
   const applied = useRef(new URLSearchParams());
-  const appState = useApp();
+  const appState = useApp(({ pageTitle, user }) => ({ pageTitle, user }));
   useI18n();
   async function load(append = false) {
     if (append && store.getState().loading) return;

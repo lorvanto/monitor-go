@@ -74,7 +74,7 @@ export default function SettingsView() {
   type LocalState = typeof initialState;
   const [store] = useState(() => createStore<LocalState>(() => initialState));
   const viewState = useStore(store);
-  const appState = useApp();
+  const appState = useApp(({ pageTitle, user }) => ({ pageTitle, user }));
   useI18n();
   async function load() {
     try {

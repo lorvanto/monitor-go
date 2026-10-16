@@ -1,4 +1,4 @@
-import { notice } from "../lib/messages";
+import { errorMessage, notice } from "../lib/messages";
 import { useEffect, useState } from "react";
 import { createStore, useStore } from "zustand";
 import Icon from "../components/Icon";
@@ -19,6 +19,7 @@ import {
   relative,
   useApp,
   type Alert,
+  type Activity,
 } from "../stores/app";
 export default function AlertsView() {
   const initialState = {
@@ -32,6 +33,9 @@ export default function AlertsView() {
     minutes: 60,
     silenceTarget: undefined as Alert | undefined,
     busy: false,
+    activity: [] as Activity[],
+    activityFor: "",
+    activityError: "" as ReturnType<typeof errorMessage>,
   };
   type LocalState = typeof initialState;
   const [store] = useState(() => createStore<LocalState>(() => initialState));
@@ -51,6 +55,32 @@ export default function AlertsView() {
   const getSelected = () =>
     getAlerts().find((a) => a.id === appStore.getState().activeAlert) ||
     getAlerts()[0];
+  const selectedID = getSelected()?.id;
+  const selectedVersion = getSelected()?.version;
+  useEffect(() => {
+    let active = true;
+    if (!selectedID || !can("alert:read")) return;
+    void api<Activity[]>(`/alerts/${selectedID}/activity`)
+      .then((activity) => {
+        if (active)
+          store.setState({
+            activity,
+            activityFor: selectedID,
+            activityError: "",
+          });
+      })
+      .catch((error) => {
+        if (active)
+          store.setState({
+            activity: [],
+            activityFor: selectedID,
+            activityError: errorMessage(error),
+          });
+      });
+    return () => {
+      active = false;
+    };
+  }, [selectedID, selectedVersion, appState.updatedAt]);
   const getTabs = () => [
     {
       key: "all",
@@ -487,9 +517,18 @@ export default function AlertsView() {
                 </dl>
                 <div className="incident-section">
                   <h3 className="section-title">{t("时间线")}</h3>
+                  {viewState.activityFor === selected.id &&
+                  viewState.activityError ? (
+                    <p role="alert" className="error-text">
+                      {viewState.activityError}
+                    </p>
+                  ) : null}
                   <ol className="timeline">
                     <>
-                      {selected.activity.map((a, i) => (
+                      {(viewState.activityFor === selected.id
+                        ? viewState.activity
+                        : selected.activity
+                      ).map((a, i) => (
                         <li key={a.at + "-" + i}>
                           <strong>{a.message}</strong>
                           <small>

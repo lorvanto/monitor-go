@@ -41,12 +41,12 @@ export default function LineChart(inputProps: {
   const observer = useRef<ResizeObserver | undefined | undefined>(undefined);
   useI18n();
   const pad = { top: 12, right: 14, bottom: 28, left: 52 };
-  const fmt = (() =>
-    props.format ||
-    ((v: number) =>
-      new Intl.NumberFormat(i18nStore.getState().locale, {
-        maximumFractionDigits: 1,
-      }).format(v)))();
+  const locale = i18nStore.getState().locale;
+  const formatter = useMemo(
+    () => new Intl.NumberFormat(locale, { maximumFractionDigits: 1 }),
+    [locale],
+  );
+  const fmt = props.format || formatter.format;
   const tickFmt = (() => props.tickFormat || fmt)();
   const span = useMemo(() => {
     const latest = Math.max(
@@ -57,24 +57,30 @@ export default function LineChart(inputProps: {
     return { start: end - props.hours * 3600000, end };
   }, [props.series, props.end, props.hours]);
   const bucket = (() => (props.hours * 3600000) / 180)();
-  const visible = (() =>
-    props.series.map((s) =>
-      plotted(s.points).filter((p) => p.at >= span.start - bucket),
-    ))();
-  const gap = (() => {
+  const visible = useMemo(
+    () =>
+      props.series.map((s) =>
+        plotted(s.points).filter((p) => p.at >= span.start - bucket),
+      ),
+    [props.series, span.start, bucket],
+  );
+  const gap = useMemo(() => {
     const deltas = visible
       .flatMap((points) => points.slice(1).map((p, i) => p.at - points[i].at))
       .sort((a, b) => a - b);
     const median =
       deltas.length >= 4 ? deltas[Math.floor(deltas.length / 2)] : 0;
     return Math.max(bucket, median) * 2.5;
-  })();
+  }, [visible, bucket]);
   const hasData = (() => visible.some((v) => v.length))();
-  const yTicks = (() =>
-    niceTicks(
-      props.max ?? Math.max(0, ...visible.flat().map((p) => p.value)),
-      props.binary,
-    ))();
+  const yTicks = useMemo(
+    () =>
+      niceTicks(
+        props.max ?? Math.max(0, ...visible.flat().map((p) => p.value)),
+        props.binary,
+      ),
+    [props.max, props.binary, visible],
+  );
   const yMax = (() => yTicks[yTicks.length - 1])();
   const plotW = (() => store.getState().width - pad.left - pad.right)();
   const baseY = (() => pad.top + props.height)();
@@ -91,38 +97,44 @@ export default function LineChart(inputProps: {
       ? ticks.filter((_, i) => i % 2 === 0)
       : ticks;
   })();
-  const drawn = (() =>
-    visible.map((points, index) => {
-      const segments: (typeof points)[] = [];
-      for (const p of points) {
-        const last = segments[segments.length - 1];
-        if (!last || p.at - last[last.length - 1].at > gap) segments.push([p]);
-        else last.push(p);
-      }
-      const paths = segments
-        .filter((s) => s.length > 1)
-        .map((s) => {
-          const line = s
-            .map(
-              (p, i) =>
-                `${i ? "L" : "M"}${x(p.at).toFixed(1)},${y(p.value).toFixed(1)}`,
-            )
-            .join("");
-          return {
-            line,
-            area: `${line}L${x(s[s.length - 1].at).toFixed(1)},${baseY}L${x(s[0].at).toFixed(1)},${baseY}Z`,
-          };
-        });
-      return {
-        name: props.series[index].name,
-        color: props.series[index].color,
-        paths,
-        singles: segments.filter((s) => s.length === 1).map((s) => s[0]),
-        last: points[points.length - 1],
-      };
-    }))();
-  const times = (() =>
-    [...new Set(visible.flat().map((p) => p.at))].sort((a, b) => a - b))();
+  const drawn = useMemo(
+    () =>
+      visible.map((points, index) => {
+        const segments: (typeof points)[] = [];
+        for (const p of points) {
+          const last = segments[segments.length - 1];
+          if (!last || p.at - last[last.length - 1].at > gap)
+            segments.push([p]);
+          else last.push(p);
+        }
+        const paths = segments
+          .filter((s) => s.length > 1)
+          .map((s) => {
+            const line = s
+              .map(
+                (p, i) =>
+                  `${i ? "L" : "M"}${x(p.at).toFixed(1)},${y(p.value).toFixed(1)}`,
+              )
+              .join("");
+            return {
+              line,
+              area: `${line}L${x(s[s.length - 1].at).toFixed(1)},${baseY}L${x(s[0].at).toFixed(1)},${baseY}Z`,
+            };
+          });
+        return {
+          name: props.series[index].name,
+          color: props.series[index].color,
+          paths,
+          singles: segments.filter((s) => s.length === 1).map((s) => s[0]),
+          last: points[points.length - 1],
+        };
+      }),
+    [visible, gap, props.series, span, plotW, props.height, yMax, baseY],
+  );
+  const times = useMemo(
+    () => [...new Set(visible.flat().map((p) => p.at))].sort((a, b) => a - b),
+    [visible],
+  );
   function nearest(at: number) {
     const list = times;
     if (!list.length) return null;

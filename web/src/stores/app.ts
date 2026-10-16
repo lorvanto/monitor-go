@@ -8,6 +8,7 @@ import {
   type DisplayMessage,
 } from "../lib/messages";
 import { create } from "zustand";
+import { useShallow } from "zustand/react/shallow";
 import { i18nStore, localizedLabels, metadataLabel, t, useI18n } from "../i18n";
 import type {
   Alert,
@@ -116,17 +117,64 @@ function navLabel(items: NavItem[], key: Page): string {
   }
   return "";
 }
+let alertSource: Alert[] | undefined;
+let openAlerts: Alert[] = [];
 export function getAppView(state = appStore.getState()) {
+  if (state.data.alerts !== alertSource) {
+    alertSource = state.data.alerts;
+    openAlerts = alertSource.filter((a) => a.state !== "resolved");
+  }
   return {
     ...state,
     pageTitle: navLabel(state.navigation, state.page) || pageNames[state.page],
-    openAlerts: state.data.alerts.filter((a) => a.state !== "resolved"),
+    openAlerts,
   };
 }
-export function useApp() {
-  const state = appStore();
+type AppView = ReturnType<typeof getAppView>;
+export function useApp<T = AppView>(selector?: (state: AppView) => T): T {
   useI18n();
-  return getAppView(state);
+  return appStore(
+    useShallow((state) =>
+      selector ? selector(getAppView(state)) : (getAppView(state) as T),
+    ),
+  );
+}
+// JSON responses keep unchanged subtrees by reference, so unrelated refreshes
+// do not invalidate page subscriptions or reset effects and form state.
+export function shareEqual<T>(previous: T, next: T): T {
+  if (Object.is(previous, next)) return previous;
+  if (
+    !previous ||
+    !next ||
+    typeof previous !== "object" ||
+    typeof next !== "object" ||
+    Array.isArray(previous) !== Array.isArray(next)
+  )
+    return next;
+  const old = previous as Record<string, unknown>;
+  const fresh = next as Record<string, unknown>;
+  const keys = Object.keys(fresh);
+  let equal = keys.length === Object.keys(old).length;
+  const result: Record<string, unknown> = Array.isArray(next)
+    ? ([] as unknown as Record<string, unknown>)
+    : {};
+  for (const key of keys) {
+    result[key] = shareEqual(old[key], fresh[key]);
+    if (!Object.hasOwn(old, key) || result[key] !== old[key]) equal = false;
+  }
+  return equal ? previous : (result as T);
+}
+interface PollResponse {
+  user: User;
+  navigation: {
+    items: NavItem[];
+    instanceName: string;
+    instanceNameKey?: string;
+  };
+  hosts: Host[];
+  monitors: Monitor[];
+  alerts: Alert[];
+  openAlertCount: number;
 }
 export const pagePermissions: Record<Page, string> = {
   applications: "application:access",
@@ -328,43 +376,16 @@ export function refreshAll(afterMutation = false): Promise<void> {
 }
 async function loadAll(session: number, page: Page, afterMutation: boolean) {
   try {
-    const user = await api<User>("/me");
-    if (session !== sessionVersion) return;
+    const poll = await api<PollResponse>(`/poll?page=${page}`);
+    if (session !== sessionVersion || page !== appStore.getState().page) return;
+    const user = shareEqual(appStore.getState().user, poll.user)!;
     appStore.setState({ user });
     const current = appStore.getState().data;
-    const needHosts = page === "overview" || page === "host";
-    const needMonitors = page === "overview" || page === "monitors";
-    const needAlerts =
-      page === "overview" || page === "host" || page === "alerts";
     const cacheKey = `${session}:${[...user.permissions].sort().join(",")}`;
     const needTeam =
       page === "roles" &&
       (afterMutation || lastRefreshPage !== "roles" || teamCache !== cacheKey);
-    const [
-      hosts,
-      monitors,
-      alerts,
-      roles,
-      users,
-      permissions,
-      navigation,
-      summary,
-    ] = await Promise.all([
-      can("host:read")
-        ? needHosts
-          ? api<Host[]>("/hosts")
-          : current.hosts
-        : [],
-      can("monitor:read")
-        ? needMonitors
-          ? api<Monitor[]>("/monitors")
-          : current.monitors
-        : [],
-      can("alert:read")
-        ? needAlerts
-          ? api<Alert[]>("/alerts")
-          : current.alerts
-        : [],
+    const [roles, users, permissions] = await Promise.all([
       can("team:read")
         ? needTeam
           ? api<Role[]>("/roles")
@@ -380,14 +401,6 @@ async function loadAll(session: number, page: Page, afterMutation: boolean) {
           ? api<PermissionGroup[]>("/permissions")
           : current.permissions
         : [],
-      api<{
-        items: NavItem[];
-        instanceName: string;
-        instanceNameKey?: string;
-      }>("/me/navigation"),
-      can("alert:read") && !needAlerts
-        ? api<{ open: number }>("/alerts/summary")
-        : null,
     ]);
     if (
       session !== sessionVersion ||
@@ -397,14 +410,37 @@ async function loadAll(session: number, page: Page, afterMutation: boolean) {
       return;
     if (needTeam) teamCache = cacheKey;
     lastRefreshPage = page;
+    const hosts = can("host:read")
+      ? page === "overview" || page === "host"
+        ? poll.hosts
+        : current.hosts
+      : [];
+    const monitors = can("monitor:read")
+      ? page === "overview" || page === "monitors"
+        ? poll.monitors
+        : current.monitors
+      : [];
+    const alerts = can("alert:read")
+      ? page === "overview" || page === "host" || page === "alerts"
+        ? poll.alerts
+        : current.alerts
+      : [];
     appStore.setState({
-      data: { hosts, monitors, alerts, roles, users, permissions },
-      openAlertCount: can("alert:read")
-        ? (summary?.open ?? alerts.filter((a) => a.state !== "resolved").length)
-        : 0,
-      navigation: navigation.items,
-      instanceName: navigation.instanceName,
-      instanceNameKey: navigation.instanceNameKey || "",
+      data: shareEqual(current, {
+        hosts,
+        monitors,
+        alerts,
+        roles,
+        users,
+        permissions,
+      }),
+      openAlertCount: poll.openAlertCount,
+      navigation: shareEqual(
+        appStore.getState().navigation,
+        poll.navigation.items,
+      ),
+      instanceName: poll.navigation.instanceName,
+      instanceNameKey: poll.navigation.instanceNameKey || "",
       updatedAt: Date.now(),
       connectionError: "",
     });

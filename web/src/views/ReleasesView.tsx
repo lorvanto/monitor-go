@@ -91,7 +91,7 @@ export default function ReleasesView() {
   const loadSeq = useRef(0);
   const fileSeq = useRef(0);
   const editSeq = useRef(0);
-  const appState = useApp();
+  const appState = useApp(({ pageTitle, user }) => ({ pageTitle, user }));
   useI18n();
   const getLocked = () => !!store.getState().target?.everPublished;
   async function load() {

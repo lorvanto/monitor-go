@@ -19,7 +19,10 @@ export default function AuthView() {
   type LocalState = typeof initialState;
   const [store] = useState(() => createStore<LocalState>(() => initialState));
   const viewState = useStore(store);
-  const appState = useApp();
+  const appState = useApp(({ initialized, connectionError }) => ({
+    initialized,
+    connectionError,
+  }));
   useI18n();
   async function submit() {
     store.setState({ busy: true });

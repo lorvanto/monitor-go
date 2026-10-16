@@ -157,7 +157,12 @@ export default function HostView() {
     return () => {
       seq.current++;
     };
-  }, [getHost()?.id, viewState.period, appState.updatedAt]);
+  }, [
+    getHost()?.id,
+    getHost()?.lastSeen,
+    viewState.period,
+    Math.floor(appState.updatedAt / 60000),
+  ]);
 
   const host = getHost();
   const hostList = getHostList();

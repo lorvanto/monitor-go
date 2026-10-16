@@ -62,7 +62,33 @@ export default function App() {
   const viewState = useStore(store);
   const foot = useRef<HTMLElement | null>(null);
   const meButton = useRef<HTMLButtonElement | null>(null);
-  const appState = useApp();
+  const appState = useApp(
+    ({
+      booting,
+      connectionError,
+      instanceName,
+      instanceNameKey,
+      menuOpen,
+      navigation,
+      openAlertCount,
+      page,
+      pageTitle,
+      toasts,
+      user,
+    }) => ({
+      booting,
+      connectionError,
+      instanceName,
+      instanceNameKey,
+      menuOpen,
+      navigation,
+      openAlertCount,
+      page,
+      pageTitle,
+      toasts,
+      user,
+    }),
+  );
   useI18n();
   const views = {
     overview: OverviewView,
@@ -231,11 +257,16 @@ export default function App() {
     document.addEventListener("keydown", keydown);
     document.addEventListener("pointerdown", pointerdown);
     window.addEventListener("hashchange", syncLocation);
+    const resume = () => {
+      if (!document.hidden) void refreshAll();
+    };
+    document.addEventListener("visibilitychange", resume);
     const interval = setInterval(() => {
       if (!document.hidden) void refreshAll();
     }, 10000);
     return () => {
       clearInterval(interval);
+      document.removeEventListener("visibilitychange", resume);
       document.removeEventListener("keydown", keydown);
       document.removeEventListener("pointerdown", pointerdown);
       window.removeEventListener("hashchange", syncLocation);

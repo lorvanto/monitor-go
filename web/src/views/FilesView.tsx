@@ -141,7 +141,7 @@ export default function FilesView() {
     undefined,
   );
   const disposed = useRef(false);
-  const appState = useApp();
+  const appState = useApp(({ pageTitle, user }) => ({ pageTitle, user }));
   useI18n();
   const getActionTitle = () =>
     ({

@@ -8,7 +8,10 @@ export default function NavTree(inputProps: {
   depth?: number;
 }) {
   const props = { ...{}, ...inputProps };
-  const appState = useApp();
+  const appState = useApp(({ page, openAlertCount }) => ({
+    page,
+    openAlertCount,
+  }));
   useI18n();
 
   return (
@@ -66,14 +69,14 @@ export default function NavTree(inputProps: {
               >
                 <Icon name={item.icon} size={16}></Icon>
                 <span className="nav-label">{displayNavName(item)}</span>
-                {item.pageKey === "alerts" && appState.openAlerts.length ? (
+                {item.pageKey === "alerts" && appState.openAlertCount ? (
                   <span
                     aria-label={t("{p0} 条未恢复告警", {
-                      p0: appState.openAlerts.length,
+                      p0: appState.openAlertCount,
                     })}
                     className="nav-count"
                   >
-                    {appState.openAlerts.length}
+                    {appState.openAlertCount}
                   </span>
                 ) : null}
               </button>

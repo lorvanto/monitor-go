@@ -47,7 +47,7 @@ export default function ApplicationsView() {
   const viewState = useStore(store);
   const keysSequence = useRef(0);
   const loadSequence = useRef(0);
-  const appState = useApp();
+  const appState = useApp(({ pageTitle, user }) => ({ pageTitle, user }));
   useI18n();
   const getApp = () =>
     store.getState().items.find((v) => v.id === store.getState().selected);

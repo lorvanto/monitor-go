@@ -1,3 +1,4 @@
+import { fixtureData } from "./poll-fixture";
 import {
   act,
   fireEvent,
@@ -24,6 +25,7 @@ import {
   logout,
   refreshAll,
   signIn,
+  useApp,
   type User,
 } from "../src/stores/app";
 import { setLocale, t } from "../src/i18n";
@@ -52,8 +54,9 @@ beforeEach(async () => {
       const path = input.replace("/api/v1", "").split("?")[0];
       if (path === "/auth/logout" || path === "/auth/login")
         return response({});
-      if (!(path in fixtures)) throw new Error(`Unexpected request: ${input}`);
-      return response(fixtures[path]);
+      if (fixtureData(fixtures, input) === undefined)
+        throw new Error(`Unexpected request: ${input}`);
+      return response(fixtureData(fixtures, input));
     }),
   );
   errors = vi.spyOn(console, "error").mockImplementation(() => {});
@@ -90,13 +93,15 @@ it("waits for a running refresh and refreshes again after a successful write", a
   const pending = deferred();
   const base = vi.mocked(fetch).getMockImplementation()!;
   vi.mocked(fetch).mockImplementation(async (input, init) => {
-    if (String(input) === "/api/v1/hosts") return pending.promise;
+    if (String(input) === "/api/v1/poll?page=overview") return pending.promise;
     return base(input, init);
   });
   const refresh = refreshAll();
   await waitFor(() =>
     expect(
-      vi.mocked(fetch).mock.calls.some(([p]) => String(p) === "/api/v1/hosts"),
+      vi
+        .mocked(fetch)
+        .mock.calls.some(([p]) => String(p) === "/api/v1/poll?page=overview"),
     ).toBe(true),
   );
   let finished = false;
@@ -106,10 +111,14 @@ it("waits for a running refresh and refreshes again after a successful write", a
   await Promise.resolve();
   await Promise.resolve();
   expect(finished).toBe(false);
-  pending.resolve(response([]));
+  pending.resolve(
+    response(fixtureData(fixtures, "/api/v1/poll?page=overview")),
+  );
   await Promise.all([refresh, mutation]);
   expect(
-    vi.mocked(fetch).mock.calls.filter(([p]) => String(p) === "/api/v1/hosts"),
+    vi
+      .mocked(fetch)
+      .mock.calls.filter(([p]) => String(p) === "/api/v1/poll?page=overview"),
   ).toHaveLength(2);
 });
 it("clears session-specific selections and notices on logout", async () => {
@@ -508,30 +517,18 @@ it("does not append a failed audit query to results from an older filter", async
   expect(screen.queryByRole("button", { name: t("加载更多") })).toBeNull();
 });
 
-it("polls only page dependencies and a small global alert badge", async () => {
+it("uses one authenticated polling request per page", async () => {
   appStore.setState({ page: "monitors" });
   await refreshAll();
-  const paths = () =>
-    vi
-      .mocked(fetch)
-      .mock.calls.map(([path]) => String(path).replace("/api/v1", ""));
-  expect(paths()).toEqual(
-    expect.arrayContaining([
-      "/me",
-      "/me/navigation",
-      "/monitors",
-      "/alerts/summary",
-    ]),
-  );
-  expect(paths()).not.toEqual(expect.arrayContaining(["/hosts"]));
-  for (const path of ["/hosts", "/alerts", "/roles", "/users", "/permissions"])
-    expect(paths()).not.toContain(path);
+  expect(vi.mocked(fetch).mock.calls.map(([path]) => path)).toEqual([
+    "/api/v1/poll?page=monitors",
+  ]);
   vi.mocked(fetch).mockClear();
   appStore.setState({ page: "host" });
   await refreshAll();
-  expect(paths()).toEqual(expect.arrayContaining(["/hosts", "/alerts"]));
-  expect(paths()).not.toContain("/monitors");
-  expect(paths()).not.toContain("/alerts/summary");
+  expect(vi.mocked(fetch).mock.calls.map(([path]) => path)).toEqual([
+    "/api/v1/poll?page=host",
+  ]);
 });
 
 it("loads team data on entry and after writes, but not periodic refresh", async () => {
@@ -555,16 +552,67 @@ it("loads the new page after an older page's pending refresh without applying st
   const pending = deferred();
   const base = vi.mocked(fetch).getMockImplementation()!;
   vi.mocked(fetch).mockImplementation((input, init) =>
-    String(input) === "/api/v1/monitors" ? pending.promise : base(input, init),
+    String(input) === "/api/v1/poll?page=monitors"
+      ? pending.promise
+      : base(input, init),
   );
   const first = refreshAll();
   await waitFor(() =>
-    expect(fetch).toHaveBeenCalledWith("/api/v1/monitors", expect.anything()),
+    expect(fetch).toHaveBeenCalledWith(
+      "/api/v1/poll?page=monitors",
+      expect.anything(),
+    ),
   );
   appStore.setState({ page: "roles" });
   const second = refreshAll(true);
-  pending.resolve(response([{ id: "stale" }]));
+  pending.resolve(
+    response({
+      ...(fixtureData(fixtures, "/api/v1/poll?page=monitors") as object),
+      monitors: [{ id: "stale" }],
+    }),
+  );
   await Promise.all([first, second]);
   expect(appStore.getState().data.monitors).toEqual([]);
   expect(appStore.getState().data.roles).toEqual(fixtures["/roles"]);
+});
+
+it("preserves unchanged response references and updates only changed subtrees", async () => {
+  appStore.setState({ page: "overview" });
+  await refreshAll();
+  const first = appStore.getState();
+  await refreshAll();
+  const second = appStore.getState();
+  expect(second.data).toBe(first.data);
+  expect(second.user).toBe(first.user);
+  expect(second.navigation).toBe(first.navigation);
+  fixtures["/hosts"] = [
+    {
+      ...(fixtures["/hosts"] as Host[])[0],
+      id: "changed",
+      hostname: "new-host",
+    },
+  ];
+  await refreshAll();
+  expect(appStore.getState().data.hosts).not.toBe(first.data.hosts);
+  expect(appStore.getState().data.monitors).toBe(first.data.monitors);
+});
+
+it("does not rerender shell subscribers for metrics or poll timestamps", async () => {
+  let renders = 0;
+  function ShellSubscriber() {
+    const value = useApp(({ page, user }) => ({ page, user }));
+    renders++;
+    return <span>{value.page}</span>;
+  }
+  render(<ShellSubscriber />);
+  const before = renders;
+  act(() =>
+    appStore.setState((s) => ({
+      updatedAt: 123,
+      data: { ...s.data, hosts: [] },
+    })),
+  );
+  expect(renders).toBe(before);
+  act(() => appStore.setState({ page: "files" }));
+  expect(renders).toBe(before + 1);
 });

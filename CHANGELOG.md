@@ -6,6 +6,8 @@ User-visible changes belong here. Entries under **Unreleased** describe the curr
 
 ### Performance optimization
 
+- Combine frontend page polling, load only the selected alert timeline, retain unchanged state references and memoize chart transforms. Refresh immediately after returning to a visible tab, preserving language choices, drafts and post-save refreshes.
+
 - Use exact rolling-window hourly totals, indexed chart reads and bounded two-second historical-chart coalescing. Add permission-aware page polling and on-demand alert timelines while preserving existing API responses and fresh incident decisions.
 
 - Add an opt-in synthetic HTTP / SQLite benchmark for 20 hosts, 100 checks, seven days of history and five concurrent viewers, with concurrent probe/alert persistence and documented measurement limits.
