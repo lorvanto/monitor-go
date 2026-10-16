@@ -46,12 +46,14 @@ var migration8 string
 const currentSchemaVersion = 8
 
 type Store struct {
-	DB     *sql.DB
-	readDB *sql.DB
-	lock   *flock.Flock
-	seal   cipher.AEAD
-	Dir    string
-	Files  *os.Root
+	checkWake        chan struct{}
+	notificationWake chan struct{}
+	DB               *sql.DB
+	readDB           *sql.DB
+	lock             *flock.Flock
+	seal             cipher.AEAD
+	Dir              string
+	Files            *os.Root
 }
 
 func OpenStore(dir string) (*Store, error) {
@@ -75,7 +77,7 @@ func OpenStore(dir string) (*Store, error) {
 	if !ok {
 		return nil, errors.New("此数据目录已有服务运行")
 	}
-	s := &Store{lock: lock, Dir: abs}
+	s := &Store{lock: lock, Dir: abs, checkWake: make(chan struct{}, 1), notificationWake: make(chan struct{}, 1)}
 	success := false
 	defer func() {
 		if !success {
@@ -251,7 +253,11 @@ func (s *Store) write(ctx context.Context, fn func(*sql.Tx) error) error {
 	if e = fn(tx); e != nil {
 		return e
 	}
-	return tx.Commit()
+	if e = tx.Commit(); e != nil {
+		return e
+	}
+	s.wakeWorkers()
+	return nil
 }
 func now() int64 { return time.Now().UTC().UnixMilli() }
 func (s *Store) seed() error {

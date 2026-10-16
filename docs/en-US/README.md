@@ -245,3 +245,5 @@ Update the server before deploying the updated Agent. Current information change
 ## Performance verification
 
 [Reproducible synthetic workload, measurements and scope limits (English)](../en-US/PERFORMANCE.md)
+
+Performance work preserves 15-second dynamic sampling and configured check/alert timings. Static inventory refreshes every five minutes; workers wake on committed work and due times. Update remote Agent binaries to use the collector improvement.

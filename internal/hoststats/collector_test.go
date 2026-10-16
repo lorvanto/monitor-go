@@ -117,6 +117,7 @@ func TestCollectorDiskFilteringLimitAndPartialErrors(t *testing.T) {
 	if err != nil || len(report.Snapshot.Errors) != 4 || report.Snapshot.CPU != nil || report.Snapshot.Memory != nil || report.Snapshot.NetIn != nil {
 		t.Fatalf("partial metrics: %+v %v", report, err)
 	}
+	deps.now = func() time.Time { return time.Unix(100, 0).Add(5 * time.Minute) }
 	deps.hostInfo = func(context.Context) (*host.InfoStat, error) { return nil, errors.New("host unavailable") }
 	if _, err = collector.Collect(context.Background()); err == nil {
 		t.Fatal("missing host info accepted")
@@ -164,4 +165,45 @@ func TestCollectorConcurrentCalls(t *testing.T) {
 		})
 	}
 	wg.Wait()
+}
+
+func TestCollectorCachesStaticInventoryButSamplesDynamicResources(t *testing.T) {
+	deps := fakeDependencies()
+	at := time.Unix(100, 0)
+	deps.now = func() time.Time { return at }
+	hostCalls, cpuCalls, diskCalls := 0, 0, 0
+	hostInfo, cpuInfo, usage := deps.hostInfo, deps.cpuInfo, deps.usage
+	deps.hostInfo = func(ctx context.Context) (*host.InfoStat, error) { hostCalls++; return hostInfo(ctx) }
+	deps.cpuInfo = func(ctx context.Context) ([]cpu.InfoStat, error) { cpuCalls++; return cpuInfo(ctx) }
+	deps.partitions = func(context.Context, bool) ([]disk.PartitionStat, error) {
+		return []disk.PartitionStat{{Mountpoint: "/", Fstype: "ext4"}}, nil
+	}
+	deps.usage = func(ctx context.Context, path string) (*disk.UsageStat, error) {
+		diskCalls++
+		v, e := usage(ctx, path)
+		v.UsedPercent = float64(diskCalls)
+		return v, e
+	}
+	c := Collector{dependencies: &deps}
+	first, e := c.Collect(context.Background())
+	if e != nil {
+		t.Fatal(e)
+	}
+	for i := 1; i < 20; i++ {
+		at = at.Add(15 * time.Second)
+		v, e := c.Collect(context.Background())
+		if e != nil || v.Snapshot.Disks[0].Percent != float64(i+1) || v.Snapshot.Uptime != first.Snapshot.Uptime+uint64(i*15) {
+			t.Fatalf("stale dynamic sample: %+v %v", v, e)
+		}
+	}
+	if hostCalls != 1 || cpuCalls != 1 || diskCalls != 20 {
+		t.Fatalf("calls host=%d cpu=%d disk=%d", hostCalls, cpuCalls, diskCalls)
+	}
+	at = at.Add(15 * time.Second)
+	if _, e = c.Collect(context.Background()); e != nil {
+		t.Fatal(e)
+	}
+	if hostCalls != 2 || cpuCalls != 2 || diskCalls != 21 {
+		t.Fatal("inventory not refreshed")
+	}
 }

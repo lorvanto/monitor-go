@@ -2,6 +2,7 @@ package hoststats
 
 import (
 	"context"
+	"fmt"
 	"github.com/lorvanto/monitor-go/internal/buildinfo"
 	"github.com/shirou/gopsutil/v4/cpu"
 	"github.com/shirou/gopsutil/v4/disk"
@@ -82,6 +83,9 @@ type Collector struct {
 	dependencies *collectorDependencies
 	mu           sync.Mutex
 	previousNet  *netSample
+	staticInfo   *host.InfoStat
+	staticCPU    string
+	staticAt     time.Time
 }
 
 func (c *Collector) Collect(ctx context.Context) (Report, error) {
@@ -93,9 +97,24 @@ func (c *Collector) Collect(ctx context.Context) (Report, error) {
 	}
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
-	info, e := deps.hostInfo(ctx)
-	if e != nil {
-		return Report{}, e
+	sampledAt := deps.now()
+	if c.staticInfo == nil || sampledAt.Before(c.staticAt) || sampledAt.Sub(c.staticAt) >= 5*time.Minute {
+		info, err := deps.hostInfo(ctx)
+		if err != nil {
+			return Report{}, err
+		}
+		if info == nil {
+			return Report{}, fmt.Errorf("host inventory unavailable")
+		}
+		copy := *info
+		c.staticInfo, c.staticAt, c.staticCPU = &copy, sampledAt, ""
+	}
+	info := *c.staticInfo
+	info.Uptime += uint64(max(0, sampledAt.Sub(c.staticAt).Seconds()))
+	if c.staticCPU == "" {
+		if cpus, err := deps.cpuInfo(ctx); err == nil && len(cpus) > 0 {
+			c.staticCPU = cpus[0].ModelName
+		}
 	}
 	platform := info.Platform
 	if strings.EqualFold(platform, "darwin") {
@@ -104,9 +123,7 @@ func (c *Collector) Collect(ctx context.Context) (Report, error) {
 	}
 	inv := Inventory{OS: strings.TrimSpace(platform + " " + info.PlatformVersion), Kernel: info.KernelVersion, Arch: runtime.GOARCH, Cores: runtime.NumCPU(), BootTime: info.BootTime, Source: "服务端本机采集", IPs: []string{}}
 	snap := Snapshot{Uptime: info.Uptime, Disks: []DiskInfo{}, Errors: []string{}}
-	if cpus, e := deps.cpuInfo(ctx); e == nil && len(cpus) > 0 {
-		inv.CPU = cpus[0].ModelName
-	}
+	inv.CPU = c.staticCPU
 	if v, e := deps.cpuPercent(ctx, time.Second, false); e == nil && len(v) > 0 {
 		snap.CPU = &v[0]
 	} else {

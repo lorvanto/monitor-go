@@ -20,7 +20,7 @@ func (s *Server) scheduler(ctx context.Context) {
 		slog.Error("Metric rollup failed", "error", err)
 	}
 	slots := make(chan struct{}, 4)
-	tick := time.NewTicker(time.Second)
+	tick := time.NewTimer(0)
 	defer tick.Stop()
 	maintenance := time.NewTicker(time.Hour)
 	defer maintenance.Stop()
@@ -30,50 +30,55 @@ func (s *Server) scheduler(ctx context.Context) {
 			return
 		case <-maintenance.C:
 			s.cleanup(ctx)
+			continue
+		case <-s.Store.checkWake:
 		case <-tick.C:
-			rows, e := s.Store.DB.QueryContext(ctx, "SELECT id FROM monitors WHERE enabled=1 AND deleted_at IS NULL AND next_check<=? LIMIT 64", now())
-			if e != nil {
-				continue
-			}
-			ids := []int64{}
-			for rows.Next() {
-				var id int64
-				if rows.Scan(&id) == nil {
-					ids = append(ids, id)
-				}
-			}
-			rows.Close()
-			for _, id := range ids {
-				if _, e := s.enqueue(ctx, id); e != nil {
-					slog.Debug("检测调度延后", "error", e)
-				}
-			}
-			for len(slots) < cap(slots) {
-				var id int64
-				e = s.Store.DB.QueryRowContext(ctx, nextQueuedJobQuery).Scan(&id)
-				if e != nil {
-					break
-				}
-				res, e := s.Store.DB.ExecContext(ctx, "UPDATE jobs SET state='running' WHERE id=? AND state='queued'", id)
-				if e != nil {
-					break
-				}
-				n, _ := res.RowsAffected()
-				if n == 0 {
-					continue
-				}
-				slots <- struct{}{}
-				workers.Add(1)
-				go func() {
-					defer workers.Done()
-					defer func() { <-slots }()
-					if e := s.execute(ctx, id); e != nil {
-						slog.Error("检测执行入库失败", "job", id, "error", e)
-						s.Store.DB.Exec("UPDATE jobs SET state='queued' WHERE id=? AND state='running'", id)
-					}
-				}()
+		}
+		rows, e := s.Store.DB.QueryContext(ctx, "SELECT id FROM monitors m WHERE enabled=1 AND deleted_at IS NULL AND next_check<=? AND NOT EXISTS(SELECT 1 FROM jobs j WHERE j.monitor_id=m.id AND j.state IN ('queued','running')) ORDER BY next_check,id LIMIT 64", now())
+		if e != nil {
+			tick.Reset(time.Second)
+			continue
+		}
+		ids := []int64{}
+		for rows.Next() {
+			var id int64
+			if rows.Scan(&id) == nil {
+				ids = append(ids, id)
 			}
 		}
+		rows.Close()
+		for _, id := range ids {
+			if _, e := s.enqueue(ctx, id); e != nil {
+				slog.Debug("检测调度延后", "error", e)
+			}
+		}
+		for len(slots) < cap(slots) {
+			var id int64
+			e = s.Store.DB.QueryRowContext(ctx, nextQueuedJobQuery).Scan(&id)
+			if e != nil {
+				break
+			}
+			res, e := s.Store.DB.ExecContext(ctx, "UPDATE jobs SET state='running' WHERE id=? AND state='queued'", id)
+			if e != nil {
+				break
+			}
+			n, _ := res.RowsAffected()
+			if n == 0 {
+				continue
+			}
+			slots <- struct{}{}
+			workers.Add(1)
+			go func() {
+				defer workers.Done()
+				defer func() { <-slots; s.Store.wakeWorkers() }()
+				if e := s.execute(ctx, id); e != nil {
+					slog.Error("检测执行入库失败", "job", id, "error", e)
+					s.Store.DB.Exec("UPDATE jobs SET state='queued' WHERE id=? AND state='running'", id)
+					workerRetryPause(ctx)
+				}
+			}()
+		}
+		tick.Reset(s.checkDelay(ctx, len(slots) < cap(slots)))
 	}
 }
 func (s *Server) execute(ctx context.Context, job int64) error {

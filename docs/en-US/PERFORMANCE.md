@@ -27,3 +27,9 @@ Rolling 24-hour totals combine whole-hour summaries, the raw first partial hour 
 ## Browser refresh
 
 The UI uses one base page-poll request per ten-second foreground refresh. Overview adds one chart request (plus an overall chart when filtering a group); alert activity loads only for the selected event. Team data stays entry/mutation-driven. Hidden tabs pause polling and refresh immediately when visible again. Unchanged JSON subtrees retain references, shell/form subscriptions exclude unrelated metrics, and chart transforms are memoized. Host history reloads for a new sample or changed selection/range, with a minute boundary refresh when no sample arrives. Saving still schedules a refresh after an in-flight poll; stale sessions/pages cannot restore old data.
+
+## Collection and worker scheduling
+
+The collector refreshes OS/hostname/CPU-model inventory every five minutes. CPU, memory, IP addresses, network counters, disk capacity and verified APFS identity remain fresh each collection; uptime advances between inventory reads. Inventory refresh failures remain errors. The local 15-second cadence and Agent protocol are unchanged; update Agent binaries to benefit from inventory caching.
+
+Check and notification workers use coalesced post-commit/completion wakeups and timers for the next durable due time, with a 30-second fallback for missed hints. Four probe workers, two notification workers, the five-second notification grace, configured check intervals, failure thresholds and retry backoffs are unchanged. SQLite is the source of truth; wakeups carry no jobs and cannot replace commit or restart recovery. Database failures back off rather than spinning.

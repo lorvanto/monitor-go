@@ -46,7 +46,7 @@ func queueAlertNotifications(tx *sql.Tx, id int64, event, description string) er
 }
 
 func (s *Server) notificationLoop(ctx context.Context) {
-	tick := time.NewTicker(time.Second)
+	tick := time.NewTimer(0)
 	defer tick.Stop()
 	slots := make(chan struct{}, 2)
 	var work sync.WaitGroup
@@ -55,33 +55,36 @@ func (s *Server) notificationLoop(ctx context.Context) {
 		select {
 		case <-ctx.Done():
 			return
+		case <-s.Store.notificationWake:
 		case <-tick.C:
-			for len(slots) < cap(slots) {
-				var id int64
-				e := s.Store.DB.QueryRowContext(ctx, "SELECT id FROM notification_deliveries WHERE state='queued' AND next_attempt<=? ORDER BY id LIMIT 1", now()).Scan(&id)
-				if e != nil {
-					break
-				}
-				res, e := s.Store.DB.ExecContext(ctx, "UPDATE notification_deliveries SET state='sending' WHERE id=? AND state='queued'", id)
-				if e != nil {
-					break
-				}
-				n, _ := res.RowsAffected()
-				if n == 0 {
-					continue
-				}
-				slots <- struct{}{}
-				work.Add(1)
-				go func() {
-					defer work.Done()
-					defer func() { <-slots }()
-					if e := s.deliver(ctx, id); e != nil {
-						slog.Error("通知任务入库失败", "delivery", id)
-						s.Store.DB.Exec("UPDATE notification_deliveries SET state='queued' WHERE id=? AND state='sending'", id)
-					}
-				}()
-			}
 		}
+		for len(slots) < cap(slots) {
+			var id int64
+			e := s.Store.DB.QueryRowContext(ctx, "SELECT id FROM notification_deliveries WHERE state='queued' AND next_attempt<=? ORDER BY id LIMIT 1", now()).Scan(&id)
+			if e != nil {
+				break
+			}
+			res, e := s.Store.DB.ExecContext(ctx, "UPDATE notification_deliveries SET state='sending' WHERE id=? AND state='queued'", id)
+			if e != nil {
+				break
+			}
+			n, _ := res.RowsAffected()
+			if n == 0 {
+				continue
+			}
+			slots <- struct{}{}
+			work.Add(1)
+			go func() {
+				defer work.Done()
+				defer func() { <-slots; s.Store.wakeWorkers() }()
+				if e := s.deliver(ctx, id); e != nil {
+					slog.Error("通知任务入库失败", "delivery", id)
+					s.Store.DB.Exec("UPDATE notification_deliveries SET state='queued' WHERE id=? AND state='sending'", id)
+					workerRetryPause(ctx)
+				}
+			}()
+		}
+		tick.Reset(s.notificationDelay(ctx, len(slots) < cap(slots)))
 	}
 }
 func (s *Server) deliver(ctx context.Context, id int64) error {
