@@ -18,7 +18,7 @@ A self-hosted monitoring and operations platform built with **Go**, **React 19**
 | Utilities | QR codes and Code 128/39, EAN-13/8 barcodes with PNG/SVG export |
 | Interface | Five languages with English on first use, light/dark themes, keyboard page search and responsive layouts |
 
-SQLite is the only application datastore. MySQL and Redis are monitored targets, not installation dependencies. Team members share installation resources; this is not a multi-tenant service. Custom names, notes and historical records retain their original language.
+SQLite is the only application datastore. MySQL and Redis are monitored targets, not installation dependencies. Team members share installation resources; this is not a multi-tenant service. Custom names and notes retain their original language. Stored records remain unchanged; known system incident and diagnostic messages follow the interface language when displayed.
 
 Pages refresh their required data on demand; list queries batch availability and recent history. Embedded frontend assets support gzip and conditional caching.
 

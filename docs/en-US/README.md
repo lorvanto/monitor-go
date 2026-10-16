@@ -61,7 +61,7 @@ Select 简体中文, English, 日本語, 한국어 or 繁體中文 on the sign-i
 
 Language switches update fixed UI text, default navigation, permissions, API scopes, dates and numbers without reloading the page or resetting open forms. Date display uses the browser's local time zone. Locale catalogs load on demand. Language is stored locally under `monitor.locale`, not in a shared database setting.
 
-Custom names, notes, uploaded text, saved incident/audit history and probe diagnostics retain their original language. Stored notification bodies and server/agent logs are not translated. Changing language never rewrites these records. Unchanged built-in menu names can be translated; renamed menus remain as entered.
+Custom names, notes and uploaded text retain their original language. Stored records remain unchanged; known system incident and diagnostic templates are localized for display. Stored notification bodies and server/agent logs are not translated. Changing language never rewrites these records. Unchanged built-in menu names can be translated; renamed menus remain as entered.
 
 ## Monitoring and remote hosts
 
@@ -247,3 +247,7 @@ Update the server before deploying the updated Agent. Current information change
 [Reproducible synthetic workload, measurements and scope limits (English)](../en-US/PERFORMANCE.md)
 
 Performance work preserves 15-second dynamic sampling and configured check/alert timings. Static inventory refreshes every five minutes; workers wake on committed work and due times. Update remote Agent binaries to use the collector improvement.
+
+## System incident text
+
+Known system-generated incident titles, timeline events, engine labels and check diagnostics follow the selected interface language at display time, including existing records. The compatibility renderer matches complete engine templates only in incident/diagnostic fields. Names, notes, paths, unknown external errors and stored records stay unchanged; it never rewrites the database or replaces arbitrary text. Overview, host warnings and incident details share this behavior. Language switching preserves open silence selections without submitting or refetching history. Notification payloads and server/Agent logs retain their original text.

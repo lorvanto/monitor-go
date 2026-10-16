@@ -1,3 +1,4 @@
+import { checkDiagnostic } from "../lib/incidentText";
 import { groupName, groupOption, matchesGroup } from "../lib/monitorGroups";
 import { notice, errorMessage, type DisplayMessage } from "../lib/messages";
 import Form from "../components/Form";
@@ -1252,7 +1253,7 @@ export default function MonitorsView() {
             </div>
             <div>
               <dt>{t("最近诊断")}</dt>
-              <dd>{detail.detail || t("等待首次检测")}</dd>
+              <dd>{checkDiagnostic(detail.detail) || t("等待首次检测")}</dd>
             </div>
             <div>
               <dt>{t("响应时间")}</dt>
@@ -1318,8 +1319,11 @@ export default function MonitorsView() {
                           status={h.state}
                           label={statusLabel(h.state)}
                         ></StatusBadge>
-                        <span title={h.detail} className="detail">
-                          {h.detail}
+                        <span
+                          title={checkDiagnostic(h.detail)}
+                          className="detail"
+                        >
+                          {checkDiagnostic(h.detail)}
                         </span>
                       </span>
                       <span className="num">

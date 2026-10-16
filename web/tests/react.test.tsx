@@ -1808,3 +1808,63 @@ it("loads full check diagnostics only when opening a detail drawer", async () =>
     requests.filter((r) => r.path === `/monitors/${monitor.id}/history`),
   ).toHaveLength(1);
 });
+
+it("localizes stored incident titles and timelines in place while preserving a silence draft", async () => {
+  const rawError = "dial tcp 127.0.0.1:59998: connect: connection refused";
+  const alert = {
+    id: "91",
+    kind: "monitor" as const,
+    resourceId: "71",
+    resource: "Synthetic outage",
+    title: "Synthetic outage 连续 73 次检测异常",
+    description: rawError,
+    severity: "critical" as const,
+    state: "acknowledged" as const,
+    openedAt: Date.now(),
+    recoveredAt: null,
+    owner: "Reviewer",
+    silenceUntil: 0,
+    version: 2,
+    activity: [
+      { at: 2, actor: "Reviewer", message: "确认并接手告警" },
+      { at: 1, actor: "检测引擎", message: "达到阈值，创建告警：" + rawError },
+    ],
+  };
+  fixtures["/alerts"] = [alert];
+  appStore.setState((s) => ({
+    data: { ...s.data, alerts: [{ ...alert, activity: [] }] },
+  }));
+  const view = render(<AlertsView />);
+  expect(
+    await screen.findByText("Threshold reached; alert opened: " + rawError),
+  ).toBeTruthy();
+  expect(view.container.textContent).not.toMatch(/[\u3400-\u9fff]/u);
+  fireEvent.click(screen.getByRole("button", { name: t("静默通知") }));
+  const field = within(screen.getByRole("dialog")).getByRole("radio", {
+    name: t("4 小时"),
+  }) as HTMLInputElement;
+  fireEvent.click(field);
+  const requestCount = requests.filter(
+    (r) => r.path === "/alerts/91/activity",
+  ).length;
+  for (const locale of locales) {
+    await act(() => setLocale(locale.code));
+    expect(
+      screen.getAllByText(
+        t("{name} 连续 {count} 次检测异常", {
+          name: "Synthetic outage",
+          count: "73",
+        }),
+      ).length,
+    ).toBe(2);
+    expect(
+      screen.getByText(t("达到阈值，创建告警：{detail}", { detail: rawError })),
+    ).toBeTruthy();
+    expect(screen.getByText(t("已确认并认领告警"))).toBeTruthy();
+    expect(field.checked).toBe(true);
+  }
+  expect(requests.filter((r) => r.path === "/alerts/91/activity")).toHaveLength(
+    requestCount,
+  );
+  expect(appStore.getState().data.alerts[0].title).toBe(alert.title);
+});

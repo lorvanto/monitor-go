@@ -1,3 +1,4 @@
+import { alertTitle, alertDescription } from "../lib/incidentText";
 import { notice, errorMessage, type DisplayMessage } from "../lib/messages";
 import Form from "../components/Form";
 import { hostName } from "../lib/resourceLabels";
@@ -343,8 +344,8 @@ export default function HostView() {
                     tone={warning.severity === "critical" ? "crit" : "warn"}
                   ></StatusGlyph>
                   <div className="banner-text">
-                    <strong>{warning.title}</strong>
-                    <p>{warning.description}</p>
+                    <strong>{alertTitle(warning)}</strong>
+                    <p>{alertDescription(warning)}</p>
                   </div>
                   {can("alert:access") ? (
                     <button

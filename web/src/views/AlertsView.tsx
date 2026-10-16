@@ -1,3 +1,9 @@
+import {
+  alertTitle,
+  alertDescription,
+  alertActivityMessage,
+  alertActivityActor,
+} from "../lib/incidentText";
 import { errorMessage, notice } from "../lib/messages";
 import { useEffect, useState } from "react";
 import { createStore, useStore } from "zustand";
@@ -50,7 +56,7 @@ export default function AlertsView() {
           (store.getState().filter === "all" ||
             a.state === store.getState().filter) &&
           (!store.getState().query ||
-            `${a.title} ${a.resource}`.includes(store.getState().query)),
+            `${alertTitle(a)} ${a.resource}`.includes(store.getState().query)),
       );
   const getSelected = () =>
     getAlerts().find((a) => a.id === appStore.getState().activeAlert) ||
@@ -378,7 +384,7 @@ export default function AlertsView() {
                         {relative(a.openedAt)}
                       </span>
                     </span>
-                    <h3>{a.title}</h3>
+                    <h3>{alertTitle(a)}</h3>
                     <span className="incident-meta">
                       <span>
                         <Icon
@@ -441,8 +447,8 @@ export default function AlertsView() {
                       {stateLabel(selected.state)}
                     </span>
                   </div>
-                  <h2>{selected.title}</h2>
-                  <p>{selected.description}</p>
+                  <h2>{alertTitle(selected)}</h2>
+                  <p>{alertDescription(selected)}</p>
                   <div className="incident-actions">
                     {can("alert:handle") && selected.state === "open" ? (
                       <button
@@ -530,9 +536,9 @@ export default function AlertsView() {
                         : selected.activity
                       ).map((a, i) => (
                         <li key={a.at + "-" + i}>
-                          <strong>{a.message}</strong>
+                          <strong>{alertActivityMessage(a, selected)}</strong>
                           <small>
-                            {dateTime(a.at)} {a.actor}
+                            {dateTime(a.at)} {alertActivityActor(a)}
                           </small>
                         </li>
                       ))}

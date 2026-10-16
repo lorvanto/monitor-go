@@ -1,3 +1,4 @@
+import { alertTitle } from "../lib/incidentText";
 import {
   groupName,
   groupOption,
@@ -707,7 +708,7 @@ export default function OverviewView() {
                               }
                             ></StatusBadge>
                             <span className="event-text">
-                              <strong>{a.title}</strong>
+                              <strong>{alertTitle(a)}</strong>
                               <small>
                                 {a.resource} {duration(a.openedAt)}
                               </small>

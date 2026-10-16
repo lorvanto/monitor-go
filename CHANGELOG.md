@@ -4,6 +4,11 @@ User-visible changes belong here. Entries under **Unreleased** describe the curr
 
 ## Unreleased
 
+### System incident localization
+
+- Localize existing and new engine-generated incident titles, timeline events, engine labels and known probe/host diagnostic templates in all five UI languages, including overview and host warnings. Keep user names, paths, raw external errors and stored records intact.
+- Preserve silence selections during language switches; add five-language history, diagnostic and live-view regressions. No API, schema, notification timing or dependency change.
+
 ### Performance optimization
 
 - Keep check-list signal samples lightweight and fetch full diagnostic history only for an open detail drawer, with unchanged legacy responses and permission enforcement.
