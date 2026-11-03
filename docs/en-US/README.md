@@ -48,6 +48,8 @@ make build
 
 Visit [localhost:5080](http://127.0.0.1:5080/). Read `data/setup-token` on the server and enter the token, username, name and password in setup. No default username or password is provided. Setup removes the token file. Passwords are 12–72 bytes. Sessions use HttpOnly cookies and CSRF checks; permissions are checked for each API request.
 
+Open **Account settings** from the signed-in account menu to change your display name and login username, then confirm with your current password. The display name shown in bold in the sidebar updates immediately. Saving retains the current session, user ID and roles. If you change the login username, it must be unique; subsequent sign-ins use the new username, and the old username no longer signs in.
+
 The server binary embeds frontend files. Java, Node.js and external databases are not needed at runtime. Only one active process may use a data directory.
 
 For team access, use a trusted HTTPS reverse proxy:
@@ -71,7 +73,15 @@ Custom names, notes and uploaded text retain their original language. Stored rec
 
 The service collects local and remote host metrics approximately every 15 seconds. HTTP, TCP, SSL, MySQL and Redis checks run on the monitoring server. Consecutive failures trigger incidents; a subsequent success resolves them. Acknowledging or silencing an incident does not manufacture recovery.
 
-To connect a host, generate a 15-minute enrollment code from Host details. Build an agent matching the destination system:
+To connect a host, generate a 15-minute enrollment code from Host details.
+
+After generating an enrollment code, choose **Linux one-command installation** and **Copy install command**, then paste the complete command into the target server. The installer detects Linux amd64/arm64, downloads the matching Agent and SHA-256 checksum from this Monitor Go installation, registers the host, and enables a systemd service at boot. The target needs systemd, `curl`, `sha256sum` and root or sudo access; Go and a separate binary transfer are not required. Enrollment codes expire after 15 minutes and remain scoped to one host. Other operating systems and Linux hosts without systemd use the manual flow below. Agent updates remain manual.
+
+If registration or the first report fails, credentials are preserved so you can run the same copied command again. Re-enrollment commands include `--replace`; replacing an existing installation keeps its prior credentials in a private backup on the target host.
+
+`make build` also creates `bin/agents/agent-linux-amd64` and `bin/agents/agent-linux-arm64` for the one-command installer. Keep the `agents/` directory beside the deployed server executable; `-agent-dir` selects another package directory. For a server compiled with plain `go build`, run `make agents` and deploy those packages separately. The Docker image already includes both packages.
+
+For manual installation, build an Agent matching the destination system:
 
 ```sh
 CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath -o bin/agent-linux-amd64 ./cmd/agent
@@ -89,7 +99,7 @@ chmod 600 enrollment-token
 
 Use valid, trusted HTTPS; private certificate authorities can be configured with `-ca-file`. Numeric loopback HTTP is permitted for local tests only. An agent makes outbound requests, so no inbound agent port is needed. Do not copy credentials between hosts. Revocation or re-enrollment invalidates old credentials. Metrics are not buffered during disconnection. Reports absent for over 90 seconds trigger an offline incident on the next check (up to 10 more seconds).
 
-The [systemd template](../../deploy/monitor-go-agent.service) requires the deployer to create its user and data directory. No system service is installed automatically. Agents collect host resources; they do not execute remote commands or service checks.
+The [systemd template](../../deploy/monitor-go-agent.service) requires the deployer to create its user and data directory. The manual template does not install itself; the one-command installer performs the service setup. Agents collect host resources; they do not execute remote commands or service checks.
 
 ## Notifications, files and distribution
 

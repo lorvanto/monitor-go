@@ -86,7 +86,13 @@ make build
 
 打开[本地服务](http://127.0.0.1:5080/)，在本机读取 `data/setup-token`，用它创建首个管理员。没有默认账号或密码；完成初始化后令牌文件会被删除。
 
-`make build` 生成 `bin/monitor` 和 `bin/agent`。服务端内嵌前端，运行时不需要 Node.js、Go 或外部数据库。远程访问、Agent 接入、HTTPS、备份和升级步骤见[完整中文指南](docs/zh-CN/README.md)。
+`make build` 生成 `bin/monitor`、`bin/agent`，以及 `bin/agents/` 下的 Linux amd64/arm64 下载包。部署时将 `agents/` 放在服务端可执行文件旁边，或通过 `-agent-dir` 指定目录。服务端内嵌前端，运行时不需要 Node.js、Go 或外部数据库。远程访问、Agent 接入、HTTPS、备份和升级步骤见[完整中文指南](docs/zh-CN/README.md)。
+
+## 远程 Agent 安装
+
+在主机详情中生成接入码，选择 **Linux 一键安装 → 复制安装命令**，将完整命令粘贴到目标服务器。目标系统需要 Linux amd64/arm64、systemd、`curl`、`sha256sum`，以及 root 或 sudo 权限。安装程序从当前 Monitor Go 实例下载 Agent，校验 SHA-256，注册主机并设置开机启动；目标服务器不需要 Go。Docker 构建包含两种架构的 Agent 包；仅通过 `go build` 构建服务端时，需要另行运行 `make agents` 并部署生成的下载包目录。其他系统仍可按[手动安装流程](docs/zh-CN/README.md#接入远程主机)接入。Agent 更新仍需手动完成。
+
+在账号菜单中打开**账号设置**，通过当前密码验证后修改显示名称和登录用户名。侧边栏显示名称立即更新，当前会话保持有效。登录用户名必须唯一，修改后再次登录时使用新用户名。
 
 ## 开发与验证
 

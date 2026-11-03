@@ -1363,5 +1363,21 @@
   "确认持续上报规则后可在此自愿绑定账号。账号绑定不会识别实例内的其他成员。": "After confirming the reporting policy, you can optionally link an account here. Linking does not identify other members of this installation.",
   "Usage reporting is required and cannot be disabled": "Usage reporting is required and cannot be disabled in this application.",
   "确认后生成": "Generated after confirmation",
-  "确认后生成独立实例凭据，用于验证登记、上报及账号绑定请求；预览不会显示该凭据。": "A separate instance credential is generated after confirmation. It authenticates registration, reports and account linking and is omitted from this preview."
+  "确认后生成独立实例凭据，用于验证登记、上报及账号绑定请求；预览不会显示该凭据。": "A separate instance credential is generated after confirmation. It authenticates registration, reports and account linking and is omitted from this preview.",
+  "复制安装命令": "Copy install command",
+  "手动安装与其他系统": "Manual installation and other systems",
+  "复制命令，在目标服务器执行，即可安装 Agent、完成注册并设置开机自启。支持 Linux amd64 / arm64，需要 systemd、curl 和管理员权限。": "Copy and run the command on the target server to install the agent, register it and enable startup at boot. Supports Linux amd64 / arm64; requires systemd, curl and administrator privileges.",
+  "账号设置已保存": "Account settings saved",
+  "请输入不带路径的 HTTPS 服务地址；本机测试可用 127.0.0.1。": "Enter an HTTPS server origin without a path; use 127.0.0.1 for local testing.",
+  "修改登录用户名": "Changed login username",
+  "命令包含本次接入码，请在有效期内执行。安装成功后回到主机页面查看上报状态。": "The command contains this enrollment code; run it before it expires. After installation, return to the host page to check reporting status.",
+  "用户名需为 3–40 位小写英文字母、数字、下划线、点或连字符，且以字母或数字开头。": "Use 3–40 lowercase letters, numbers, underscores, dots, or hyphens, starting with a letter or number.",
+  "登录用户名": "Login username",
+  "Linux 一键安装": "Linux one-command installation",
+  "修改登录用户名后，下次登录请使用新用户名。": "After changing your login username, use the new username the next time you sign in.",
+  "此服务尚未包含 Linux Agent 安装包，请使用下面的手动安装方式。": "This server does not include Linux agent packages yet. Use the manual installation instructions below.",
+  "当前密码不正确": "Current password is incorrect",
+  "请填写当前密码": "Enter your current password",
+  "当前密码": "Current password",
+  "账号设置": "Account settings"
 }

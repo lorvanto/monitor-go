@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"syscall"
@@ -34,6 +35,7 @@ func main() {
 	consoleURL := flag.String("console-url", defaultConsoleURL(), "Monitor Console origin for disclosed first-install activation and usage reporting")
 	requireActivation := flag.Bool("require-activation", true, "Compatibility flag; activation and reporting are required, false is rejected")
 	deployment := flag.String("deployment", envDefault("MONITOR_DEPLOYMENT", "native"), "Deployment type: native or docker")
+	agentDir := flag.String("agent-dir", defaultAgentDir(), "Directory containing the Linux agent download packages")
 	version := flag.Bool("version", false, "Print application version and exit")
 	flag.Parse()
 	if *version {
@@ -44,7 +46,7 @@ func main() {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(2)
 	}
-	s, e := app.New(app.Config{Listen: *listen, DataDir: *data, PublicURL: *public, TrustedProxy: *trustedProxy, SecureCookie: *secure, Collect: *collect, ConsoleURL: *consoleURL, RequireActivation: true, Deployment: *deployment, Assets: web.Assets()})
+	s, e := app.New(app.Config{AgentDir: *agentDir, Listen: *listen, DataDir: *data, PublicURL: *public, TrustedProxy: *trustedProxy, SecureCookie: *secure, Collect: *collect, ConsoleURL: *consoleURL, RequireActivation: true, Deployment: *deployment, Assets: web.Assets()})
 	if e != nil {
 		slog.Error("启动失败", "error", e)
 		os.Exit(1)
@@ -133,4 +135,12 @@ func validateRequiredReporting(required bool, consoleURL string) error {
 		return fmt.Errorf("Console destination must not be empty; activation and reporting are required")
 	}
 	return nil
+}
+
+func defaultAgentDir() string {
+	executable, err := os.Executable()
+	if err != nil {
+		return ""
+	}
+	return filepath.Join(filepath.Dir(executable), "agents")
 }

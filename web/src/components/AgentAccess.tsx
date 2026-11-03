@@ -13,6 +13,7 @@ import {
   useApp,
   type Host,
 } from "../stores/app";
+import { agentInstallCommand, agentInstallOrigin } from "../lib/agentInstall";
 import Icon from "./Icon";
 import Modal from "./Modal";
 export default function AgentAccess(inputProps: { host?: Host }) {
@@ -23,6 +24,9 @@ export default function AgentAccess(inputProps: { host?: Host }) {
     alias: "",
     busy: false,
     failure: "" as DisplayMessage,
+    downloads: undefined as
+      | { platforms: { os: string; arch: string }[] }
+      | undefined,
     target: undefined as Host | undefined,
     result: undefined as
       | { id: string; token: string; expiresAt: number }
@@ -46,7 +50,7 @@ export default function AgentAccess(inputProps: { host?: Host }) {
       target: props.host ? JSON.parse(JSON.stringify(props.host)) : undefined,
     });
     store.setState({ alias: "" });
-    store.setState({ result: undefined });
+    store.setState({ result: undefined, downloads: undefined });
     store.setState({ failure: "" });
     store.setState({ open: true });
   }
@@ -68,6 +72,16 @@ export default function AgentAccess(inputProps: { host?: Host }) {
               },
         ),
       });
+      if (store.getState().mode !== "revoke") {
+        try {
+          const downloads = await api<{
+            platforms: { os: string; arch: string }[];
+          }>("/agent/downloads");
+          store.setState({ downloads });
+        } catch {
+          store.setState({ downloads: undefined });
+        }
+      }
       await refreshAll(true);
       if (store.getState().mode === "revoke") {
         store.setState({ open: false });
@@ -104,6 +118,16 @@ export default function AgentAccess(inputProps: { host?: Host }) {
   }
 
   const command = getCommand();
+  const installCommand = agentInstallCommand(
+    viewState.server,
+    viewState.result?.token || "",
+    viewState.mode === "reenroll",
+  );
+  const installerAvailable = ["amd64", "arm64"].every((arch) =>
+    viewState.downloads?.platforms?.some(
+      (platform) => platform.os === "linux" && platform.arch === arch,
+    ),
+  );
   return (
     <>
       {can("host:agents") ? (
@@ -200,99 +224,146 @@ export default function AgentAccess(inputProps: { host?: Host }) {
           }
         >
           {viewState.result?.token ? (
-            <ol className="steps">
-              <li>
-                <div className="step-body">
-                  <h3>{t("准备 Agent 程序")}</h3>
-                  <p>
-                    {t("把与远程主机系统和架构匹配的")}
-                    <code>{"agent"}</code>
-                    {t("程序放到该主机上。在项目目录执行")}
-                    <code>{"go build -o bin/agent ./cmd/agent"}</code>
-                    {t("构建；跨系统部署时设置 GOOS 与 GOARCH。")}
-                  </p>
-                </div>
-              </li>
-              <li>
-                <div className="step-body">
-                  <h3>{t("保存接入码")}</h3>
-                  <p>
-                    {t(
-                      "与 Agent 放在同一目录，并限制为仅当前用户可读。注册成功后可以删除该文件。",
-                    )}
-                  </p>
-                  <div className="copy-field">
-                    <input
-                      value={viewState.result.token}
-                      readOnly
-                      aria-label={t("本次 Agent 接入码")}
-                    />
+            <>
+              <label className="field">
+                {t("服务地址")}
+                <input
+                  type="url"
+                  aria-label={t("服务地址")}
+                  value={viewState.server}
+                  onChange={(event) => {
+                    store.setState({ server: event.currentTarget.value });
+                  }}
+                />
+                <small>
+                  {t(
+                    "填写远程主机能访问到的 HTTPS 地址；127.0.0.1 只适合本机联调。",
+                  )}
+                </small>
+              </label>
+              <section>
+                <h3>{t("Linux 一键安装")}</h3>
+                <p>
+                  {t(
+                    "复制命令，在目标服务器执行，即可安装 Agent、完成注册并设置开机自启。支持 Linux amd64 / arm64，需要 systemd、curl 和管理员权限。",
+                  )}
+                </p>
+                {installerAvailable ? (
+                  <>
+                    {!agentInstallOrigin(viewState.server) ? (
+                      <p role="alert" className="form-error">
+                        {t(
+                          "请输入不带路径的 HTTPS 服务地址；本机测试可用 127.0.0.1。",
+                        )}
+                      </p>
+                    ) : null}
                     <button
-                      className="btn"
-                      onClick={() => {
-                        copy(viewState.result!.token);
-                      }}
+                      className="btn primary"
+                      disabled={!installCommand}
+                      onClick={() => copy(installCommand)}
                     >
-                      <Icon name="Copy"></Icon>
-                      {t("复制")}
+                      <Icon name="Copy" size={16} />
+                      {t("复制安装命令")}
                     </button>
-                    <button
-                      className="btn"
-                      onClick={() => {
-                        download();
-                      }}
-                    >
-                      <Icon name="Download"></Icon>
-                      {t("下载文件")}
-                    </button>
-                  </div>
-                  <small className="field-help">
-                    {t("有效至 {p0}", {
-                      p0: dateTime(viewState.result.expiresAt),
-                    })}
-                  </small>
-                </div>
-              </li>
-              <li>
-                <div className="step-body">
-                  <h3>{t("启动并等待首次上报")}</h3>
-                  <label className="field">
-                    {t("服务地址")}
-                    <input
-                      type="url"
-                      value={viewState.server}
-                      onChange={(event) => {
-                        store.setState({ server: event.currentTarget.value });
-                      }}
-                    />
-                    <small>
+                    <pre className="code-block agent-install-command">
+                      {installCommand}
+                    </pre>
+                    <p className="field-help">
                       {t(
-                        "填写远程主机能访问到的 HTTPS 地址；127.0.0.1 只适合本机联调。",
+                        "命令包含本次接入码，请在有效期内执行。安装成功后回到主机页面查看上报状态。",
                       )}
-                    </small>
-                  </label>
-                  <div className="snippet">
-                    <pre className="code-block">{command}</pre>
-                    <button
-                      aria-label={t("复制启动命令")}
-                      className="icon-btn sm"
-                      onClick={() => {
-                        copy(command);
-                      }}
-                    >
-                      <Icon name="Copy" size={14}></Icon>
-                    </button>
-                  </div>
-                  <p>
+                    </p>
+                  </>
+                ) : (
+                  <p className="note">
                     {t(
-                      "Agent 约每 15 秒上报一次，超过 90 秒未上报会产生离线告警。凭据保存在配置文件中，以后用同一个",
+                      "此服务尚未包含 Linux Agent 安装包，请使用下面的手动安装方式。",
                     )}
-                    <code>{"-config"}</code>
-                    {t("启动即可。")}
                   </p>
-                </div>
-              </li>
-            </ol>
+                )}
+              </section>
+              <details open={!installerAvailable}>
+                <summary>{t("手动安装与其他系统")}</summary>
+                <ol className="steps">
+                  <li>
+                    <div className="step-body">
+                      <h3>{t("准备 Agent 程序")}</h3>
+                      <p>
+                        {t("把与远程主机系统和架构匹配的")}
+                        <code>{"agent"}</code>
+                        {t("程序放到该主机上。在项目目录执行")}
+                        <code>{"go build -o bin/agent ./cmd/agent"}</code>
+                        {t("构建；跨系统部署时设置 GOOS 与 GOARCH。")}
+                      </p>
+                    </div>
+                  </li>
+                  <li>
+                    <div className="step-body">
+                      <h3>{t("保存接入码")}</h3>
+                      <p>
+                        {t(
+                          "与 Agent 放在同一目录，并限制为仅当前用户可读。注册成功后可以删除该文件。",
+                        )}
+                      </p>
+                      <div className="copy-field">
+                        <input
+                          value={viewState.result.token}
+                          readOnly
+                          aria-label={t("本次 Agent 接入码")}
+                        />
+                        <button
+                          className="btn"
+                          onClick={() => {
+                            copy(viewState.result!.token);
+                          }}
+                        >
+                          <Icon name="Copy"></Icon>
+                          {t("复制")}
+                        </button>
+                        <button
+                          className="btn"
+                          onClick={() => {
+                            download();
+                          }}
+                        >
+                          <Icon name="Download"></Icon>
+                          {t("下载文件")}
+                        </button>
+                      </div>
+                      <small className="field-help">
+                        {t("有效至 {p0}", {
+                          p0: dateTime(viewState.result.expiresAt),
+                        })}
+                      </small>
+                    </div>
+                  </li>
+                  <li>
+                    <div className="step-body">
+                      <h3>{t("启动并等待首次上报")}</h3>
+                      <div className="snippet">
+                        <pre className="code-block">{command}</pre>
+                        <button
+                          aria-label={t("复制启动命令")}
+                          className="icon-btn sm"
+                          onClick={() => {
+                            copy(command);
+                          }}
+                        >
+                          <Icon name="Copy" size={14}></Icon>
+                        </button>
+                      </div>
+                      <p>
+                        {t(
+                          "Agent 约每 15 秒上报一次，超过 90 秒未上报会产生离线告警。凭据保存在配置文件中，以后用同一个",
+                        )}
+                        <code>{"-config"}</code>
+                        {t("启动即可。")}
+                      </p>
+                    </div>
+                  </li>
+                </ol>
+              </details>
+            </>
           ) : (
             <>
               {viewState.mode === "create" ? (

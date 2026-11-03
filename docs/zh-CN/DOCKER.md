@@ -4,6 +4,8 @@
 
 使用 Docker Engine / Docker Desktop 的 Linux 容器模式、BuildKit 和 Docker Compose v2.20 或更新版本。镜像从当前源码构建，`monitor-go:local` 是本地标签，不是已经发布的仓库镜像。通过 Docker 构建和运行程序时，宿主机不需要安装 Go 或 Node.js。
 
+镜像包含由同一源码构建的 Linux amd64/arm64 Agent 下载包。在主机详情选择「Linux 一键安装」，即可在目标服务器安装原生 systemd Agent，无需在目标机安装 Go。下载包由本实例提供，不代表已经发布发行版。
+
 
 `make docker-build` 会注入 Git 派生版本。直接使用 Compose 时可传入 `MONITOR_VERSION`，未指定则显示 `0.4.0-dev`。直接构建可用 `docker build --build-arg VERSION="$(git describe --tags --always --dirty 2>/dev/null || printf 0.4.0-dev)" -t monitor-go:local .`。Git 历史不进入 Docker 构建上下文。
 

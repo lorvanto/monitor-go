@@ -82,6 +82,8 @@ cat data/setup-token
 
 在页面输入初始化码、用户名、姓名和密码。初始化完成后自动删除初始化码文件，进入监控中心。此时本机指标会自动采集，检测列表为空，按需要添加真实目标。不会自动创建公网检测、演示账号或虚构业务数据。
 
+登录后从个人账号菜单打开「账号设置」，可以修改自己的显示姓名和登录用户名，并用当前密码确认。侧栏加粗显示的姓名会在保存后立即更新；当前会话、用户编号和角色保持不变。若修改登录用户名，新用户名不能与其他账号重复，下次登录使用新用户名，旧用户名不再有效。
+
 用于多人访问时可修改监听地址，并在可信 HTTPS 反向代理后运行：
 
 ```sh
@@ -95,7 +97,13 @@ cat data/setup-token
 
 在「主机详情」点击「接入远程主机」，填写名称后生成有效期 15 分钟的接入码。每次接入绑定一台预登记主机，不能用同一接入码注册其他机器。主机页支持切换、重新接入与撤销；操作需要新增的 `host:agents` 权限，默认仅超级管理员拥有。
 
-`make build` 同时生成服务端 `bin/monitor` 与采集端 `bin/agent`。将匹配远程系统 / 架构的采集程序复制到远程主机，例如构建 Linux 版本：
+生成接入码后，选择「Linux 一键安装」，点击「复制安装命令」，把整段命令粘贴到目标服务器执行。安装器自动识别 Linux amd64/arm64，从本 Monitor Go 实例下载匹配的 Agent 与 SHA-256 校验值，完成注册并启用 systemd 开机自启服务。目标机需要 systemd、`curl`、`sha256sum` 和 root 或 sudo 权限，无需安装 Go 或单独复制二进制文件。接入码 15 分钟内有效，仍只对应一台主机。其他系统或没有 systemd 的 Linux 主机使用下方手动流程；Agent 升级仍需手动执行。
+
+注册或首次上报失败时会保留凭据，可重新执行同一段复制命令。重新接入页面生成的命令包含 `--replace`；替换已有接入前，会在目标机私有目录备份旧凭据。
+
+`make build` 还会生成供一键安装下载的 `bin/agents/agent-linux-amd64` 与 `bin/agents/agent-linux-arm64`。部署原生服务时，把 `agents/` 目录与服务端可执行文件放在同一目录；可用 `-agent-dir` 指定其他安装包目录。仅用 `go build` 构建服务端时，另行运行 `make agents` 并部署这些安装包。Docker 镜像已包含两种安装包。
+
+高级手动安装可使用 `bin/agent`，或构建匹配远程系统 / 架构的采集程序，例如 Linux 版本：
 
 ```sh
 CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath -o bin/agent-linux-amd64 ./cmd/agent
@@ -117,11 +125,11 @@ Agent 必须能访问服务端，HTTPS 证书要有效且受系统信任。私�
 ./agent -config agent-data/config.json
 ```
 
-不要把同一配置文件复制给其他主机。重新接入会立即吊销旧凭据，需要停止旧进程并使用新的配置路径注册。凭据只可上报自身指标，不具有后台登录或修改权限。当前最多登记 1000 台远程主机，此数值只是配置限制，尚未完成容量压测。
+不要把同一配置文件复制给其他主机。重新接入会立即吊销旧凭据；手动部署时需要停止旧进程并使用新的配置路径注册。凭据只可上报自身指标，不具有后台登录或修改权限。当前最多登记 1000 台远程主机，此数值只是配置限制，尚未完成容量压测。
 
 Agent 注册后立即采样，随后约每 15 秒上报 CPU、内存、磁盘、网络和系统信息。服务端以接收时间记历史；同一报告重复发送不会重复入库或延长在线时间。采样时间需在服务端 ±5 分钟内，乱序数据拒绝写入。网络错误退避重试，最长 60 秒；当前不保存断网期间的历史，曲线如实留空。超过 90 秒未收到数据产生离线告警，最多再等待 10 秒巡检；新上报自动恢复。待接入主机不触发离线告警，已注册但一直未上报的主机会触发。
 
-Linux 常驻运行可使用 [systemd 单元](../../deploy/monitor-go-agent.service)。先由部署者创建 `monitor-go-agent` 系统用户与 `/var/lib/monitor-go-agent`（该用户所有、0700），将程序放到 `/usr/local/bin/monitor-go-agent`；以该用户完成首次注册，配置路径为 `/var/lib/monitor-go-agent/config.json`。随后安装单元到 `/etc/systemd/system/`，执行 `systemctl daemon-reload` 和 `systemctl enable --now monitor-go-agent`。该单元无需 root 运行，配置与采样权限不足时应检查日志。此文件是部署模板，当前机器没有自动安装系统服务。
+Linux 常驻运行可使用 [systemd 单元](../../deploy/monitor-go-agent.service)。先由部署者创建 `monitor-go-agent` 系统用户与 `/var/lib/monitor-go-agent`（该用户所有、0700），将程序放到 `/usr/local/bin/monitor-go-agent`；以该用户完成首次注册，配置路径为 `/var/lib/monitor-go-agent/config.json`。随后安装单元到 `/etc/systemd/system/`，执行 `systemctl daemon-reload` 和 `systemctl enable --now monitor-go-agent`。该单元无需 root 运行，配置与采样权限不足时应检查日志。该文件是手动部署模板；一键安装会自动完成系统用户、数据目录与服务配置。
 
 ## 外部告警通知
 

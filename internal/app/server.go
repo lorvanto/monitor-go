@@ -26,14 +26,15 @@ import (
 )
 
 type Config struct {
-	Listen, DataDir, PublicURL, TrustedProxy string
-	ConsoleURL, Deployment                   string
-	SecureCookie                             bool
-	Assets                                   fs.FS
-	Collect                                  bool
-	RequireActivation                        bool
+	Listen, DataDir, PublicURL, TrustedProxy, AgentDir string
+	ConsoleURL, Deployment                             string
+	SecureCookie                                       bool
+	Assets                                             fs.FS
+	Collect                                            bool
+	RequireActivation                                  bool
 }
 type Server struct {
+	agentPackages  map[string]agentPackage
 	static         http.Handler
 	usage          *usageReporter
 	Store          *Store
@@ -89,7 +90,7 @@ func New(cfg Config) (*Server, error) {
 	if e != nil {
 		return nil, e
 	}
-	s := &Server{static: static, Store: st, cfg: cfg, trustedProxies: proxies, attempts: map[string]attempt{}, uploadSlots: make(chan struct{}, 2), codeSlots: make(chan struct{}, 2), setupGate: make(chan struct{}, 1)}
+	s := &Server{agentPackages: loadAgentPackages(cfg.AgentDir), static: static, Store: st, cfg: cfg, trustedProxies: proxies, attempts: map[string]attempt{}, uploadSlots: make(chan struct{}, 2), codeSlots: make(chan struct{}, 2), setupGate: make(chan struct{}, 1)}
 	var count int
 	e = st.DB.QueryRow("SELECT count(*) FROM users").Scan(&count)
 	if e != nil {
@@ -284,6 +285,7 @@ func (s *Server) Handler() http.Handler {
 	add("POST /api/v1/setup", "", true, s.setup)
 	add("POST /api/v1/auth/login", "", true, s.login)
 	add("GET /api/v1/me", "", false, func(w http.ResponseWriter, r *http.Request, u *User) (any, error) { return u, nil })
+	add("PATCH /api/v1/me", "", false, s.updateProfile)
 	add("POST /api/v1/auth/logout", "", false, s.logout)
 	add("GET /api/v1/roles", "team:read", false, s.listRoles)
 	add("POST /api/v1/roles", "role:manage", false, s.createRole)
@@ -310,6 +312,10 @@ func (s *Server) Handler() http.Handler {
 	add("POST /api/v1/alerts/{id}/silences", "alert:handle", false, s.silenceAlert)
 	add("POST /api/v1/hosts/agents", "host:agents", false, s.createAgent)
 	add("POST /api/v1/hosts/{id}/agent", "host:agents", false, s.changeAgent)
+	add("GET /api/v1/agent/install.sh", "", true, s.agentInstallScript)
+	add("GET /api/v1/agent/downloads", "", true, s.agentDownloads)
+	add("GET /api/v1/agent/download/{os}/{arch}", "", true, s.agentDownload)
+	add("GET /api/v1/agent/download/{os}/{arch}/sha256", "", true, s.agentDownloadChecksum)
 	add("POST /api/v1/agent/enroll", "", true, s.enrollAgent)
 	add("POST /api/v1/agent/reports", "", true, s.reportAgent)
 	add("GET /api/v1/notification-channels", "notification:manage", false, s.listChannels)

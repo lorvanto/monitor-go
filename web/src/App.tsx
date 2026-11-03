@@ -6,6 +6,7 @@ import LanguageSelect from "./components/LanguageSelect";
 import Modal from "./components/Modal";
 import NavTree from "./components/NavTree";
 import PageBoundary from "./components/PageBoundary";
+import ProfileSettings from "./components/ProfileSettings";
 import StatusGlyph from "./components/StatusGlyph";
 import UsageConfirmationBanner from "./components/UsageConfirmationBanner";
 import { t } from "./i18n";
@@ -61,6 +62,7 @@ export default function App() {
     cursor: 0,
     help: false,
     userOpen: false,
+    profileOpen: false,
   };
   type LocalState = typeof initialState;
   const [store] = useState(() => createStore<LocalState>(() => initialState));
@@ -239,6 +241,7 @@ export default function App() {
     store.setState({
       paletteOpen: false,
       userOpen: false,
+      profileOpen: false,
       help: false,
       query: "",
       cursor: 0,
@@ -414,6 +417,15 @@ export default function App() {
                 </button>
                 {viewState.userOpen ? (
                   <div role="menu" aria-label={t("账号菜单")} className="menu">
+                    <button
+                      role="menuitem"
+                      onClick={() => {
+                        store.setState({ profileOpen: true, userOpen: false });
+                      }}
+                    >
+                      <Icon name="Settings2"></Icon>
+                      {t("账号设置")}
+                    </button>
                     {can("menu:manage") ? (
                       <button
                         role="menuitem"
@@ -624,6 +636,11 @@ export default function App() {
                 </span>
               </div>
             </Modal>
+          ) : null}
+          {viewState.profileOpen ? (
+            <ProfileSettings
+              onClose={() => store.setState({ profileOpen: false })}
+            />
           ) : null}
           {viewState.help ? (
             <Modal

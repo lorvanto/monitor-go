@@ -18,6 +18,7 @@ RUN --mount=type=cache,target=/go/pkg/mod go mod download
 COPY cmd ./cmd
 COPY internal ./internal
 COPY locales ./locales
+COPY scripts/build-agents.sh ./scripts/build-agents.sh
 COPY web/embed.go ./web/embed.go
 COPY --from=frontend /src/web/dist ./web/dist
 ARG VERSION=0.4.0-dev
@@ -25,7 +26,8 @@ ARG TARGETOS
 ARG TARGETARCH
 RUN --mount=type=cache,target=/go/pkg/mod \
     --mount=type=cache,target=/root/.cache/go-build \
-    GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build -trimpath -ldflags "-X github.com/lorvanto/monitor-go/internal/buildinfo.Version=${VERSION}" -o /out/monitor ./cmd/monitor
+    GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build -trimpath -ldflags "-X github.com/lorvanto/monitor-go/internal/buildinfo.Version=${VERSION}" -o /out/monitor ./cmd/monitor \
+    && MONITOR_BUILD_VERSION=${VERSION} sh scripts/build-agents.sh /out/agents
 
 FROM ${RUNTIME_IMAGE} AS runtime
 RUN apk add --no-cache ca-certificates tzdata \
@@ -35,6 +37,7 @@ RUN apk add --no-cache ca-certificates tzdata \
     && chown 10001:10001 /data \
     && chmod 0700 /data
 COPY --from=build /out/monitor /usr/local/bin/monitor
+COPY --from=build /out/agents /usr/local/bin/agents
 COPY LICENSE NOTICE THIRD_PARTY_NOTICES.md /usr/share/monitor-go/
 COPY third_party/licenses /usr/share/monitor-go/third_party/licenses
 ARG VERSION=0.4.0-dev

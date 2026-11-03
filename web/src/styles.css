@@ -3514,6 +3514,11 @@
     font-size: 13px;
     line-height: 1.65;
   }
+  .agent-install-command {
+    max-height: 180px;
+    overflow: auto;
+    margin-top: 12px;
+  }
   .snippet {
     position: relative;
   }

@@ -4,6 +4,8 @@
 
 Docker Engine / Docker Desktop의 Linux 컨테이너 모드, BuildKit 및 Docker Compose v2.20 이상을 사용하세요. 현재 소스에서 빌드하며 `monitor-go:local`은 로컬 태그입니다. 게시된 레지스트리 이미지가 아닙니다. Docker로 빌드하고 실행할 때 호스트에 Go나 Node.js를 설치할 필요는 없습니다.
 
+이미지에는 같은 소스에서 빌드한 Linux amd64/arm64 Agent 다운로드 패키지가 포함됩니다. 호스트 상세의 「Linux 원클릭 설치」를 사용하면 대상 서버에 네이티브 systemd Agent를 설치하며 대상에 Go가 필요하지 않습니다. 패키지는 이 인스턴스가 제공하며 게시된 릴리스 자산을 뜻하지 않습니다.
+
 
 `make docker-build`는 Git 기반 버전을 주입합니다. Compose를 직접 쓸 때는 `MONITOR_VERSION`을 지정하며 생략하면 `0.4.0-dev`를 표시합니다. 직접 빌드할 때는 `docker build --build-arg VERSION="$(git describe --tags --always --dirty 2>/dev/null || printf 0.4.0-dev)" -t monitor-go:local .`을 사용할 수 있습니다. Git 이력은 Docker 빌드 컨텍스트에 포함하지 않습니다.
 

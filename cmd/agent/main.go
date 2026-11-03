@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 )
 
 func main() {
@@ -18,6 +19,7 @@ func main() {
 	config := flag.String("config", "agent-data/config.json", "持久凭据配置文件")
 	ca := flag.String("ca-file", "", "可选私有 CA PEM 文件")
 	version := flag.Bool("version", false, "Print application version and exit")
+	once := flag.Bool("once", false, "Register and send one report, then exit (for installation checks)")
 	flag.Parse()
 	if *version {
 		fmt.Println(buildinfo.Version)
@@ -25,7 +27,15 @@ func main() {
 	}
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
-	if e := agent.Run(ctx, *config, *server, *enrollment, *ca); e != nil {
+	var e error
+	if *once {
+		checkCtx, cancel := context.WithTimeout(ctx, time.Minute)
+		defer cancel()
+		e = agent.Bootstrap(checkCtx, *config, *server, *enrollment, *ca)
+	} else {
+		e = agent.Run(ctx, *config, *server, *enrollment, *ca)
+	}
+	if e != nil {
 		slog.Error("Agent 已停止", "error", e)
 		os.Exit(1)
 	}
