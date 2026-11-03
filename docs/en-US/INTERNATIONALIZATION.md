@@ -45,7 +45,7 @@ go vet ./...
 
 ## Documentation policy
 
-The root README is the English entry point. All five languages use `docs/<locale>/`, with English directory and file names and localized content. Simplified Chinese material lives in `docs/zh-CN/`, and Traditional Chinese guides in `docs/zh-TW/`. The original Chinese architecture and historical planning corpus remains authoritative for its stated scope; it is not claimed to be fully translated or implemented. Keep all current guides aligned when commands, prerequisites or product boundaries change. Update the Chinese index for new Chinese documents.
+The root README and GitHub About use Simplified Chinese; `docs/en-US/README.md` is the English entry point. Each language has its own `SCREENSHOTS.md` and matching UI captures under `docs/assets/screenshots/<locale>/`. The application still defaults to English on first use. All five languages use `docs/<locale>/`, with English directory and file names and localized content. Simplified Chinese material lives in `docs/zh-CN/`, and Traditional Chinese guides in `docs/zh-TW/`. The original Chinese architecture and historical planning corpus remains authoritative for its stated scope; it is not claimed to be fully translated or implemented. Keep all current guides aligned when commands, prerequisites or product boundaries change. Update the Chinese index for new Chinese documents.
 
 ## Localization verification on 2026-10-14, before GitHub documentation preparation
 

@@ -44,7 +44,7 @@
 
 ## 文檔佈局
 
-根 `README.md` 是英文項目入口。五語文檔統一按 `docs/<locale>/` 組織，目錄和檔案名稱使用英文，正文保留對應語言。[完整簡體中文指南](../zh-CN/README.md)保存目前部署細節，歷史驗證集中在 [歷史驗證記錄](../zh-CN/VALIDATION_HISTORY.md)，繁體指南位於 `docs/zh-TW/README.md`。總入口是 [docs/README.md](../README.md)。國際化維護規範也提供英日韓繁體入口。
+根 `README.md` 與 GitHub About 使用簡體中文，英文入口為 `docs/en-US/README.md`。每種語言提供自己的 `SCREENSHOTS.md`，圖片按 `docs/assets/screenshots/<locale>/` 存放並使用對應介面語言。程式首次造訪仍預設英文。五語文檔統一按 `docs/<locale>/` 組織，目錄和檔案名稱使用英文，正文保留對應語言。[完整簡體中文指南](../zh-CN/README.md)保存目前部署細節，歷史驗證集中在 [歷史驗證記錄](../zh-CN/VALIDATION_HISTORY.md)，繁體指南位於 `docs/zh-TW/README.md`。總入口是 [docs/README.md](../README.md)。國際化維護規範也提供英日韓繁體入口。
 
 現有簡體中文設計文檔集中在 `docs/zh-CN/`，保留原有實施邊界，不把歷史建議重新包裝為已實現功能。當前沒有宣稱把全部歷史設計文檔逐篇翻譯。修改部署命令、支援版本、安全邊界或操作規則時，應同步五語當前指南；修改中文資料時更新 [文檔索引](../zh-CN/INDEX.md)。
 

@@ -2,6 +2,8 @@
 
 [English](../en-US/INTERNATIONALIZATION.md) · [简体中文](../zh-CN/INTERNATIONALIZATION.md) · [日本語](../ja-JP/INTERNATIONALIZATION.md) · **한국어** · [繁體中文](../zh-TW/INTERNATIONALIZATION.md) · [Documentation](../README.md)
 
+GitHub의 기본 README와 About은 중국어 간체이며 영어 문서 진입점은 `docs/en-US/README.md`입니다. 각 언어의 `SCREENSHOTS.md`는 `docs/assets/screenshots/<locale>/`의 해당 언어 화면을 참조합니다. 앱의 첫 방문 기본 언어는 계속 영어입니다.
+
 Go와 React가 `locales/*.json`을 공유합니다. 지원 언어는 `zh-CN`, `en-US`, `ja-JP`, `ko-KR`, `zh-TW`입니다. Go는 파일을 내장하고 React는 영어 이외의 언어를 필요할 때 불러옵니다. 원문을 gettext 방식의 키로 사용하며 프런트엔드에서 키 타입을 검사합니다.
 
 - 고정 문구는 `t()`를 사용하고 변수가 있는 문장은 `{p0}`, `{p1}`로 묶으세요. 번역된 문장 조각을 이어 붙이거나 HTML로 출력하지 않습니다.

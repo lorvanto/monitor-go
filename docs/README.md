@@ -4,6 +4,8 @@ Start with a current guide in your preferred language. The application is a pre-
 
 All documentation uses English directory and file names under `docs/<locale>/`: `en-US`, `zh-CN`, `ja-JP`, `ko-KR` and `zh-TW`. Each directory contains a current `README.md` guide; Simplified Chinese design documents and historical records live in `zh-CN/` with an `INDEX.md` entry point.
 
+The [repository landing page](../README.md) and GitHub About use Simplified Chinese. The application still defaults to English on first use. Each guide links to screenshots captured in its own language.
+
 ## Current guides
 
 | Language | User guide | Translation maintenance | GitHub and contribution guidance |
@@ -20,7 +22,7 @@ Docker deployment guides: [English](en-US/DOCKER.md) · [简体中文](zh-CN/DOC
 
 | Need | Reference |
 |---|---|
-| Preview the English interface with synthetic demonstration data | [Screenshots](../README.md#screenshots) |
+| Preview each interface language with synthetic demonstration data | [简体中文](zh-CN/SCREENSHOTS.md) · [English](en-US/SCREENSHOTS.md) · [日本語](ja-JP/SCREENSHOTS.md) · [한국어](ko-KR/SCREENSHOTS.md) · [繁體中文](zh-TW/SCREENSHOTS.md) |
 | Build, develop or submit a PR | [CONTRIBUTING.md](../CONTRIBUTING.md) |
 | Find help or report a bug | [SUPPORT.md](../SUPPORT.md) |
 | Report a vulnerability privately | [SECURITY.md](../SECURITY.md) |

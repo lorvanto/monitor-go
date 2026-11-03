@@ -1,12 +1,12 @@
 # 项目文档索引
 
-更新日期：2026-10-15。当前开发基线为 `0.4.0-dev`，SQLite 结构版本为 `8`，尚不代表已发布 GitHub Release。项目代码与文档采用 Apache-2.0。当前能力、启动和边界以 [完整中文指南](README.md) 为准，其他文档按下列类型阅读。
+更新日期：2026-11-03。当前开发基线为 `0.4.0-dev`，SQLite 结构版本为 `8`，尚不代表已发布 GitHub Release。项目代码与文档采用 Apache-2.0。当前能力、启动和边界以 [完整中文指南](README.md) 为准，其他文档按下列类型阅读。
 
 ## 当前使用与协作
 
 | 文档 | 用途 |
 |---|---|
-| [英文界面截图](../../README.md#screenshots) | 监控、主机、检测、告警、文件、权限与编码工具；使用独立的合成演示数据 |
+| [简体中文界面截图](SCREENSHOTS.md) | 九类功能页面，含应用密钥与安装包；可切换到其余四语图集，使用独立的合成演示数据 |
 | [完整中文指南](README.md) | 当前功能、安装、Agent、通知、文件、升级与备份 |
 | [Docker 部署](DOCKER.md) | 源码镜像、Compose、持久卷、初始化、HTTPS、备份恢复与升级 |
 | [项目协作说明](COLLABORATION.md) | 仓库范围、开发约束、验证与国际化维护；与根目录英文 AGENTS.md 同步 |
@@ -19,7 +19,7 @@
 | [繁體中文國際化維護](../zh-TW/INTERNATIONALIZATION.md) | 翻譯約定與驗證方式 |
 | [繁體中文 GitHub 指南](../zh-TW/GITHUB.md) | 發佈、貢獻、安全與授權說明 |
 
-根目录遵循 GitHub 的英文文件惯例：[贡献](../../CONTRIBUTING.md)、[支持](../../SUPPORT.md)、[安全](../../SECURITY.md)、[变更记录](../../CHANGELOG.md)、[路线图](../../ROADMAP.md)、[许可证](../../LICENSE)、[第三方声明](../../THIRD_PARTY_NOTICES.md)。中文说明集中在本目录。
+根 README 默认使用简体中文；其余社区文档遵循 GitHub 的英文文件惯例：[贡献](../../CONTRIBUTING.md)、[支持](../../SUPPORT.md)、[安全](../../SECURITY.md)、[变更记录](../../CHANGELOG.md)、[路线图](../../ROADMAP.md)、[许可证](../../LICENSE)、[第三方声明](../../THIRD_PARTY_NOTICES.md)。详细中文使用与协作说明集中在本目录。
 
 ## 设计与待实施建议
 

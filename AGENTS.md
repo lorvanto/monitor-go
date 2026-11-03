@@ -38,12 +38,12 @@ Read the [Chinese documentation index](docs/zh-CN/INDEX.md) first. Documentation
 - Keep shared messages in `locales/`. The initial languages are Simplified Chinese, English, Japanese, Korean and Traditional Chinese. Update all five catalogs for new visible messages and preserve interpolation parameters. New browsers start in English; restore a valid saved choice instead of automatically using browser language preferences.
 - Never use display text as status codes, permission keys, query values or database enums. Preserve user-authored names, notes, files and historical records in their original language.
 - For internationalization changes, run `npm --prefix web run check:i18n` and `npm --prefix web test`, and verify that switching languages preserves unsaved edits.
-- The root README is the English entry point. Organize all five documentation languages under `docs/<locale>/`, with Simplified Chinese design documents in `docs/zh-CN/`. Update all five current guides when deployment commands, supported scope or prerequisites change.
+- The root README and GitHub About use Simplified Chinese. Keep the English entry point at `docs/en-US/README.md`, and maintain a matching screenshot gallery for each of the five interface languages. Organize all five documentation languages under `docs/<locale>/`, with Simplified Chinese design documents in `docs/zh-CN/`. Update all five current guides when deployment commands, supported scope or prerequisites change.
 
 ## GitHub documentation and publishing
 
 - Project-owned code and documentation use Apache-2.0. Preserve `LICENSE`, `NOTICE` and third-party license texts. Update `THIRD_PARTY_NOTICES.md` when adding dependencies.
-- Use English for root community documents. Keep Chinese publishing and contribution guidance in [docs/zh-CN/GITHUB.md](docs/zh-CN/GITHUB.md) and maintain the related entry points in all five languages.
+- Use English for root community documents other than the Simplified Chinese README. Keep Chinese publishing and contribution guidance in [docs/zh-CN/GITHUB.md](docs/zh-CN/GITHUB.md) and maintain the related entry points in all five languages.
 - The Unreleased section in `CHANGELOG.md` and the application version do not establish that a release has been published. Do not invent tags, download URLs, CI status or platform validation results.
 - For documentation changes, run `npm --prefix web run check:docs`. It covers the root directory, `docs/` and `.github/`. When changing the checker itself, also run `npm --prefix web run test:docs`.
 - Create remote repositories, push changes and publish releases only when actually assigned a publishing task. Preparing local documentation does not mean publication has occurred.

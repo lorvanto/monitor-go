@@ -1,62 +1,64 @@
 # Monitor Go
 
-A self-hosted monitoring and operations platform built with **Go**, **React 19** and **SQLite**. Monitor hosts and services, manage incidents, and share operational resources within one team installation.
+基于 **Go、React 19 和 SQLite** 的自托管监控与运维平台。在一套团队共享的实例中监控主机与服务、处理告警，并管理文件、应用密钥和安装包。
 
-[English guide](docs/en-US/README.md) · [简体中文](docs/zh-CN/README.md) · [日本語](docs/ja-JP/README.md) · [한국어](docs/ko-KR/README.md) · [繁體中文](docs/zh-TW/README.md)
+**简体中文** · [English](docs/en-US/README.md) · [日本語](docs/ja-JP/README.md) · [한국어](docs/ko-KR/README.md) · [繁體中文](docs/zh-TW/README.md)
 
-**Status:** pre-release development baseline `0.4.0-dev`, database schema `8`. Public release assets and supported target-platform commitments are still being prepared. See [known limitations](docs/en-US/README.md) and the [roadmap](ROADMAP.md).
+**当前状态：**预发布开发基线 `0.4.0-dev`，SQLite 结构版本 `8`。公开发布包和目标平台验证仍在准备中；当前版本号不代表已发布 GitHub Release。详见[完整使用指南](docs/zh-CN/README.md)和[路线图](ROADMAP.md)。
 
-## Features
+## 功能
 
-| Area | Available capabilities |
+| 模块 | 已支持的能力 |
 |---|---|
-| Monitoring | Overview, local and remote host metrics; HTTP, TCP, SSL, MySQL and Redis checks |
-| Incidents | Consecutive-failure thresholds, acknowledgement, silence, automatic recovery and persistent history |
-| Notifications | SMTP and signed Webhook delivery, persistent retries and delivery records |
-| Team administration | Members, roles, server-enforced permissions, custom navigation and audit logs |
-| Files and applications | Private file storage, image styles, trash/restore, scoped application keys and package distribution |
-| Utilities | QR codes and Code 128/39, EAN-13/8 barcodes with PNG/SVG export |
-| Interface | Five languages with English on first use, light/dark themes, keyboard page search and responsive layouts |
+| 监控 | 监控总览、本机与远程主机指标；HTTP、TCP、SSL、MySQL、Redis 服务检测 |
+| 告警 | 连续失败阈值、认领、静默、自动恢复和持久化历史 |
+| 通知 | SMTP、签名 Webhook、钉钉／飞书／企业微信机器人，持久化重试与投递记录 |
+| 团队管理 | 成员、角色、服务端权限校验、自定义导航与操作审计 |
+| 文件与应用 | 私有文件存储、图片样式、回收站、限定接口范围的应用密钥与安装包分发 |
+| 编码工具 | 二维码以及 Code 128/39、EAN-13/8 条码，支持 PNG／SVG 导出 |
+| 界面 | 简体中文、英文、日文、韩文、繁体中文；明暗主题、键盘页面搜索与响应式布局 |
 
-SQLite is the only application datastore. MySQL and Redis are monitored targets, not installation dependencies. Team members share installation resources; this is not a multi-tenant service. Custom names and notes retain their original language. Stored records remain unchanged; known system incident and diagnostic messages follow the interface language when displayed.
+SQLite 是唯一的应用存储。MySQL 和 Redis 是检测对象，无需作为安装依赖。资源在实例内由团队共享，权限由服务端校验，不提供多租户隔离。
 
-Pages refresh their required data on demand; list queries batch availability and recent history. Embedded frontend assets support gzip and conditional caching.
+程序首次访问默认英文，此后恢复当前浏览器保存的语言选择。默认实例名称和已识别的系统告警文案跟随界面语言；用户填写的名称、备注和原始历史记录保持不变。GitHub 的默认项目介绍与本 README 使用简体中文。
 
-Host CPU, memory and disk alert thresholds are configurable in System settings. See [threshold behavior](docs/en-US/README.md#host-alert-thresholds).
+<a id="screenshots"></a>
 
-## Screenshots
+## 界面截图
 
-The running application in **English**, the default language on first use, with the light theme. Operational records and metric values below are synthetic demonstration data, not live monitoring results or performance benchmarks. Select a screenshot to open it at full size.
+以下为实际运行的**简体中文界面**，使用浅色主题与独立的合成演示数据。截图中的主机、指标、文件、应用和告警均为示例，不代表真实监控结果或性能测试。点击图片查看原图。
 
-**Overview** — host health, service availability, response trends and incidents in one place.
+五语完整图集：[简体中文](docs/zh-CN/SCREENSHOTS.md) · [English](docs/en-US/SCREENSHOTS.md) · [日本語](docs/ja-JP/SCREENSHOTS.md) · [한국어](docs/ko-KR/SCREENSHOTS.md) · [繁體中文](docs/zh-TW/SCREENSHOTS.md)
 
-[![English monitoring overview with host health, service trends and active incidents](docs/assets/screenshots/overview.jpg)](docs/assets/screenshots/overview.jpg)
+**监控总览**：集中查看主机健康、服务可用率、响应趋势和待处理告警。
 
-| Host metrics | Incident response |
+[![简体中文监控总览](docs/assets/screenshots/zh-CN/overview.jpg)](docs/assets/screenshots/zh-CN/overview.jpg)
+
+| 主机详情 | 告警中心 |
 |---|---|
-| [![English host details with CPU, memory, network and disk metrics](docs/assets/screenshots/hosts.jpg)](docs/assets/screenshots/hosts.jpg) | [![English alert center with incident ownership and an activity timeline](docs/assets/screenshots/alerts.jpg)](docs/assets/screenshots/alerts.jpg) |
-| Remote host inventory and resource history. | Severity, ownership, notification silence and recovery history. |
+| [![主机资源与历史趋势](docs/assets/screenshots/zh-CN/hosts.jpg)](docs/assets/screenshots/zh-CN/hosts.jpg) | [![告警认领与事件时间线](docs/assets/screenshots/zh-CN/alerts.jpg)](docs/assets/screenshots/zh-CN/alerts.jpg) |
+| CPU、内存、网络、磁盘和主机信息。 | 严重程度、处理人、静默和恢复记录。 |
 
-| Service checks | File manager |
+| 服务检测 | 文件管理 |
 |---|---|
-| [![English HTTP, TCP, SSL, MySQL and Redis service checks](docs/assets/screenshots/service-checks.jpg)](docs/assets/screenshots/service-checks.jpg) | [![English file manager with folders and synthetic operational documents](docs/assets/screenshots/files.jpg)](docs/assets/screenshots/files.jpg) |
-| Targets, status, response time and recent check results. | Shared folders, uploads, downloads, image styles and trash. |
+| [![服务检测与近期结果](docs/assets/screenshots/zh-CN/service-checks.jpg)](docs/assets/screenshots/zh-CN/service-checks.jpg) | [![团队共享文件与目录](docs/assets/screenshots/zh-CN/files.jpg)](docs/assets/screenshots/zh-CN/files.jpg) |
+| 检测目标、状态、响应时间和历史可用率。 | 共享目录、上传下载、图片样式与回收站。 |
 
-| Applications and keys | Package management |
+| 应用与密钥 | 安装包管理 |
 |---|---|
-| [![English applications and keys page with scoped access and valid or revoked demo keys](docs/assets/screenshots/applications.jpg)](docs/assets/screenshots/applications.jpg) | [![English package management page with platform variants and draft, published and withdrawn demo releases](docs/assets/screenshots/packages.jpg)](docs/assets/screenshots/packages.jpg) |
-| Application identities, masked key prefixes, API scopes and key status. | Versions, platform and architecture variants, release states and download records. |
+| [![应用身份与密钥权限](docs/assets/screenshots/zh-CN/applications.jpg)](docs/assets/screenshots/zh-CN/applications.jpg) | [![安装包版本与发布状态](docs/assets/screenshots/zh-CN/packages.jpg)](docs/assets/screenshots/zh-CN/packages.jpg) |
+| 应用标识、脱敏密钥前缀、接口范围与密钥状态。 | 版本、平台、架构、草稿／发布／下架状态与下载记录。 |
 
-The application keys and package versions shown here are synthetic examples; they do not provide working credentials or announce Monitor Go releases.
+演示密钥前缀不能用于访问，演示安装包记录不代表 Monitor Go 已发布版本。
 
-| Roles and permissions | Code generator |
+| 角色与权限 | 编码工具 |
 |---|---|
-| [![English role editor with permissions grouped by business module](docs/assets/screenshots/permissions.jpg)](docs/assets/screenshots/permissions.jpg) | [![English QR code generator with a generated project URL and export controls](docs/assets/screenshots/code-generator.jpg)](docs/assets/screenshots/code-generator.jpg) |
-| Role permissions with sensitive actions clearly marked. | QR and barcode tools with local generation and PNG/SVG export. |
+| [![按业务模块分组的角色权限](docs/assets/screenshots/zh-CN/permissions.jpg)](docs/assets/screenshots/zh-CN/permissions.jpg) | [![二维码生成与导出](docs/assets/screenshots/zh-CN/code-generator.jpg)](docs/assets/screenshots/zh-CN/code-generator.jpg) |
+| 按模块授权，明确标记敏感操作。 | 在实例内生成二维码和条码，支持 PNG／SVG 导出。 |
 
-## Quick start with Docker
+## Docker 快速启动
 
-Use Linux containers and Docker Compose v2.20+ with BuildKit. Build the image locally from source:
+使用 Linux 容器、Docker Compose **v2.20+** 和 BuildKit，从源码构建本地镜像：
 
 ```sh
 git clone https://github.com/lorvanto/monitor-go.git
@@ -65,11 +67,13 @@ docker compose up -d --build
 docker compose exec monitor cat /data/setup-token
 ```
 
-Open [the local service](http://127.0.0.1:5080/) and create the administrator with that token. The named volume preserves SQLite, keys and uploads. If 5080 is occupied, use `MONITOR_PORT=5081 docker compose up -d --build`. The container runs as a non-root user and local host collection is disabled; enroll native Agents for real hosts. See the [Docker guide](docs/en-US/DOCKER.md) for HTTPS, backups, restoration and upgrades. `monitor-go:local` is built locally; no prebuilt registry image is published.
+打开[本地服务](http://127.0.0.1:5080/)，使用初始化令牌创建管理员。命名卷保存 SQLite、密钥和上传文件。若 5080 已被占用，可使用 `MONITOR_PORT=5081 docker compose up -d --build`。
 
-## Quick start from source
+容器以非 root 用户运行，默认关闭容器内主机采集；监控真实主机时接入原生 Agent。`monitor-go:local` 为本地构建镜像，目前没有发布预构建镜像。HTTPS、持久化、备份恢复和升级见 [Docker 部署指南](docs/zh-CN/DOCKER.md)。
 
-Use Go **1.26.9+** (compatible releases), Node.js **22.12+ / 24.x**, npm and Make. Clone the repository and run these commands in a POSIX shell; Windows developers can use WSL:
+## 从源码启动
+
+需要 Go **1.26.9+**（兼容版本）、Node.js **22.12+／24.x**、npm 和 Make。以下命令在 POSIX shell 中执行；Windows 开发者可使用 WSL。
 
 ```sh
 git clone https://github.com/lorvanto/monitor-go.git
@@ -78,50 +82,43 @@ make build
 ./bin/monitor -data data -listen 127.0.0.1:5080
 ```
 
-Open [the local service](http://127.0.0.1:5080/). Read `data/setup-token` locally and use it to create the first administrator. There are no default credentials. Setup removes the token file.
+打开[本地服务](http://127.0.0.1:5080/)，在本机读取 `data/setup-token`，用它创建首个管理员。没有默认账号或密码；完成初始化后令牌文件会被删除。
 
-`make build` creates `bin/monitor` and `bin/agent`. The server embeds the web interface; Node.js, Go and external databases are not required at runtime. For remote access, Agent enrollment, HTTPS, backups and upgrades, follow a [current user guide](docs/README.md).
+`make build` 生成 `bin/monitor` 和 `bin/agent`。服务端内嵌前端，运行时不需要 Node.js、Go 或外部数据库。远程访问、Agent 接入、HTTPS、备份和升级步骤见[完整中文指南](docs/zh-CN/README.md)。
 
-## Development
+## 开发与验证
 
 ```sh
 make test
 npm --prefix web run format:check
 ```
 
-The test target builds the frontend, checks types/catalogs/documentation links, runs frontend tests, then runs Go race tests and vet. For documentation-only edits, run `npm --prefix web run check:docs` with Node.js.
+测试目标会构建前端、检查类型／翻译目录／文档链接、运行前端交互测试，再执行 Go 竞态测试和 vet。仅修改文档时运行 `npm --prefix web run check:docs`。独立开发环境的启动方法见[贡献指南](CONTRIBUTING.md)。依赖版本固定在 `go.mod`、`go.sum` 与 `web/package-lock.json`。
 
-Start an isolated backend and frontend with the commands in [CONTRIBUTING.md](CONTRIBUTING.md). Dependencies are pinned in `go.mod`, `go.sum` and `web/package-lock.json`.
-
-| Directory | Purpose |
+| 目录 | 用途 |
 |---|---|
-| `cmd/monitor`, `cmd/agent` | Server and Agent entry points |
-| `internal/app` | Business modules, authorization, SQLite and migrations |
-| `internal/agent`, `internal/hoststats` | Agent protocol and host collection |
-| `web/src` | React views, shared components, Zustand stores and typed helpers |
-| `locales` | Shared Go/React message catalogs and language negotiation |
-| `scripts`, `web/tests` | Documentation/catalog checks and frontend tests |
-| `docs/` | Five-language guides, development references, labeled designs and historical evidence, organized by locale |
-| `.github` | Issue, pull request and release-note templates |
-| `third_party/licenses` | Preserved direct-dependency license and attribution texts |
-| `Dockerfile`, `compose.yaml` | Source-built container, health check and persistent volume |
+| `cmd/monitor`、`cmd/agent` | 服务端与 Agent 入口 |
+| `internal/app` | 业务模块、授权、SQLite 与迁移 |
+| `internal/agent`、`internal/hoststats` | Agent 协议和主机采集 |
+| `web/src` | React 页面、共享组件、Zustand 状态与类型工具 |
+| `locales` | Go／React 共用的五语消息目录 |
+| `scripts`、`web/tests` | 文档／翻译检查与前端测试 |
+| `docs/<locale>` | 五语使用指南与截图集，简体中文设计和历史材料另行标注 |
+| `docs/assets/screenshots/<locale>` | 按界面语言组织的实拍截图 |
+| `.github` | Issue、PR 与发布说明模板 |
+| `third_party/licenses` | 第三方依赖许可与署名 |
+| `Dockerfile`、`compose.yaml` | 源码容器构建、健康检查与持久卷配置 |
 
-Login limits count failed attempts per client IP and username. Configure `-trusted-proxy` only for known reverse proxies; see the [deployment guide](docs/en-US/README.md#trusted-proxies-and-login-limits).
+页面按需加载并合并刷新请求；前端静态资源支持 gzip 和条件缓存。主机告警阈值可在系统设置中调整。性能测量、保留策略、登录限制和可信代理配置详见[使用指南](docs/zh-CN/README.md)；合成测试结果不作为生产容量保证。
 
-The default instance name follows the interface language; custom instance names remain unchanged.
+在线备份命令为 `monitor backup -data data -out backups/snapshot-001`，输出目录必须是新目录且父目录已存在。操作前阅读[备份与恢复说明](docs/zh-CN/README.md)，不要将运行数据提交到 Git。
 
-Monitor configurations can be fully edited with credential preservation and version checks, or archived with confirmation. See [monitor editing](docs/en-US/README.md#monitor-editing-and-archiving).
+## 文档与协作
 
-Chat notifications support DingTalk, Feishu and WeCom with platform-specific signing and error-code handling. See [chat robot Webhooks](docs/en-US/README.md#chat-robot-webhooks).
+[完整中文指南](docs/zh-CN/README.md) · [文档索引](docs/zh-CN/INDEX.md) · [五语入口](docs/README.md) · [贡献与 GitHub 协作](docs/zh-CN/GITHUB.md) · [项目协作约定](docs/zh-CN/COLLABORATION.md) · [支持](SUPPORT.md) · [安全政策](SECURITY.md) · [变更记录](CHANGELOG.md) · [路线图](ROADMAP.md)
 
-## Documentation and community
+可复现问题请使用 [GitHub Issues](https://github.com/lorvanto/monitor-go/issues) 模板提交；安全漏洞按安全政策私下反馈。历史设计文档含待实施建议，请以当前指南和代码为准。
 
-[User guides](docs/README.md) · [Contributing](CONTRIBUTING.md) · [Collaboration guidelines](AGENTS.md) · [Support](SUPPORT.md) · [Security](SECURITY.md) · [Changelog](CHANGELOG.md) · [Roadmap](ROADMAP.md) · [Release preparation](docs/en-US/RELEASING.md)
+## 许可证
 
-Report reproducible bugs using the issue templates in [lorvanto/monitor-go](https://github.com/lorvanto/monitor-go/issues). Use the security policy for private vulnerability reporting. Historical design documents include proposals; they are not a list of shipped features.
-
-## License
-
-Project-owned source code and documentation are licensed under the [Apache License 2.0](LICENSE). See [NOTICE](NOTICE) and [third-party notices](THIRD_PARTY_NOTICES.md) for attribution and separately licensed dependencies, icons and fonts.
-
-Online backups are available through `monitor backup -data data -out backups/snapshot-001`; see the [backup and restore guide](docs/en-US/README.md#online-backup-and-restore). The output must be new and its parent must exist.
+项目自有代码和文档采用 [Apache License 2.0](LICENSE)。第三方依赖、图标与字体保留各自许可，详见 [NOTICE](NOTICE) 和[第三方声明](THIRD_PARTY_NOTICES.md)。

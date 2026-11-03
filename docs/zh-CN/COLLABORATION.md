@@ -38,12 +38,12 @@
 - 共享文案放在 `locales/`，首批支持简体中文、英文、日文、韩文与繁体中文。新增可见文案同步五语目录，保留插值参数。 新浏览器默认英文，有有效保存选择时恢复，不自动跟随浏览器语言。
 - 界面显示文字不能作为状态码、权限键、查询值或数据库枚举。用户名称、备注、文件与历史记录保留原文。
 - 国际化变更运行 `npm --prefix web run check:i18n`、`npm --prefix web test`，并验证语言切换不清空编辑内容。
-- 根 README 为英文入口；五语文档统一按 `docs/<locale>/` 组织，简体中文设计文档集中在 `docs/zh-CN/`。部署命令、支持范围和前提变化时同步当前五语指南。
+- 根 README 和 GitHub About 使用简体中文，英文入口为 `docs/en-US/README.md`，五种界面语言分别维护对应截图集；五语文档统一按 `docs/<locale>/` 组织，简体中文设计文档集中在 `docs/zh-CN/`。部署命令、支持范围和前提变化时同步当前五语指南。
 
 ## GitHub 文档与发布
 
 - 项目自有代码与文档采用 Apache-2.0，保留 `LICENSE`、`NOTICE` 与第三方许可文本。新增依赖同步更新 `THIRD_PARTY_NOTICES.md`。
-- 根目录社区文档使用英文；中文发布与贡献说明集中在 `docs/zh-CN/GITHUB.md`，相关五语入口同步维护。
+- 根目录除简体中文 README 外的社区文档使用英文；中文发布与贡献说明集中在 `docs/zh-CN/GITHUB.md`，相关五语入口同步维护。
 - `CHANGELOG.md` 的 Unreleased 与应用版本不代表已经发布。不得编造标签、下载地址、CI 状态或平台验证结果。
 - 文档改动运行 `npm --prefix web run check:docs`，其范围包含根目录、`docs/` 和 `.github/`。修改检查脚本时另运行 `npm --prefix web run test:docs`。
 - 创建远程仓库、推送与发布在实际收到发布任务时执行；本地文档准备不等于已经执行发布。

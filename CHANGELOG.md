@@ -4,6 +4,11 @@ User-visible changes belong here. Entries under **Unreleased** describe the curr
 
 ## Unreleased
 
+### Repository presentation
+
+- Use Simplified Chinese for the GitHub About, root README and default screenshot gallery; retain English and all other language entry points.
+- Add nine real-interface captures for each of the five languages, using isolated synthetic data, with localized galleries and updated maintenance guidance. Application language defaults and runtime behavior are unchanged.
+
 ### System incident localization
 
 - Localize existing and new engine-generated incident titles, timeline events, engine labels and known probe/host diagnostic templates in all five UI languages, including overview and host warnings. Keep user names, paths, raw external errors and stored records intact.

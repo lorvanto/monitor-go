@@ -6,7 +6,9 @@
 
 Schema 5 adds a partial index for queued scheduler jobs, avoiding scans of completed-job history. Job retention remains seven days. Stop the service and back up the complete data directory before upgrading; older binaries cannot read schema 8, and rollback requires that backup.
 
-See the [English interface screenshots](../../README.md#screenshots) for a feature tour using synthetic demonstration data. English is the default language on first use.
+See the [English screenshot gallery](SCREENSHOTS.md) for a feature tour with synthetic demonstration data. GitHub’s default README and About use Simplified Chinese; the application still starts in English on first use.
+
+[![Overview](../assets/screenshots/en-US/overview.jpg)](SCREENSHOTS.md)
 
 ## Product scope
 

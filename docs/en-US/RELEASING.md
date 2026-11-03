@@ -19,7 +19,7 @@ Creating a public source repository and publishing downloadable releases are sep
 
 ## Source repository checklist
 
-- [x] English landing page and five-language current guides.
+- [x] Simplified Chinese landing page and five-language current guides with matching screenshot galleries.
 - [x] Apache-2.0 text, project NOTICE and direct-dependency license inventory.
 - [x] Contribution, support, security, roadmap and Unreleased changelog documents.
 - [x] Markdown issue templates for bugs, features and translations; PR and release-note templates.

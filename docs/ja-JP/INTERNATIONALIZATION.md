@@ -2,6 +2,8 @@
 
 [English](../en-US/INTERNATIONALIZATION.md) · [简体中文](../zh-CN/INTERNATIONALIZATION.md) · **日本語** · [한국어](../ko-KR/INTERNATIONALIZATION.md) · [繁體中文](../zh-TW/INTERNATIONALIZATION.md) · [Documentation](../README.md)
 
+GitHub の既定 README と About は簡体字中国語、英語の入口は `docs/en-US/README.md` です。各言語の `SCREENSHOTS.md` は `docs/assets/screenshots/<locale>/` にある対応言語の画像を参照します。アプリの初回表示言語は引き続き英語です。
+
 `locales/*.json`をGoとReactで共有します。対象は`zh-CN`、`en-US`、`ja-JP`、`ko-KR`、`zh-TW`です。Goは埋め込み、Reactは英語以外の言語を必要時に読み込みます。原文をgettext形式のキーとして使い、フロントエンドはキーの型を検査します。
 
 - 固定文言は`t()`で表示し、変数付きの文は`{p0}`、`{p1}`でまとめます。文の断片を連結せず、HTMLとして出力しません。
