@@ -32,7 +32,7 @@ UID/GIDは`10001:10001`です。Composeではルートファイルシステム�
 
 ## 設定とHTTPS
 
-Composeはshell環境または追跡しない`.env`から`MONITOR_IMAGE`（`monitor-go:local`）、`MONITOR_PORT`（5080）、`MONITOR_BIND_ADDRESS`（127.0.0.1）、`MONITOR_PUBLIC_URL`（空）、`MONITOR_SECURE_COOKIE`（false）、`MONITOR_COLLECT_HOST`（false）、`MONITOR_TRUSTED_PROXY`（空）、`MONITOR_CONSOLE_URL`（空）を読みます。以降のコマンドでも同じ設定を使います。ヘルスチェック用の内部ポートは5080を保持します。
+Composeはshell環境または追跡しない`.env`から`MONITOR_IMAGE`（`monitor-go:local`）、`MONITOR_PORT`（5080）、`MONITOR_BIND_ADDRESS`（127.0.0.1）、`MONITOR_PUBLIC_URL`（空）、`MONITOR_SECURE_COOKIE`（false）、`MONITOR_COLLECT_HOST`（false）、`MONITOR_TRUSTED_PROXY`（空）、`MONITOR_CONSOLE_URL`（未設定時は `https://feiniu.i7f.cn:5090`、明示的な空値では送信先なし）を読みます。以降のコマンドでも同じ設定を使います。ヘルスチェック用の内部ポートは5080を保持します。
 
 リモートのブラウザー／Agentには、ホストポートの前に信頼されたHTTPSプロキシを置き、末尾スラッシュなしの外部オリジンを設定します。
 
@@ -129,10 +129,14 @@ docker compose exec -T monitor tar -C /data/backups/snapshot-001 -czf - . > back
 
 ## 任意の利用状況送信
 
-`MONITOR_CONSOLE_URL=https://console.example.com`
+`MONITOR_CONSOLE_URL` が未設定の場合、ネイティブ版と Compose は `https://feiniu.i7f.cn:5090` を使用します。別の HTTPS オリジンを指定して送信先を変更するか、`MONITOR_CONSOLE_URL=` と明示的に空にして送信先を未設定にできます。ネイティブ版の `-console-url` 引数は環境変数より優先され、`-console-url=` でも送信先を未設定にできます。
 
 ネイティブ版の既定値は `native` です。Docker イメージと Compose は自動的に `docker` を設定します。
 
-新規インストールと、この機能のない旧バージョンからの更新では送信は既定で無効です。その後の再起動や更新では、同じ送信先について管理者が保存した選択を維持します。サーバーで送信先を設定した後、system:settings 権限の管理者がシステム設定で送信項目を確認し、明示的に有効にします。URL の設定だけでは有効になりません。送信先の変更には再同意が必要です。 HTTPS が必要です。数値ループバックの HTTP はローカル統合テスト専用です。公式コンソールのドメインは既定で設定しません。コンテナー内のループバックは自身を指すため、別コンテナーには実際の HTTPS URL を使用します。認証情報、データやバックアップを Git に保存しないでください。プロキシログには OAuth のクエリ、完全な送信元 IP や認証情報を残さないでください。
+新規インストールと、この機能のない旧バージョンからの更新では送信は既定で無効です。送信先には `https://feiniu.i7f.cn:5090` が設定されています。`system:settings` 権限の管理者がシステム設定で送信先と項目を確認し、明示的に有効にします。URL の既定値だけで送信が有効になることはありません。再起動や更新では同じ送信先への選択を維持し、送信先の変更には再同意が必要です。
+
+インストールの登録と活動統計にアカウント連携は不要です。GitHub OAuth は Console ダッシュボードへのログインと任意のアカウント連携にのみ必要で、Monitor Go のインストール手順には含まれません。
+
+HTTPS が必要です。数値ループバックの HTTP はローカル統合テスト専用です。コンテナー内のループバックは自身を指すため、別コンテナーには実際の HTTPS URL を使用します。認証情報、データやバックアップを Git に保存しないでください。プロキシログには OAuth のクエリ、完全な送信元 IP や認証情報を残さないでください。
 
 [任意の利用状況送信](USAGE_REPORTING.md)

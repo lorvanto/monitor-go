@@ -32,7 +32,7 @@ MONITOR_PORT=5081 docker compose up -d --build
 
 ## 配置与 HTTPS
 
-Compose 读取 shell 环境变量或本机未跟踪的 `.env`：`MONITOR_IMAGE`（默认 `monitor-go:local`）、`MONITOR_PORT`（5080）、`MONITOR_BIND_ADDRESS`（127.0.0.1）、`MONITOR_PUBLIC_URL`（空）、`MONITOR_SECURE_COOKIE`（false）、`MONITOR_COLLECT_HOST`（false）、`MONITOR_TRUSTED_PROXY`（空）及 `MONITOR_CONSOLE_URL`（空）。后续 Compose 命令保持相同配置。容器内部端口保持 5080，以便健康检查正常运行。
+Compose 读取 shell 环境变量或本机未跟踪的 `.env`：`MONITOR_IMAGE`（默认 `monitor-go:local`）、`MONITOR_PORT`（5080）、`MONITOR_BIND_ADDRESS`（127.0.0.1）、`MONITOR_PUBLIC_URL`（空）、`MONITOR_SECURE_COOKIE`（false）、`MONITOR_COLLECT_HOST`（false）、`MONITOR_TRUSTED_PROXY`（空）及 `MONITOR_CONSOLE_URL`（未设置时为 `https://feiniu.i7f.cn:5090`；明确留空则不配置目的地）。后续 Compose 命令保持相同配置。容器内部端口保持 5080，以便健康检查正常运行。
 
 远程浏览器和 Agent 访问应在宿主机端口前部署可信 HTTPS 反向代理，并配置不带末尾斜杠的实际外部来源：
 
@@ -129,10 +129,14 @@ docker compose exec -T monitor tar -C /data/backups/snapshot-001 -czf - . > back
 
 ## 自愿使用情况上报
 
-`MONITOR_CONSOLE_URL=https://console.example.com`
+`MONITOR_CONSOLE_URL` 未设置时，原生程序和 Compose 使用 `https://feiniu.i7f.cn:5090`。可将其设为其他 HTTPS 来源以覆盖目的地，或明确设置 `MONITOR_CONSOLE_URL=` 以取消目的地配置。原生程序的 `-console-url` 参数优先于环境变量；`-console-url=` 同样会取消目的地配置。
 
 原生程序默认使用 `native`；Docker 镜像和 Compose 自动设置为 `docker`。
 
-新安装以及从不含此功能的版本升级时，上报默认关闭。后续重启或升级会保留管理员对同一接收方保存的选择。先在服务端配置统计后台地址，再由具有 system:settings 权限的管理员，在系统设置中查看字段并明确开启。只配置地址不会开启上报；更换接收方地址需要重新同意。 仅支持 HTTPS；数字回环地址的 HTTP 仅供本机联调。默认不内置官方后台域名。容器中的回环地址指向容器自身，分开部署的容器应连接真实 HTTPS 地址。不要将凭据、数据目录或备份提交 Git；反向代理日志应避免记录 OAuth 查询参数、完整来源 IP 和凭据。
+新安装以及从不含此功能的版本升级时，上报默认关闭。后台地址已预设为 `https://feiniu.i7f.cn:5090`；具有 `system:settings` 权限的管理员可在系统设置中查看目的地和字段，再明确开启。预设地址不会自动启用上报。重启和升级保留对同一接收方保存的选择；更换接收方需要重新同意。
+
+实例登记和活跃统计无需绑定账号。GitHub OAuth 仅用于 Console 后台登录和可选的账号关联，不是安装 Monitor Go 的必需步骤。
+
+仅支持 HTTPS；数字回环地址的 HTTP 仅供本机联调。容器中的回环地址指向容器自身，分开部署的容器应连接真实 HTTPS 地址。不要将凭据、数据目录或备份提交 Git；反向代理日志应避免记录 OAuth 查询参数、完整来源 IP 和凭据。
 
 [自愿使用情况上报](USAGE_REPORTING.md)

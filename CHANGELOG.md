@@ -6,6 +6,7 @@ User-visible changes belong here. Entries under **Unreleased** describe the curr
 
 ### Optional usage reporting
 
+- Preset the Console destination to `https://feiniu.i7f.cn:5090` when no override is supplied, while keeping reporting off until explicit consent. Preserve custom and explicitly empty destinations; clarify that installation statistics do not require GitHub account binding.
 - Add default-off installation registration, voluntary GitHub account binding and coarse UTC-day usage reporting to a separately deployed Monitor Console.
 - Keep reporting on an independent cancellable worker; disabling clears pending activity without affecting monitoring or alerts. Add five-language consent, field preview, controls and deployment/privacy guides.
 - Schema 9 stores sealed instance credentials, consent and bounded activity dates. Back up before upgrading.

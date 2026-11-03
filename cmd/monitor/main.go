@@ -29,7 +29,7 @@ func main() {
 	secure := flag.Bool("secure-cookie", false, "HTTPS 部署时启用 Secure Cookie")
 	collect := flag.Bool("collect-host", true, "采集运行服务的本机指标")
 	trustedProxy := flag.String("trusted-proxy", "", "Comma-separated trusted proxy CIDRs for X-Forwarded-For; empty trusts none")
-	consoleURL := flag.String("console-url", os.Getenv("MONITOR_CONSOLE_URL"), "Optional Monitor Console origin; reporting remains off until explicitly enabled")
+	consoleURL := flag.String("console-url", defaultConsoleURL(), "Monitor Console origin; empty disables the destination; reporting remains off until explicitly enabled")
 	deployment := flag.String("deployment", envDefault("MONITOR_DEPLOYMENT", "native"), "Deployment type for optional usage reporting: native or docker")
 	version := flag.Bool("version", false, "Print application version and exit")
 	flag.Parse()
@@ -89,4 +89,13 @@ func envDefault(name, fallback string) string {
 		return value
 	}
 	return fallback
+}
+
+func defaultConsoleURL() string {
+	// An explicitly empty value opts out of configuring a destination. Merely
+	// providing the default never enables reporting or associates an account.
+	if value, set := os.LookupEnv("MONITOR_CONSOLE_URL"); set {
+		return value
+	}
+	return "https://feiniu.i7f.cn:5090"
 }

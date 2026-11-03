@@ -125,4 +125,4 @@ npm --prefix web run format:check
 
 ## 自愿使用情况上报
 
-默认关闭，可随时关闭；由独立后台 Monitor Console 进行实例登记、GitHub 账号自愿绑定和活跃统计。监控、告警和登录不依赖统计后台。配置地址不会自动启用，需管理员明确同意。[配置、字段及隐私边界](docs/zh-CN/USAGE_REPORTING.md)。
+上报默认关闭，可随时关闭。后台地址已预设为 `https://feiniu.i7f.cn:5090`，无需手动填写；管理员查看目的地与字段并明确同意后，才会登记实例和上报活跃统计。实例统计无需绑定账号，GitHub 登录仅用于 Console 后台及可选的账号关联。监控、告警和登录不依赖统计后台。[配置、字段及隐私边界](docs/zh-CN/USAGE_REPORTING.md)。
