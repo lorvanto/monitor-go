@@ -16,7 +16,7 @@ docker compose up -d --build
 docker compose exec monitor cat /data/setup-token
 ```
 
-First setup displays the Console destination and reporting fields and requires explicit confirmation and a successful online registration before creating the local administrator. Existing installations retain their saved choice; reporting can later be disabled and Console outages do not block login, monitoring or alerts. Account linking is separate and voluntary. For offline/custom installations use `MONITOR_REQUIRE_ACTIVATION=false` or `-require-activation=false`; clearing the Console URL alone is insufficient. [First activation and usage reporting](USAGE_REPORTING.md)
+First setup shows the Console destination, fields and mandatory ongoing reporting rule, and requires explicit confirmation before online registration and local administrator creation. Reporting then remains enabled with no off switch. Already enabled installations keep their identity and historical consent; legacy installations with reporting off wait for administrator confirmation without interrupting local monitoring. Console outages do not block login, monitoring or alerts. Account linking remains voluntary. The old activation=false settings are no longer supported. [First activation and usage reporting](USAGE_REPORTING.md)
 
 Open [the local service](http://127.0.0.1:5080/) and create the first administrator with that setup token. The UI starts in English on first use. The token file is deleted after setup. Compose binds only to `127.0.0.1` by default. If 5080 is occupied, use a different host port:
 
@@ -34,7 +34,7 @@ Container-local host collection is disabled by default. Install a native Agent o
 
 ## Settings and HTTPS
 
-Compose reads these shell variables (or a local, untracked `.env`): `MONITOR_IMAGE` (default `monitor-go:local`), `MONITOR_PORT` (5080), `MONITOR_BIND_ADDRESS` (127.0.0.1), `MONITOR_PUBLIC_URL` (empty), `MONITOR_SECURE_COOKIE` (false), and `MONITOR_COLLECT_HOST` (false), plus `MONITOR_TRUSTED_PROXY` (empty) and `MONITOR_REQUIRE_ACTIVATION` (`true`), `MONITOR_CONSOLE_URL` (`https://feiniu.i7f.cn:5090` when unset; an explicit empty value leaves the destination unconfigured). Preserve these values on later Compose commands. Keep the container port at 5080 for the health check.
+Compose reads these shell variables (or a local, untracked `.env`): `MONITOR_IMAGE` (default `monitor-go:local`), `MONITOR_PORT` (5080), `MONITOR_BIND_ADDRESS` (127.0.0.1), `MONITOR_PUBLIC_URL` (empty), `MONITOR_SECURE_COOKIE` (false), and `MONITOR_COLLECT_HOST` (false), plus `MONITOR_TRUSTED_PROXY` (empty) and `MONITOR_REQUIRE_ACTIVATION` (`true`), `MONITOR_CONSOLE_URL` (`https://feiniu.i7f.cn:5090` when unset; empty or whitespace-only values are invalid). Preserve these values on later Compose commands. Keep the container port at 5080 for the health check.
 
 For remote browser and Agent access, place a trusted HTTPS proxy in front of the host port and set the exact external origin without a trailing slash:
 
@@ -131,17 +131,11 @@ To restore, stop the service, replace the entire data directory with a complete 
 
 ## First activation and usage reporting
 
-First setup displays the Console destination and reporting fields and requires explicit confirmation and a successful online registration before creating the local administrator. Existing installations retain their saved choice; reporting can later be disabled and Console outages do not block login, monitoring or alerts. Account linking is separate and voluntary. For offline/custom installations use `MONITOR_REQUIRE_ACTIVATION=false` or `-require-activation=false`; clearing the Console URL alone is insufficient.
+First setup shows the Console destination, fields and mandatory ongoing reporting rule, and requires explicit confirmation before online registration and local administrator creation. Reporting then remains enabled with no off switch. Already enabled installations keep their identity and historical consent; legacy installations with reporting off wait for administrator confirmation without interrupting local monitoring. Console outages do not block login, monitoring or alerts. Account linking remains voluntary. The old activation=false settings are no longer supported.
 
-When `MONITOR_CONSOLE_URL` is unset, the native binary and Compose use `https://feiniu.i7f.cn:5090`. Set it to another HTTPS origin to override the destination, or explicitly set `MONITOR_CONSOLE_URL=` to leave it unconfigured. The native `-console-url` flag takes precedence over the environment; `-console-url=` also leaves the destination unconfigured.
+When `MONITOR_CONSOLE_URL` is unset, the native binary and Compose use `https://feiniu.i7f.cn:5090`. Set another HTTPS origin to change the destination. The native `-console-url` flag takes precedence. Empty or whitespace-only destinations are invalid configuration and rejected by the standard CLI, including when supplied through the environment; they cannot disable reporting or bypass activation. The version and backup commands do not require activation configuration.
 
-The standard CLI and Compose default to `MONITOR_REQUIRE_ACTIVATION=true` / `-require-activation=true`. For a self-built distribution or an offline environment, explicitly set `MONITOR_REQUIRE_ACTIVATION=false` or pass `-require-activation=false`; setup then remains local and reporting stays off until separately enabled. An empty Console URL does not bypass required activation: configure a valid destination or explicitly disable the requirement. Command-line flags take precedence over environment variables.
-
-Example for a deliberately offline installation:
-
-```sh
-MONITOR_REQUIRE_ACTIVATION=false MONITOR_CONSOLE_URL= docker compose up -d --build
-```
+Standard CLI and Compose deployments require activation and reporting. The old `-require-activation=false` and `MONITOR_REQUIRE_ACTIVATION=false` settings are rejected with a configuration error; `true` remains accepted for compatibility. There is no supported offline-installation or reporting-disable flag. Configure a reachable HTTPS Console destination; empty or whitespace-only destinations are invalid startup configuration and cannot bypass activation. The Console URL flag overrides its environment value; an activation=false value cannot be made valid by adding an activation=true flag.
 
 The native binary defaults to `native`; the Docker image and Compose set `docker` automatically.
 

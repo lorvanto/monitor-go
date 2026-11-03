@@ -66,6 +66,8 @@ interface AppState {
   data: AppData;
   user: User | null;
   usageEnabled: boolean;
+  usageConfirmationRequired: boolean;
+  usageSettingsRequested: boolean;
   initialized: boolean;
   activation: SetupActivation | null;
   booting: boolean;
@@ -96,6 +98,8 @@ export const appStore = create<AppState>(() => ({
   data: emptyData(),
   user: null,
   usageEnabled: false,
+  usageConfirmationRequired: false,
+  usageSettingsRequested: false,
   initialized: true,
   activation: null,
   booting: true,
@@ -173,6 +177,7 @@ export function shareEqual<T>(previous: T, next: T): T {
 interface PollResponse {
   user: User;
   usageEnabled?: boolean;
+  usageConfirmationRequired?: boolean;
   navigation: {
     items: NavItem[];
     instanceName: string;
@@ -278,6 +283,8 @@ function clearSession() {
   appStore.setState({
     user: null,
     usageEnabled: false,
+    usageConfirmationRequired: false,
+    usageSettingsRequested: false,
     navigation: [],
     data: emptyData(),
     updatedAt: 0,
@@ -444,6 +451,7 @@ async function loadAll(session: number, page: Page, afterMutation: boolean) {
       }),
       openAlertCount: poll.openAlertCount,
       usageEnabled: poll.usageEnabled === true,
+      usageConfirmationRequired: poll.usageConfirmationRequired === true,
       navigation: shareEqual(
         appStore.getState().navigation,
         poll.navigation.items,

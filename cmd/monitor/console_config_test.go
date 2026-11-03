@@ -2,7 +2,11 @@ package main
 
 import (
 	"flag"
+	"github.com/lorvanto/monitor-go/internal/app"
 	"os"
+	"os/exec"
+	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -39,47 +43,97 @@ func TestConsoleDestinationDefaultsAndOverrides(t *testing.T) {
 	}
 }
 
-func TestActivationDefaultsAndExplicitOfflineOverrides(t *testing.T) {
+func TestRequiredReportingRejectsLegacyOverrides(t *testing.T) {
 	for _, tc := range []struct {
-		name string
-		env  *string
-		args []string
-		want bool
+		name, env   string
+		unset, flag bool
+		url         string
+		wantError   bool
 	}{
-		{name: "default requires activation", want: true},
-		{name: "offline environment", env: newString("false"), want: false},
-		{name: "required environment", env: newString("true"), want: true},
-		{name: "offline flag", args: []string{"-require-activation=false"}, want: false},
-		{name: "flag overrides offline environment", env: newString("false"), args: []string{"-require-activation=true"}, want: true},
-		{name: "offline flag overrides required environment", env: newString("true"), args: []string{"-require-activation=false"}, want: false},
+		{name: "default", unset: true, flag: true, url: "https://console.example.com"},
+		{name: "true environment", env: "true", flag: true, url: "https://console.example.com"},
+		{name: "false environment", env: "false", flag: true, url: "https://console.example.com", wantError: true},
+		{name: "false flag", env: "true", flag: false, url: "https://console.example.com", wantError: true},
+		{name: "invalid environment", env: "typo", flag: true, url: "https://console.example.com", wantError: true},
+		{name: "empty environment", env: "", flag: true, url: "https://console.example.com", wantError: true},
+		{name: "empty destination", env: "true", flag: true, url: "", wantError: true},
+		{name: "blank destination", env: "true", flag: true, url: "  ", wantError: true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			t.Setenv("MONITOR_REQUIRE_ACTIVATION", "true")
-			if tc.env == nil {
+			t.Setenv("MONITOR_REQUIRE_ACTIVATION", tc.env)
+			if tc.unset {
 				os.Unsetenv("MONITOR_REQUIRE_ACTIVATION")
-			} else {
-				t.Setenv("MONITOR_REQUIRE_ACTIVATION", *tc.env)
 			}
-			value, err := defaultRequireActivation()
-			if err != nil {
-				t.Fatal(err)
-			}
-			flags := flag.NewFlagSet("monitor", flag.ContinueOnError)
-			required := flags.Bool("require-activation", value, "")
-			if err := flags.Parse(tc.args); err != nil {
-				t.Fatal(err)
-			}
-			if *required != tc.want {
-				t.Fatalf("require activation=%v, expected %v", *required, tc.want)
+			err := validateRequiredReporting(tc.flag, tc.url)
+			if (err != nil) != tc.wantError {
+				t.Fatalf("configuration error=%v wantError=%v", err, tc.wantError)
 			}
 		})
 	}
-	for _, invalid := range []string{"", "disabled", "typo"} {
-		t.Setenv("MONITOR_REQUIRE_ACTIVATION", invalid)
-		if _, err := defaultRequireActivation(); err == nil {
-			t.Fatal("invalid environment silently disabled activation")
-		}
-	}
 }
 
-func newString(value string) *string { return &value }
+func TestMonitorCLIHelperProcess(t *testing.T) {
+	if os.Getenv("MONITOR_CLI_HELPER") != "1" {
+		return
+	}
+	for i, arg := range os.Args {
+		if arg == "--" {
+			os.Args = append([]string{"monitor"}, os.Args[i+1:]...)
+			main()
+			os.Exit(0)
+		}
+	}
+	os.Exit(99)
+}
+func invokeMonitorCLI(t *testing.T, args ...string) (string, error) {
+	t.Helper()
+	command := exec.Command(os.Args[0], append([]string{"-test.run=^TestMonitorCLIHelperProcess$", "--"}, args...)...)
+	command.Env = append(os.Environ(), "MONITOR_CLI_HELPER=1")
+	output, err := command.CombinedOutput()
+	return string(output), err
+}
+func TestMonitorCLIFalseAndEmptyDestinationFailBeforeOpeningData(t *testing.T) {
+	for _, tc := range []struct {
+		name, env, url string
+		args           []string
+	}{
+		{name: "false env", env: "false", url: "https://console.example.com"},
+		{name: "false flag", env: "true", url: "https://console.example.com", args: []string{"-require-activation=false"}},
+		{name: "empty env destination", env: "true", url: ""},
+		{name: "empty flag destination", env: "true", url: "https://console.example.com", args: []string{"-console-url="}},
+		{name: "blank flag destination", env: "true", url: "https://console.example.com", args: []string{"-console-url= "}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Setenv("MONITOR_REQUIRE_ACTIVATION", tc.env)
+			t.Setenv("MONITOR_CONSOLE_URL", tc.url)
+			data := filepath.Join(t.TempDir(), "must-not-exist")
+			output, err := invokeMonitorCLI(t, append([]string{"-data=" + data}, tc.args...)...)
+			code, ok := err.(*exec.ExitError)
+			if !ok || code.ExitCode() != 2 || !strings.Contains(output, "required") {
+				t.Fatalf("CLI accepted invalid configuration: %v %s", err, output)
+			}
+			if _, err := os.Stat(data); !os.IsNotExist(err) {
+				t.Fatal("invalid CLI configuration touched data directory")
+			}
+		})
+	}
+}
+func TestMonitorVersionAndBackupIgnoreActivationConfiguration(t *testing.T) {
+	t.Setenv("MONITOR_REQUIRE_ACTIVATION", "false")
+	t.Setenv("MONITOR_CONSOLE_URL", "")
+	output, err := invokeMonitorCLI(t, "-version", "-require-activation=false")
+	if err != nil || strings.TrimSpace(output) == "" {
+		t.Fatalf("version was blocked: %v %s", err, output)
+	}
+	data := filepath.Join(t.TempDir(), "data")
+	store, err := app.OpenStore(data)
+	if err != nil {
+		t.Fatal(err)
+	}
+	store.Close()
+	backup := filepath.Join(t.TempDir(), "backup")
+	output, err = invokeMonitorCLI(t, "backup", "-data", data, "-out", backup)
+	if err != nil || !strings.Contains(output, "Backup complete:") {
+		t.Fatalf("backup was blocked: %v %s", err, output)
+	}
+}

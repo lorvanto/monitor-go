@@ -59,7 +59,7 @@ docker compose up -d --build
 docker compose exec monitor cat /data/setup-token
 ```
 
-首次安装会展示 Console 目的地和上报字段，需明确勾选确认、在线登记成功后才创建本地管理员。已有实例保留原选择；之后可关闭上报，Console 离线不影响登录、监控和告警。账号绑定另行自愿。离线或自建发行可使用 `MONITOR_REQUIRE_ACTIVATION=false` 或 `-require-activation=false`；仅清空 Console URL 不足以关闭激活要求。 [首次激活与使用情况上报](USAGE_REPORTING.md)
+首次安装展示 Console 目的地、字段和持续上报规则，明确确认、在线登记成功后才创建本地管理员。之后上报持续开启，没有关闭开关。已有开启实例保留身份和历史同意；旧版关闭实例等待管理员确认，不中断本地监控。Console 故障不阻断登录、监控或告警，账号绑定仍自愿。旧的 activation=false 配置不再支持。 [首次激活与使用情况上报](USAGE_REPORTING.md)
 
 打开 5080 端口，使用初始化码创建管理员。命名卷持久保存完整数据目录；容器默认关闭本机指标采集，真实主机使用原生 Agent。端口冲突、HTTPS、备份恢复与升级详见 [Docker 部署指南](DOCKER.md)。
 
@@ -352,6 +352,6 @@ APFS 多个卷共享容器空闲空间。采集器通过系统 `diskutil` 读取
 
 ## 首次激活与使用情况上报
 
-首次安装会展示 Console 目的地和上报字段，需明确勾选确认、在线登记成功后才创建本地管理员。已有实例保留原选择；之后可关闭上报，Console 离线不影响登录、监控和告警。账号绑定另行自愿。离线或自建发行可使用 `MONITOR_REQUIRE_ACTIVATION=false` 或 `-require-activation=false`；仅清空 Console URL 不足以关闭激活要求。
+首次安装展示 Console 目的地、字段和持续上报规则，明确确认、在线登记成功后才创建本地管理员。之后上报持续开启，没有关闭开关。已有开启实例保留身份和历史同意；旧版关闭实例等待管理员确认，不中断本地监控。Console 故障不阻断登录、监控或告警，账号绑定仍自愿。旧的 activation=false 配置不再支持。
 
 [首次激活与使用情况上报](USAGE_REPORTING.md)

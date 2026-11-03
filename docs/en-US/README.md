@@ -33,7 +33,7 @@ docker compose up -d --build
 docker compose exec monitor cat /data/setup-token
 ```
 
-First setup displays the Console destination and reporting fields and requires explicit confirmation and a successful online registration before creating the local administrator. Existing installations retain their saved choice; reporting can later be disabled and Console outages do not block login, monitoring or alerts. Account linking is separate and voluntary. For offline/custom installations use `MONITOR_REQUIRE_ACTIVATION=false` or `-require-activation=false`; clearing the Console URL alone is insufficient. [First activation and usage reporting](USAGE_REPORTING.md)
+First setup shows the Console destination, fields and mandatory ongoing reporting rule, and requires explicit confirmation before online registration and local administrator creation. Reporting then remains enabled with no off switch. Already enabled installations keep their identity and historical consent; legacy installations with reporting off wait for administrator confirmation without interrupting local monitoring. Console outages do not block login, monitoring or alerts. Account linking remains voluntary. The old activation=false settings are no longer supported. [First activation and usage reporting](USAGE_REPORTING.md)
 
 Open port 5080 and create the administrator with that token. The named volume persists the complete data directory. Container-local host collection is disabled by default; use a native Agent on real hosts. See [Docker deployment](DOCKER.md) for port overrides, HTTPS, backup, restore and upgrades.
 
@@ -131,7 +131,7 @@ npm --prefix web run format:check
 
 Stop the service cleanly, then back up the entire data directory: SQLite and any companion files, `master.key`, and original `uploads/` files. Copying only a live `monitor.db` is not a complete backup. Restore the whole directory with a compatible server version.
 
-Database versions 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 → 9 → 10 migrate transactionally. Binaries without schema 10 support cannot read the upgraded database; rollback requires the entire pre-upgrade backup. New permissions are not silently assigned to custom roles. Schema 9 introduced reporting settings and coarse activity dates; schema 10 adds disclosure version, consent time and activation time. Already initialized installations retain their saved reporting choice and are not forced to activate.
+Database versions 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 → 9 → 10 migrate transactionally. Binaries without schema 10 support cannot read the upgraded database; rollback requires the entire pre-upgrade backup. New permissions are not silently assigned to custom roles. Schema 9 introduced reporting settings and coarse activity dates; schema 10 adds disclosure version, consent time and activation time. Enabled installations preserve their identity and historical consent; legacy off installations require administrator confirmation before reporting can start. Schema 10 is unchanged by notice version 2.
 
 ## Current limits
 
@@ -258,6 +258,6 @@ Known system-generated incident titles, timeline events, engine labels and check
 
 ## First activation and usage reporting
 
-First setup displays the Console destination and reporting fields and requires explicit confirmation and a successful online registration before creating the local administrator. Existing installations retain their saved choice; reporting can later be disabled and Console outages do not block login, monitoring or alerts. Account linking is separate and voluntary. For offline/custom installations use `MONITOR_REQUIRE_ACTIVATION=false` or `-require-activation=false`; clearing the Console URL alone is insufficient.
+First setup shows the Console destination, fields and mandatory ongoing reporting rule, and requires explicit confirmation before online registration and local administrator creation. Reporting then remains enabled with no off switch. Already enabled installations keep their identity and historical consent; legacy installations with reporting off wait for administrator confirmation without interrupting local monitoring. Console outages do not block login, monitoring or alerts. Account linking remains voluntary. The old activation=false settings are no longer supported.
 
 [First activation and usage reporting](USAGE_REPORTING.md)

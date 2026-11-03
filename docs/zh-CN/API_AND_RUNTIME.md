@@ -70,13 +70,17 @@
 
 告警同时记录站内事件并按启用渠道发送 SMTP / Webhook。达到各检测目标的连续异常阈值后建立事件，一次正常检查恢复。主机磁盘阈值通过全局设置配置（默认 85%，0 关闭）。静默期在发送前跳过待投递消息，不补发。通知任务与事件变更在同一事务入库，最多 4 次尝试，重启可续投，接收端需按稳定投递 ID 去重。完整部署、安全与语义见 [完整中文指南](README.md)。菜单、文件、图片样式、设置与审计已实现；证书签发、通知路由、远程执行等仍为规划。
 
-## 当前首次激活接口
+## 当前首次激活与持续上报接口
 
-`GET /api/v1/status` 返回 `activation: {required, configured, consoleUrl, noticeVersion}`。`required` 仅在尚未初始化且配置要求激活时为 true，当前告知版本为 `"1"`。标准命令行与 Compose 默认要求激活，`-require-activation=false` / `MONITOR_REQUIRE_ACTIVATION=false` 明确用于离线或自建发行；原生命令行将无效或空的布尔环境值视为配置错误；Compose 的空值使用 `true`，仍不绕过激活。清空 Console URL 不会绕过要求。
+`GET /api/v1/status` 返回 `activation: {required, configured, consoleUrl, noticeVersion}`。新安装要求在线激活，当前告知版本为 `"2"`，明确包含上报持续开启、没有关闭开关。标准 CLI 与 Compose 不再允许关闭激活；旧 `-require-activation=false` / `MONITOR_REQUIRE_ACTIVATION=false` 明确报配置错误，`true` 保留兼容。空或纯空白 Console URL（包括环境变量）是无效配置，标准 CLI 拒绝启动，不能用于关闭目的地或绕过激活。`-version` 和 `backup` 命令不受激活配置影响。
 
-要求激活时，`POST /api/v1/setup` 除原初始化码和管理员字段，还需提交 `usageConsent: true`、`usageNoticeVersion: "1"` 和 `usageConsoleUrl`（必须等于所展示的当前目的地），以防旧页面的同意被用于新接收方。服务端先校验初始化码、用户字段、同意与目的地，再使用随机实例身份向 Console 登记，成功后在同一 SQLite 事务中创建本地管理员、启用上报并保存告知版本、同意时间和激活时间。初始化接口不会向 Console 发送本地管理员用户名、显示名称或密码。
+新安装的 `POST /api/v1/setup` 除原初始化码和管理员字段，还需提交 `usageConsent: true`、`usageNoticeVersion: "2"` 和 `usageConsoleUrl`（等于所展示的当前目的地）。服务端先校验初始化码、用户字段、告知版本与目的地，再使用随机实例身份向 Console 登记，成功后在同一 SQLite 事务中创建本地管理员、启用上报并保存告知版本、同意时间和激活时间。不会向 Console 发送本地管理员用户名、显示名称或密码。
 
-登记失败不创建管理员，重试复用同一实例身份。若远端登记成功而本地事务失败或安装被取消，后台可能保留未绑定的随机登记；因此登记数不等于成功安装数或真实用户人数。已安装实例升级不被要求重新激活，也不静默启用上报。后续可关闭上报；Console 离线不影响登录、监控或告警。完整字段、保留策略与自愿绑定见 [首次激活与使用情况上报](USAGE_REPORTING.md)。
+`GET /api/v1/usage` 返回 `required: true`、`noticeVersion: "2"` 和 `confirmationRequired: !enabled`；轮询顶层 `usageConfirmationRequired` 提示旧实例待确认状态。旧版关闭实例由具有 `system:settings` 权限的管理员提交 `PATCH /api/v1/usage`，包括 `enabled: true`、`usageConsent: true`、`usageNoticeVersion: "2"`、`usageConsoleUrl`。登记成功后才在同一事务中保存同意、启用状态和审计，再唤醒独立上报任务；网络或事务失败仍保持关闭，重试复用同一随机身份。
+
+关闭请求 `PATCH /api/v1/usage {enabled:false}` 在权限/CSRF 校验后返回 HTTP 403，错误键为 `Usage reporting is required and cannot be disabled`。已开启实例升级保留身份、账号绑定和历史版本 1 同意，不补造版本 2 同意；旧关闭实例不会静默开启，等待确认不阻断本地登录、监控和告警。更换目的地会撤销旧本地上报身份，须确认新地址后才发送。Console 离线仅触发独立后台重试，不构成远程停服能力。
+
+登记失败不创建首个管理员。远端登记成功而本地事务失败或安装取消时，可能留下未绑定随机记录；登记数不是成功安装数或真实用户人数。数据库仍为结构版本 10。字段、保留策略与自愿绑定见 [首次激活与使用情况上报](USAGE_REPORTING.md)。
 
 ## 当前磁盘容量报告
 

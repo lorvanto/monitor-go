@@ -6,7 +6,7 @@
 
 ## 当前结构版本 10 实现
 
-实际迁移源见 `internal/app/schema.sql`、`migration2.sql`、`migration3.sql`、`migration4.sql`、`migration5.sql`、`migration6.sql`、`migration7.sql`、`migration8.sql`、`migration9.sql` 和 `migration10.sql`。结构版本 6 的 `system_settings` 增加 `host_cpu_percent`、`host_memory_percent`、`host_disk_percent`（0–100，0 关闭）及 `host_alert_minutes`（1–60），由本机和远程主机共用。结构版本 7 新增 HTTP 关键字、反向匹配和耗时警告规则；结构版本 8 新增检测小时汇总、原始行消费标记及指标保留期。结构版本 9 新增 `usage_settings` 与 `usage_activity`；版本 10 为 `usage_settings` 增加 `notice_version`、`consent_at`、`activated_at`（后两者内部存储为 UTC Unix 秒），与首个管理员创建在同一事务提交。旧实例迁移不会被静默开启上报。以下表为已实现，其余完整产品表设计仍是规划。
+实际迁移源见 `internal/app/schema.sql`、`migration2.sql`、`migration3.sql`、`migration4.sql`、`migration5.sql`、`migration6.sql`、`migration7.sql`、`migration8.sql`、`migration9.sql` 和 `migration10.sql`。结构版本 6 的 `system_settings` 增加 `host_cpu_percent`、`host_memory_percent`、`host_disk_percent`（0–100，0 关闭）及 `host_alert_minutes`（1–60），由本机和远程主机共用。结构版本 7 新增 HTTP 关键字、反向匹配和耗时警告规则；结构版本 8 新增检测小时汇总、原始行消费标记及指标保留期。结构版本 9 新增 `usage_settings` 与 `usage_activity`；版本 10 为 `usage_settings` 增加 `notice_version`、`consent_at`、`activated_at`（后两者内部存储为 UTC Unix 秒），与首个管理员创建在同一事务提交。数据库继续保持版本 10；告知版本 2 复用这些字段记录持续上报确认，不补造或重写已开启实例的历史同意。旧关闭实例须管理员确认后登记成功才启用，不会被静默开启。以下表为已实现，其余完整产品表设计仍是规划。
 
 | 表 | 本轮实际职责 |
 |---|---|

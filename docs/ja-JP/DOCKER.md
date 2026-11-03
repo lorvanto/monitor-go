@@ -16,7 +16,7 @@ docker compose up -d --build
 docker compose exec monitor cat /data/setup-token
 ```
 
-初期設定で Console の送信先と項目を表示し、明示的な確認とオンライン登録の成功後にローカル管理者を作成します。既存インストールの選択は維持され、送信は後から無効にできます。Console の停止はログイン、監視、アラートを妨げません。アカウント連携は別途任意です。独自配布やオフライン環境には `MONITOR_REQUIRE_ACTIVATION=false` または `-require-activation=false` を指定してください。Console URL を空にするだけでは要件は解除されません。 [初回アクティベーションと利用状況の送信](USAGE_REPORTING.md)
+初期設定で Console の送信先、項目、継続送信のルールを表示し、明示的な確認とオンライン登録成功後にローカル管理者を作成します。その後は送信が継続し、無効化スイッチはありません。有効な既存インストールは ID と過去の同意を保持し、旧版で無効なものは管理者の確認を待ちます。確認待ちや Console 障害でもローカルのログイン、監視、アラートは止まりません。アカウント連携は任意です。旧 activation=false 設定はサポートしません。 [初回アクティベーションと利用状況の送信](USAGE_REPORTING.md)
 
 [ローカルサービス](http://127.0.0.1:5080/)を開き、取得した初期化コードで最初の管理者を作成します。初回表示は英語で、初期化後にコードファイルを削除します。既定の公開先は`127.0.0.1`のみです。5080が使用中の場合はホストポートを変更します。
 
@@ -34,7 +34,7 @@ UID/GIDは`10001:10001`です。Composeではルートファイルシステム�
 
 ## 設定とHTTPS
 
-Composeはshell環境または追跡しない`.env`から`MONITOR_IMAGE`（`monitor-go:local`）、`MONITOR_PORT`（5080）、`MONITOR_BIND_ADDRESS`（127.0.0.1）、`MONITOR_PUBLIC_URL`（空）、`MONITOR_SECURE_COOKIE`（false）、`MONITOR_COLLECT_HOST`（false）、`MONITOR_TRUSTED_PROXY`（空）、`MONITOR_REQUIRE_ACTIVATION`（`true`）, `MONITOR_CONSOLE_URL`（未設定時は `https://feiniu.i7f.cn:5090`、明示的な空値では送信先なし）を読みます。以降のコマンドでも同じ設定を使います。ヘルスチェック用の内部ポートは5080を保持します。
+Composeはshell環境または追跡しない`.env`から`MONITOR_IMAGE`（`monitor-go:local`）、`MONITOR_PORT`（5080）、`MONITOR_BIND_ADDRESS`（127.0.0.1）、`MONITOR_PUBLIC_URL`（空）、`MONITOR_SECURE_COOKIE`（false）、`MONITOR_COLLECT_HOST`（false）、`MONITOR_TRUSTED_PROXY`（空）、`MONITOR_REQUIRE_ACTIVATION`（`true` のみ互換対応）、`MONITOR_CONSOLE_URL`（未設定時は `https://feiniu.i7f.cn:5090`、空値や空白のみの値は無効）を読みます。以降のコマンドでも同じ設定を使います。ヘルスチェック用の内部ポートは5080を保持します。
 
 リモートのブラウザー／Agentには、ホストポートの前に信頼されたHTTPSプロキシを置き、末尾スラッシュなしの外部オリジンを設定します。
 
@@ -131,17 +131,11 @@ docker compose exec -T monitor tar -C /data/backups/snapshot-001 -czf - . > back
 
 ## 初回アクティベーションと利用状況の送信
 
-初期設定で Console の送信先と項目を表示し、明示的な確認とオンライン登録の成功後にローカル管理者を作成します。既存インストールの選択は維持され、送信は後から無効にできます。Console の停止はログイン、監視、アラートを妨げません。アカウント連携は別途任意です。独自配布やオフライン環境には `MONITOR_REQUIRE_ACTIVATION=false` または `-require-activation=false` を指定してください。Console URL を空にするだけでは要件は解除されません。
+初期設定で Console の送信先、項目、継続送信のルールを表示し、明示的な確認とオンライン登録成功後にローカル管理者を作成します。その後は送信が継続し、無効化スイッチはありません。有効な既存インストールは ID と過去の同意を保持し、旧版で無効なものは管理者の確認を待ちます。確認待ちや Console 障害でもローカルのログイン、監視、アラートは止まりません。アカウント連携は任意です。旧 activation=false 設定はサポートしません。
 
-`MONITOR_CONSOLE_URL` が未設定の場合、ネイティブ版と Compose は `https://feiniu.i7f.cn:5090` を使用します。別の HTTPS オリジンを指定して送信先を変更するか、`MONITOR_CONSOLE_URL=` と明示的に空にして送信先を未設定にできます。ネイティブ版の `-console-url` 引数は環境変数より優先され、`-console-url=` でも送信先を未設定にできます。
+`MONITOR_CONSOLE_URL` が未設定の場合、ネイティブ版と Compose は `https://feiniu.i7f.cn:5090` を使用します。別の HTTPS オリジンで送信先を変更でき、ネイティブ版の `-console-url` 引数が優先されます。空または空白文字だけの送信先は、環境変数で指定した場合も設定エラーとして標準 CLI が拒否します。送信を無効にしたりアクティベーションを回避したりはできません。バージョン表示とバックアップのコマンドにはアクティベーション設定は不要です。
 
-標準 CLI と Compose の `MONITOR_REQUIRE_ACTIVATION` / `-require-activation` の既定値は `true` です。独自配布やオフライン環境では `MONITOR_REQUIRE_ACTIVATION=false` または `-require-activation=false` を明示してください。その場合はローカルで初期設定し、別途有効にするまで送信しません。Console URL を空にするだけでは必須のアクティベーションを回避できません。有効な送信先を設定するか、要件を明示的に無効にしてください。コマンドライン引数は環境変数より優先されます。
-
-明示的にオフライン導入を選ぶ例：
-
-```sh
-MONITOR_REQUIRE_ACTIVATION=false MONITOR_CONSOLE_URL= docker compose up -d --build
-```
+標準 CLI と Compose はアクティベーションと送信を必須とします。旧設定の `-require-activation=false` と `MONITOR_REQUIRE_ACTIVATION=false` は設定エラーとして拒否し、サポートしません。`true` は互換性のため受け付けます。オフライン導入や送信の無効化を行う引数はありません。到達可能な HTTPS Console URL を設定してください。空または空白文字だけの送信先は起動時の設定エラーとなり、アクティベーションを回避できません。Console URL の引数は対応する環境変数より優先されます。activation=false の設定は true の引数を追加しても有効にはなりません。
 
 ネイティブ版の既定値は `native` です。Docker イメージと Compose は自動的に `docker` を設定します。
 

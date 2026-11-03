@@ -7,6 +7,7 @@ import Modal from "./components/Modal";
 import NavTree from "./components/NavTree";
 import PageBoundary from "./components/PageBoundary";
 import StatusGlyph from "./components/StatusGlyph";
+import UsageConfirmationBanner from "./components/UsageConfirmationBanner";
 import { t } from "./i18n";
 
 import { createStore, useStore } from "zustand";
@@ -502,6 +503,7 @@ export default function App() {
                 ) : null}
               </header>
               <main key={appState.page} className="page">
+                <UsageConfirmationBanner />
                 {appState.connectionError ? (
                   <div data-tone="crit" role="alert" className="banner">
                     <StatusGlyph tone="crit"></StatusGlyph>

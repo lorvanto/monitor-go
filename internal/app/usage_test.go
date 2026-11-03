@@ -1,10 +1,10 @@
 package app
 
 import (
+	"bytes"
 	"context"
 	"database/sql"
 	"encoding/json"
-	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -68,8 +68,34 @@ func waitUsage(t *testing.T, condition func() bool) {
 	}
 	t.Fatal("usage condition was not reached")
 }
-func toggleUsage(t *testing.T, c *testClient, enabled bool) usageStatus {
-	return decodeValue[usageStatus](t, c.call("PATCH", "/usage", map[string]bool{"enabled": enabled}, 200))
+func usageConfirmation(t *testing.T, c *testClient) map[string]any {
+	status := decodeValue[usageStatus](t, c.call("GET", "/usage", nil, 200))
+	return map[string]any{"enabled": true, "usageConsent": true, "usageNoticeVersion": "2", "usageConsoleUrl": status.ConsoleURL}
+}
+func enableUsage(t *testing.T, c *testClient) usageStatus {
+	return decodeValue[usageStatus](t, c.call("PATCH", "/usage", usageConfirmation(t, c), 200))
+}
+func rejectUsageDisable(t *testing.T, c *testClient) {
+	t.Helper()
+	req, _ := http.NewRequest("PATCH", c.base+"/api/v1/usage", bytes.NewBufferString(`{"enabled":false}`))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("X-CSRF-Token", c.csrf)
+	res, err := c.c.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer res.Body.Close()
+	var body struct {
+		Error struct {
+			Key string `json:"key"`
+		} `json:"error"`
+	}
+	if err = json.NewDecoder(res.Body).Decode(&body); err != nil {
+		t.Fatal(err)
+	}
+	if res.StatusCode != 403 || body.Error.Key != usageRequired {
+		t.Fatalf("disable did not return required-reporting error: status %d key %q", res.StatusCode, body.Error.Key)
+	}
 }
 func fakeUsageConsole(t *testing.T) (*httptest.Server, *atomic.Int64, *atomic.Int64, *sync.Map) {
 	t.Helper()
@@ -129,12 +155,12 @@ func fakeUsageConsole(t *testing.T) (*httptest.Server, *atomic.Int64, *atomic.In
 	return server, registered, reports, values
 }
 
-func TestUsageDefaultDisabledAndPermissions(t *testing.T) {
+func TestUsageLegacyOffPreservesChoiceAndPermissions(t *testing.T) {
 	central, registered, reports, _ := fakeUsageConsole(t)
 	s, c, start := usageFixture(t, central.URL)
 	start()
 	status := decodeValue[usageStatus](t, c.call("GET", "/usage", nil, 200))
-	if status.Enabled || !status.Configured || status.InstanceID != "" || len(status.PendingActiveDays) != 0 {
+	if status.Enabled || !status.Required || status.NoticeVersion != "2" || !status.ConfirmationRequired || !status.Configured || status.InstanceID != "" || len(status.PendingActiveDays) != 0 {
 		t.Fatalf("unsafe default %+v", status)
 	}
 	c.call("POST", "/usage/activity", map[string]any{}, 200)
@@ -160,15 +186,15 @@ func TestUsageDefaultDisabledAndPermissions(t *testing.T) {
 	reader.call("POST", "/usage/bind", map[string]string{"code": strings.Repeat("a", 64)}, 403)
 	reader.call("POST", "/usage/unbind", map[string]any{}, 403)
 	poll := decodeValue[map[string]any](t, reader.call("GET", "/poll?page=overview", nil, 200))
-	if poll["usageEnabled"] != false {
-		t.Fatal("poll must disclose opt-in state to normal members")
+	if poll["usageEnabled"] != false || poll["usageConfirmationRequired"] != true {
+		t.Fatal("poll must disclose pending confirmation to normal members")
 	}
 	reader.call("POST", "/usage/activity", map[string]any{}, 200)
 }
 func TestUsageRegistrationBindingActivityAndRestart(t *testing.T) {
 	central, registered, reports, values := fakeUsageConsole(t)
 	s, c, _ := usageFixture(t, central.URL)
-	on := toggleUsage(t, c, true)
+	on := enableUsage(t, c)
 	if !on.Enabled || len(on.InstanceID) != 32 || len(on.PendingActiveDays) != 0 {
 		t.Fatalf("bad registration status %+v", on)
 	}
@@ -223,11 +249,10 @@ func TestUsageRegistrationBindingActivityAndRestart(t *testing.T) {
 	if unbound.Account != nil {
 		t.Fatal("unbind failed")
 	}
-	off := toggleUsage(t, c, false)
-	if off.Enabled || off.NextReportAt != 0 || len(off.PendingActiveDays) != 0 {
-		t.Fatalf("off status %+v", off)
+	rejectUsageDisable(t, c)
+	if !usageStateForTest(t, s).Enabled {
+		t.Fatal("required reporting was disabled")
 	}
-	c.call("POST", "/usage/bind", map[string]string{"code": strings.Repeat("a", 64)}, 422)
 	dir := s.Store.Dir
 	s.Store.Close()
 	reopened, err := New(Config{DataDir: dir, ConsoleURL: central.URL})
@@ -239,8 +264,8 @@ func TestUsageRegistrationBindingActivityAndRestart(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if after.Enabled || after.InstanceID != on.InstanceID {
-		t.Fatal("restart did not preserve opt-out and random identity")
+	if !after.Enabled || after.ConfirmationRequired || after.InstanceID != on.InstanceID {
+		t.Fatal("restart did not preserve required reporting and random identity")
 	}
 	// A new recipient cannot receive credentials or consent granted to the old one.
 	reopened.Store.Close()
@@ -254,26 +279,31 @@ func TestUsageRegistrationBindingActivityAndRestart(t *testing.T) {
 		t.Fatalf("recipient change reused consent %+v %v", after, err)
 	}
 }
-func TestUsageOptOutCancelsNetworkWithoutBlockingMonitoring(t *testing.T) {
+func TestUsageRequiredReportingDoesNotBlockMonitoringOrShutdown(t *testing.T) {
 	started, cancelled := make(chan struct{}, 1), make(chan struct{}, 1)
-	var calls atomic.Int64
 	central := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		io.Copy(io.Discard, r.Body)
-		calls.Add(1)
+		var in map[string]any
+		json.NewDecoder(r.Body).Decode(&in)
+		if strings.HasSuffix(r.URL.Path, "/register") {
+			json.NewEncoder(w).Encode(usageResult{InstanceID: in["instanceId"].(string)})
+			return
+		}
 		started <- struct{}{}
 		<-r.Context().Done()
 		cancelled <- struct{}{}
 	}))
-	t.Cleanup(central.Close)
-	s, c, start := usageFixture(t, central.URL)
-	start()
-	toggleUsage(t, c, true)
+	defer central.Close()
+	s, c, _ := usageFixture(t, central.URL)
+	enableUsage(t, c)
+	ctx, cancel := context.WithCancel(context.Background())
+	done := make(chan struct{})
+	go func() { defer close(done); s.usage.loop(ctx) }()
+	defer func() { cancel(); <-done }()
 	select {
 	case <-started:
 	case <-time.After(3 * time.Second):
-		t.Fatal("no outbound request")
+		t.Fatal("report did not start")
 	}
-	// A stalled console must not hold the SQLite writer or the monitoring queue.
 	local := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(503) }))
 	defer local.Close()
 	in := monitorPayload(local.URL)
@@ -287,83 +317,70 @@ func TestUsageOptOutCancelsNetworkWithoutBlockingMonitoring(t *testing.T) {
 	if err = s.execute(context.Background(), jobID); err != nil {
 		t.Fatal(err)
 	}
-	alerts := decodeValue[[]Alert](t, c.call("GET", "/alerts", nil, 200))
-	if len(alerts) != 1 {
-		t.Fatal("stalled usage reporting prevented an alert")
+	if alerts := decodeValue[[]Alert](t, c.call("GET", "/alerts", nil, 200)); len(alerts) != 1 {
+		t.Fatal("stalled reporting blocked monitoring alerts")
 	}
-	before := time.Now()
-	off := toggleUsage(t, c, false)
-	if off.Enabled || time.Since(before) > time.Second {
-		t.Fatal("opt-out did not cancel promptly")
+	rejectUsageDisable(t, c)
+	if !s.usage.enabled.Load() || !usageStateForTest(t, s).Enabled {
+		t.Fatal("rejected disable changed state")
 	}
 	select {
 	case <-cancelled:
+		t.Fatal("disable rejection cancelled report")
+	default:
+	}
+	cancel()
+	select {
+	case <-cancelled:
 	case <-time.After(time.Second):
-		t.Fatal("outbound request was not cancelled")
+		t.Fatal("shutdown did not cancel reporting")
 	}
-	c.call("POST", "/usage/activity", map[string]any{}, 200)
-	time.Sleep(100 * time.Millisecond)
-	if calls.Load() != 1 {
-		t.Fatal("reporting resumed after opt-out")
-	}
-	var days int
-	s.Store.DB.QueryRow("SELECT count(*) FROM usage_activity").Scan(&days)
-	if days != 0 {
-		t.Fatal("opt-out retained or collected pending activity")
-	}
-	if got := usageStateForTest(t, s); got.Enabled || got.NextReportAt != 0 || got.LastError != "" {
-		t.Fatalf("opt-out was overwritten %+v", got)
+	if !usageStateForTest(t, s).Enabled {
+		t.Fatal("shutdown changed durable reporting consent")
 	}
 }
 
-func TestUsageOptOutRetriesFailedPersistence(t *testing.T) {
+func TestUsageConfirmationTransactionFailureAndRetry(t *testing.T) {
 	central, registered, reports, _ := fakeUsageConsole(t)
 	s, c, _ := usageFixture(t, central.URL)
-	toggleUsage(t, c, true)
-	c.call("POST", "/usage/activity", map[string]any{}, 200)
-	// A real SQLite write failure must not turn the in-memory cancellation into
-	// a successful, durable opt-out. Retrying while the failure remains must fail.
-	_, err := s.Store.DB.Exec(`CREATE TRIGGER reject_usage_opt_out BEFORE UPDATE OF enabled ON usage_settings WHEN NEW.enabled=0 BEGIN SELECT RAISE(ABORT,'test opt-out write failure'); END`)
-	if err != nil {
+	if _, err := s.Store.DB.Exec(`CREATE TRIGGER reject_confirmation BEFORE INSERT ON audit_logs WHEN NEW.action='Usage reporting enabled' BEGIN SELECT RAISE(ABORT,'test confirmation rollback'); END`); err != nil {
 		t.Fatal(err)
 	}
-	for range 2 {
-		c.call("PATCH", "/usage", map[string]bool{"enabled": false}, 500)
-		if s.usage.enabled.Load() || !usageStateForTest(t, s).Enabled {
-			t.Fatal("failed persistence must pause the worker without pretending the database changed")
-		}
+	c.call("PATCH", "/usage", usageConfirmation(t, c), 500)
+	pending := usageStateForTest(t, s)
+	if pending.Enabled || pending.Registered || s.usage.enabled.Load() || registered.Load() != 1 || reports.Load() != 0 {
+		t.Fatal("failed audit partially enabled reporting")
 	}
-	ctx, cancel := context.WithCancel(context.Background())
-	done := make(chan struct{})
-	go func() { defer close(done); s.usage.loop(ctx) }()
-	defer func() { cancel(); <-done }()
-	time.Sleep(100 * time.Millisecond)
-	if registered.Load() != 0 || reports.Load() != 0 {
-		t.Fatal("failed opt-out persistence resumed network work")
-	}
-	if _, err = s.Store.DB.Exec("DROP TRIGGER reject_usage_opt_out"); err != nil {
+	var notice string
+	var consent, activated int64
+	if err := s.Store.DB.QueryRow("SELECT notice_version,consent_at,activated_at FROM usage_settings").Scan(&notice, &consent, &activated); err != nil {
 		t.Fatal(err)
 	}
-	off := toggleUsage(t, c, false)
-	if off.Enabled || off.NextReportAt != 0 || len(off.PendingActiveDays) != 0 || usageStateForTest(t, s).Enabled {
-		t.Fatalf("retried opt-out was not persisted %+v", off)
+	if notice != "" || consent != 0 || activated != 0 {
+		t.Fatal("failed confirmation persisted consent")
+	}
+	if _, err := s.Store.DB.Exec("DROP TRIGGER reject_confirmation"); err != nil {
+		t.Fatal(err)
+	}
+	on := enableUsage(t, c)
+	if !on.Enabled || on.ConfirmationRequired || on.InstanceID != pending.InstanceID || usageStateForTest(t, s).Credential != pending.Credential {
+		t.Fatal("confirmation retry changed identity or failed")
 	}
 	var audits int
-	if err = s.Store.DB.QueryRow("SELECT count(*) FROM audit_logs WHERE action='Usage reporting disabled'").Scan(&audits); err != nil || audits != 1 {
-		t.Fatalf("failed attempts must not create successful audit records: count=%d error=%v", audits, err)
+	if err := s.Store.DB.QueryRow("SELECT count(*) FROM audit_logs WHERE action='Usage reporting enabled'").Scan(&audits); err != nil || audits != 1 {
+		t.Fatal("confirmation audit not atomic")
 	}
-	// The same durable SQLite file must remain opted out in a new process.
-	cancel()
-	<-done
 	s.Store.Close()
-	reopened, err := New(Config{DataDir: s.Store.Dir, ConsoleURL: central.URL})
+	next, err := New(Config{DataDir: s.Store.Dir, ConsoleURL: central.URL})
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer reopened.Store.Close()
-	after, err := reopened.usage.status(context.Background())
-	if err != nil || after.Enabled || after.NextReportAt != 0 || len(after.PendingActiveDays) != 0 {
-		t.Fatalf("restart lost successful opt-out %+v: %v", after, err)
+	defer next.Store.Close()
+	if !next.usage.enabled.Load() || usageStateForTest(t, next).InstanceID != pending.InstanceID {
+		t.Fatal("confirmed state not durable")
+	}
+	if err = next.Store.DB.QueryRow("SELECT notice_version FROM usage_settings").Scan(&notice); err != nil || notice != "2" {
+		t.Fatal("v2 confirmation not preserved")
 	}
 }
 
@@ -372,11 +389,17 @@ func TestUsageTransportRejectsRedirectAndBacksOff(t *testing.T) {
 	destination := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { destinationHits.Add(1) }))
 	defer destination.Close()
 	redirect := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.HasSuffix(r.URL.Path, "/register") {
+			var in map[string]any
+			json.NewDecoder(r.Body).Decode(&in)
+			json.NewEncoder(w).Encode(usageResult{InstanceID: in["instanceId"].(string)})
+			return
+		}
 		http.Redirect(w, r, destination.URL, http.StatusTemporaryRedirect)
 	}))
 	defer redirect.Close()
 	s, c, _ := usageFixture(t, redirect.URL)
-	toggleUsage(t, c, true)
+	enableUsage(t, c)
 	if err := s.usage.perform(context.Background(), "report", "", nil, nil); err == nil {
 		t.Fatal("redirect accepted")
 	}
@@ -442,8 +465,9 @@ func TestUsageConfigurationAndMigration(t *testing.T) {
 	}
 }
 func TestUsageMissingMasterKeyDoesNotDiscardRegistration(t *testing.T) {
-	s, c, _ := usageFixture(t, "https://console.example.com")
-	toggleUsage(t, c, true)
+	central, _, _, _ := fakeUsageConsole(t)
+	s, c, _ := usageFixture(t, central.URL)
+	enableUsage(t, c)
 	dir := s.Store.Dir
 	s.Store.Close()
 	if err := os.Remove(filepath.Join(dir, "master.key")); err != nil {
@@ -486,7 +510,7 @@ func TestUsageEnabledRestartAndExpiredRegistrationRecovery(t *testing.T) {
 	}))
 	defer central.Close()
 	s, c, _ := usageFixture(t, central.URL)
-	enabled := toggleUsage(t, c, true)
+	enabled := enableUsage(t, c)
 	if err := s.usage.perform(context.Background(), "report", "", nil, nil); err != nil {
 		t.Fatal(err)
 	}
@@ -524,8 +548,9 @@ func TestUsageEnabledRestartAndExpiredRegistrationRecovery(t *testing.T) {
 }
 
 func TestUsageActivityIsCoarseAndDoesNotWakeMonitoring(t *testing.T) {
-	s, c, _ := usageFixture(t, "https://console.example.com")
-	toggleUsage(t, c, true)
+	central, _, _, _ := fakeUsageConsole(t)
+	s, c, _ := usageFixture(t, central.URL)
+	enableUsage(t, c)
 	for {
 		select {
 		case <-s.Store.checkWake:
@@ -561,10 +586,10 @@ func TestUsageActivityIsCoarseAndDoesNotWakeMonitoring(t *testing.T) {
 	default:
 	}
 	c.call("POST", "/usage/activity", map[string]string{"username": "should not be accepted"}, 422)
-	toggleUsage(t, c, false)
+	rejectUsageDisable(t, c)
 	s.Store.DB.QueryRow("SELECT count(*) FROM usage_activity").Scan(&count)
-	if count != 0 {
-		t.Fatal("opt-out kept pending activity")
+	if count != 1 {
+		t.Fatal("rejected disable deleted pending activity")
 	}
 }
 

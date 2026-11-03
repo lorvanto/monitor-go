@@ -3359,6 +3359,14 @@
   .usage-settings .panel-head {
     flex-wrap: wrap;
   }
+  #usage-title {
+    scroll-margin-top: 16px;
+  }
+  @media (max-width: 960px) {
+    #usage-title {
+      scroll-margin-top: 68px;
+    }
+  }
   .usage-content {
     display: grid;
     gap: 16px;
@@ -3428,6 +3436,29 @@
     white-space: normal;
     overflow-wrap: anywhere;
     max-width: 100%;
+    min-height: 44px;
+  }
+  .usage-consent .check {
+    min-height: 44px;
+    align-items: flex-start;
+  }
+  .usage-confirmation-banner {
+    align-items: start;
+    overflow-wrap: anywhere;
+  }
+  .usage-confirmation-banner .btn {
+    min-height: 44px;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+  @media (max-width: 600px) {
+    .usage-confirmation-banner {
+      flex-wrap: wrap;
+    }
+    .usage-confirmation-banner > .btn,
+    .usage-confirmation-banner > p {
+      width: 100%;
+    }
   }
 
   /* 应用与密钥 */

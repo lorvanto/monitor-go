@@ -8,7 +8,7 @@ import (
 )
 
 const (
-	activationNoticeVersion      = "1"
+	activationNoticeVersion      = "2"
 	activationConsentRequired    = "Activation consent is required"
 	activationNoticeChanged      = "Activation notice has changed; review it again"
 	activationDestinationChanged = "Activation destination has changed; review it again"
@@ -46,11 +46,11 @@ func (s *Server) validateActivationConsent(consent bool, noticeVersion, consoleU
 	return nil
 }
 
-// activateInstallation is called only after validating the setup token, user
-// fields and current notice. A durable random identity makes remote registration
+// activateInstallation is called only after validating setup access or settings
+// permissions and the current notice. A durable random identity makes registration
 // idempotent across retries and restarts. It is not consent to background reports:
-// enabled, registered and consent records remain unchanged until user creation
-// commits. No administrator fields or setup token are sent to the Console.
+// enabled, registered and consent records remain unchanged until the setup or
+// settings transaction commits. No administrator fields or setup token are sent.
 func (s *Server) activateInstallation(ctx context.Context) (*setupActivation, error) {
 	p := s.usage
 	var st usageState
@@ -94,9 +94,9 @@ func (s *Server) activateInstallation(ctx context.Context) (*setupActivation, er
 	return &setupActivation{instanceID: st.InstanceID, origin: p.origin, account: accountLogin(result)}, nil
 }
 
-// commit belongs to the same transaction as the first administrator. An
-// interrupted/failed setup can leave a remote anonymous registration, but never
-// a local administrator without activation or an enabled background reporter.
+// commit belongs to the same transaction as the administrator or settings audit.
+// A failed transaction can leave a remote anonymous registration, but never a
+// partially confirmed local state or an enabled background reporter.
 func (a *setupActivation) commit(ctx context.Context, tx *sql.Tx) error {
 	at := time.Now().Unix()
 	result, err := tx.ExecContext(ctx, `UPDATE usage_settings SET enabled=1,registered=1,notice_version=?,consent_at=?,activated_at=?,next_report_at=?,last_error='',failures=0,account_login=? WHERE id=1 AND console_url=? AND instance_id=?`, activationNoticeVersion, at, at, at, a.account, a.origin, a.instanceID)

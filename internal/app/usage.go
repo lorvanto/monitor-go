@@ -31,6 +31,7 @@ const (
 	usageUnavailable   = "Usage service is unavailable"
 	usageRejected      = "Usage request was rejected"
 	usageChanged       = "Usage reporting settings changed"
+	usageRequired      = "Usage reporting is required and cannot be disabled"
 )
 
 var usageCodePattern = regexp.MustCompile(`^[0-9a-f]{64}$`)
@@ -49,16 +50,19 @@ type usagePayload struct {
 	ActiveDays []string `json:"activeDays"`
 }
 type usageStatus struct {
-	Enabled           bool          `json:"enabled"`
-	Configured        bool          `json:"configured"`
-	ConsoleURL        string        `json:"consoleUrl"`
-	InstanceID        string        `json:"instanceId"`
-	LastReportAt      int64         `json:"lastReportAt"`
-	NextReportAt      int64         `json:"nextReportAt"`
-	LastError         string        `json:"lastError"`
-	Account           *usageAccount `json:"account"`
-	PendingActiveDays []string      `json:"pendingActiveDays"`
-	Preview           usagePayload  `json:"preview"`
+	Enabled              bool          `json:"enabled"`
+	Required             bool          `json:"required"`
+	NoticeVersion        string        `json:"noticeVersion"`
+	ConfirmationRequired bool          `json:"confirmationRequired"`
+	Configured           bool          `json:"configured"`
+	ConsoleURL           string        `json:"consoleUrl"`
+	InstanceID           string        `json:"instanceId"`
+	LastReportAt         int64         `json:"lastReportAt"`
+	NextReportAt         int64         `json:"nextReportAt"`
+	LastError            string        `json:"lastError"`
+	Account              *usageAccount `json:"account"`
+	PendingActiveDays    []string      `json:"pendingActiveDays"`
+	Preview              usagePayload  `json:"preview"`
 }
 type usageState struct {
 	Enabled                            bool
@@ -235,7 +239,8 @@ func (p *usageReporter) status(ctx context.Context) (usageStatus, error) {
 	if err != nil {
 		return usageStatus{}, err
 	}
-	status := usageStatus{Enabled: p.enabled.Load(), Configured: p.origin != "", ConsoleURL: p.origin, InstanceID: st.InstanceID, LastReportAt: st.LastReportAt, NextReportAt: st.NextReportAt, LastError: st.LastError, PendingActiveDays: days, Preview: p.payload(st.InstanceID, days)}
+	enabled := p.enabled.Load()
+	status := usageStatus{Enabled: enabled, Required: true, NoticeVersion: activationNoticeVersion, ConfirmationRequired: !enabled, Configured: p.origin != "", ConsoleURL: p.origin, InstanceID: st.InstanceID, LastReportAt: st.LastReportAt, NextReportAt: st.NextReportAt, LastError: st.LastError, PendingActiveDays: days, Preview: p.payload(st.InstanceID, days)}
 	if st.AccountLogin != "" {
 		status.Account = &usageAccount{Login: st.AccountLogin}
 	}
@@ -246,7 +251,10 @@ func (s *Server) getUsage(_ http.ResponseWriter, r *http.Request, _ *User) (any,
 }
 func (s *Server) saveUsage(_ http.ResponseWriter, r *http.Request, u *User) (any, error) {
 	var in struct {
-		Enabled *bool `json:"enabled"`
+		Enabled            *bool  `json:"enabled"`
+		UsageConsent       bool   `json:"usageConsent"`
+		UsageNoticeVersion string `json:"usageNoticeVersion"`
+		UsageConsoleURL    string `json:"usageConsoleUrl"`
 	}
 	if err := decode(r, &in); err != nil {
 		return nil, err
@@ -254,71 +262,34 @@ func (s *Server) saveUsage(_ http.ResponseWriter, r *http.Request, u *User) (any
 	if in.Enabled == nil {
 		return nil, bad("请求字段不正确")
 	}
+	if !*in.Enabled {
+		return nil, &apiError{403, usageRequired}
+	}
 	p := s.usage
 	p.changeMu.Lock()
 	defer p.changeMu.Unlock()
-	if *in.Enabled && p.origin == "" {
-		return nil, bad(usageNotConfigured)
+	// Upgrades must preserve existing enabled installations and their historical
+	// notice/identity. This idempotent request never invents a v2 confirmation.
+	if p.enabled.Load() {
+		return p.status(r.Context())
 	}
-	if *in.Enabled == p.enabled.Load() {
-		// A failed opt-out write leaves the worker paused but consent still enabled
-		// on disk. A repeated request must retry persistence, not report success and
-		// allow the next process to resume reporting from stale durable consent.
-		st, err := readUsageState(r.Context(), p.server.Store.reader())
-		if err != nil {
-			return nil, err
-		}
-		if st.Enabled == *in.Enabled {
-			return p.status(r.Context())
-		}
+	if err := s.validateActivationConsent(in.UsageConsent, in.UsageNoticeVersion, in.UsageConsoleURL); err != nil {
+		return nil, err
 	}
-	if !*in.Enabled {
-		// Prevent new requests before cancelling existing ones. Wait before replying,
-		// so no request can be started after a successful opt-out response.
-		p.mu.Lock()
-		p.enabled.Store(false)
-		p.cancel()
-		p.activityDay = ""
-		p.mu.Unlock()
-		p.inFlight.Wait()
+	activation, err := s.activateInstallation(r.Context())
+	if err != nil {
+		return nil, err
 	}
-	ctx, cancel := context.WithTimeout(context.WithoutCancel(r.Context()), 5*time.Second)
-	defer cancel()
-	err := p.write(ctx, func(tx *sql.Tx) error {
-		st, e := readUsageState(ctx, tx)
-		if e != nil {
-			return e
+	err = p.write(r.Context(), func(tx *sql.Tx) error {
+		if err := activation.commit(r.Context(), tx); err != nil {
+			return err
 		}
-		if *in.Enabled && st.InstanceID == "" {
-			st.InstanceID = randomToken()[:32]
-			st.Credential, e = s.Store.encrypt(randomToken())
-			if e != nil {
-				return e
-			}
-		}
-		next := int64(0)
-		action := "Usage reporting disabled"
-		if *in.Enabled {
-			next = time.Now().Unix()
-			action = "Usage reporting enabled"
-		}
-		if _, e = tx.ExecContext(ctx, `UPDATE usage_settings SET enabled=?,instance_id=?,credential=?,next_report_at=?,last_error='',failures=0 WHERE id=1`, *in.Enabled, st.InstanceID, st.Credential, next); e != nil {
-			return e
-		}
-		if !*in.Enabled {
-			if _, e = tx.ExecContext(ctx, "DELETE FROM usage_activity"); e != nil {
-				return e
-			}
-		}
-		return auditRequest(tx, r, u.Name, action, "usage")
+		return auditRequest(tx, r, u.Name, "Usage reporting enabled", "usage")
 	})
 	if err != nil {
 		return nil, err
 	}
-	if *in.Enabled {
-		p.resume()
-	}
-	p.signal()
+	p.resume()
 	return p.status(r.Context())
 }
 func (p *usageReporter) resume() {
@@ -385,7 +356,7 @@ func (s *Server) unbindUsage(_ http.ResponseWriter, r *http.Request, u *User) (a
 }
 
 // begin serializes only outbound telemetry calls. The generation context makes
-// an opt-out cancel both network requests and their subsequent local writes.
+// shutdown cancel both network requests and their subsequent local writes.
 func (p *usageReporter) begin(parent context.Context) (context.Context, func(), error) {
 	p.outboundMu.Lock()
 	p.mu.Lock()

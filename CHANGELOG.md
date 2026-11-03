@@ -4,7 +4,16 @@ User-visible changes belong here. Entries under **Unreleased** describe the curr
 
 ## Unreleased
 
-### Disclosed first-install activation and usage reporting
+### Required ongoing reporting (notice version 2)
+
+- Clearly disclose that reporting remains enabled with no off switch before first online activation. Reject disable requests with HTTP 403 and reject the former activation=false CLI/environment settings; keep true compatibility.
+- Keep already enabled identities, account links and historical consent unchanged. Legacy off installations require one administrator confirmation of the current fields, recipient and rule; only successful registration enables reporting, while local monitoring continues during pending confirmation or network failures.
+- Keep Console retries independent of login, monitoring and alerts, and keep account binding voluntary. No remote shutdown or silent enabling is introduced. Database schema remains 10; use the existing notice/consent/activation fields for version 2.
+- Update five-language deployment and usage guides. Current verification is recorded separately from the previous activation implementation; no deployment or CI result is implied here.
+
+### Earlier activation behavior (notice version 1; superseded)
+
+The following records the earlier `e0163f3` implementation. Its off switch and offline override are superseded by the version 2 rules above; they are not current deployment instructions.
 
 - Standard new installations disclose the Console destination, purpose and exact report fields and require explicit confirmation before online registration and local administrator creation. Registration sends no local administrator identity or password and does not bind a Console/developer account.
 - Add `-require-activation` and `MONITOR_REQUIRE_ACTIVATION`, defaulting to `true`; an explicit `false` supports offline/custom installations and keeps reporting off until separately enabled. Empty destinations cannot bypass required activation. The default destination remains `https://feiniu.i7f.cn:5090`.

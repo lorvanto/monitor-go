@@ -15,7 +15,8 @@ func (s *Server) poll(w http.ResponseWriter, r *http.Request, u *User) (any, err
 	if err != nil {
 		return nil, err
 	}
-	out := map[string]any{"user": u, "navigation": nav, "hosts": []Host{}, "monitors": []Monitor{}, "alerts": []Alert{}, "openAlertCount": 0, "usageEnabled": s.usage != nil && s.usage.enabled.Load()}
+	usageEnabled := s.usage != nil && s.usage.enabled.Load()
+	out := map[string]any{"user": u, "navigation": nav, "hosts": []Host{}, "monitors": []Monitor{}, "alerts": []Alert{}, "openAlertCount": 0, "usageEnabled": usageEnabled, "usageConfirmationRequired": !usageEnabled}
 	if u.Can("host:read") && (page == "overview" || page == "host") {
 		out["hosts"], err = s.hosts(r.Context())
 		if err != nil {

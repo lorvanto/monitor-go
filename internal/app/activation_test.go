@@ -30,7 +30,7 @@ func activationFixture(t *testing.T, origin string, required bool) (*Server, *te
 }
 
 func activationInput(s *Server) map[string]any {
-	return map[string]any{"token": s.setupToken, "username": "admin", "name": "Private administrator name", "password": "Private-admin-password-123!", "usageConsent": true, "usageNoticeVersion": "1", "usageConsoleUrl": s.usage.origin}
+	return map[string]any{"token": s.setupToken, "username": "admin", "name": "Private administrator name", "password": "Private-admin-password-123!", "usageConsent": true, "usageNoticeVersion": "2", "usageConsoleUrl": s.usage.origin}
 }
 
 func activationCounts(t *testing.T, s *Server) (users, enabled, registered int) {
@@ -64,7 +64,7 @@ func TestActivationConsentAndValidationMakeNoNetworkRequest(t *testing.T) {
 		Initialized bool             `json:"initialized"`
 		Activation  activationStatus `json:"activation"`
 	}](t, c.call("GET", "/status", nil, 200))
-	if status.Initialized || !status.Activation.Required || !status.Activation.Configured || status.Activation.ConsoleURL != central.URL || status.Activation.NoticeVersion != "1" {
+	if status.Initialized || !status.Activation.Required || !status.Activation.Configured || status.Activation.ConsoleURL != central.URL || status.Activation.NoticeVersion != "2" {
 		t.Fatalf("incorrect initial activation status: %+v", status)
 	}
 	for _, tc := range []struct {
@@ -72,7 +72,7 @@ func TestActivationConsentAndValidationMakeNoNetworkRequest(t *testing.T) {
 		value  any
 		status int
 	}{
-		{"usageConsent", false, 422}, {"usageNoticeVersion", "0", 422}, {"usageConsoleUrl", "https://previous.example.com", 422}, {"token", "wrong", 403}, {"username", "?", 422}, {"password", "short", 422}, {"name", "", 422},
+		{"usageConsent", false, 422}, {"usageNoticeVersion", "1", 422}, {"usageConsoleUrl", "https://previous.example.com", 422}, {"token", "wrong", 403}, {"username", "?", 422}, {"password", "short", 422}, {"name", "", 422},
 	} {
 		in := activationInput(s)
 		in[tc.field] = tc.value
@@ -102,7 +102,7 @@ func TestActivationConsentAndValidationMakeNoNetworkRequest(t *testing.T) {
 	}
 }
 
-func TestActivationMissingDestinationAndExplicitOfflineMode(t *testing.T) {
+func TestActivationMissingDestinationAndEmbeddedConfig(t *testing.T) {
 	s, c := activationFixture(t, "", true)
 	c.call("POST", "/setup", activationInput(s), 503)
 	assertActivationPending(t, s)
@@ -186,7 +186,7 @@ func TestActivationRetryAfterRemoteFailureUsesSameIdentityAndNoSecrets(t *testin
 	if err = next.Store.DB.QueryRow("SELECT notice_version,consent_at,activated_at FROM usage_settings").Scan(&version, &consentAt, &activatedAt); err != nil {
 		t.Fatal(err)
 	}
-	if version != "1" || consentAt == 0 || activatedAt != consentAt {
+	if version != "2" || consentAt == 0 || activatedAt != consentAt {
 		t.Fatal("activation/consent record missing")
 	}
 }
@@ -357,8 +357,9 @@ func TestActivatedInstallationRestartsAndRunsAlertsWithoutConsole(t *testing.T) 
 	go func() { defer close(done); next.usage.loop(ctx) }()
 	defer func() { cancel(); <-done }()
 	waitUsage(t, func() bool { return usageStateForTest(t, next).Failures > 0 })
-	if toggleUsage(t, nc, false).Enabled {
-		t.Fatal("activation prevents opt-out")
+	rejectUsageDisable(t, nc)
+	if !next.usage.enabled.Load() {
+		t.Fatal("required reporting disabled")
 	}
 	broken := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(503) }))
 	defer broken.Close()
@@ -371,7 +372,7 @@ func TestActivatedInstallationRestartsAndRunsAlertsWithoutConsole(t *testing.T) 
 		t.Fatal(err)
 	}
 	if alerts := decodeValue[[]Alert](t, nc.call("GET", "/alerts", nil, 200)); len(alerts) != 1 {
-		t.Fatal("Console outage/opt-out interrupted monitoring alerts")
+		t.Fatal("Console outage interrupted monitoring alerts")
 	}
 	cancel()
 	<-done
@@ -381,8 +382,8 @@ func TestActivatedInstallationRestartsAndRunsAlertsWithoutConsole(t *testing.T) 
 		t.Fatal(err)
 	}
 	defer restarted.Store.Close()
-	if restarted.usage.enabled.Load() || usageStateForTest(t, restarted).InstanceID != id {
-		t.Fatal("restart lost opt-out or activated identity")
+	if !restarted.usage.enabled.Load() || usageStateForTest(t, restarted).InstanceID != id {
+		t.Fatal("restart lost required reporting or activated identity")
 	}
 }
 

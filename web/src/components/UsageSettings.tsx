@@ -1,12 +1,15 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { isMessageKey, t, useI18n } from "../i18n";
-import { api, appStore, can, dateTime, useApp } from "../stores/app";
+import { APIError, api, appStore, can, dateTime, useApp } from "../stores/app";
 import { errorMessage, type DisplayMessage } from "../lib/messages";
 import Form from "./Form";
 import Icon from "./Icon";
 
 export interface UsageStatus {
   enabled: boolean;
+  required: boolean;
+  noticeVersion: string;
+  confirmationRequired: boolean;
   configured: boolean;
   consoleUrl: string;
   instanceId: string;
@@ -41,21 +44,31 @@ function consoleLink(value: string): string | undefined {
 }
 export default function UsageSettings() {
   useI18n();
-  useApp(({ user }) => user);
+  const { usageSettingsRequested } = useApp(
+    ({ user, usageSettingsRequested }) => ({ user, usageSettingsRequested }),
+  );
+  const heading = useRef<HTMLHeadingElement>(null);
   const [status, setStatus] = useState<UsageStatus>();
-  const [consent, setConsent] = useState(false);
+  const [consentFor, setConsentFor] = useState("");
+  const [noticeStale, setNoticeStale] = useState(false);
   const [code, setCode] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<DisplayMessage>("");
   const writable = can("system:settings");
   function accept(value: UsageStatus) {
     setStatus(value);
-    appStore.setState({ usageEnabled: value.enabled });
+    appStore.setState({
+      usageEnabled: value.enabled,
+      usageConfirmationRequired: value.confirmationRequired,
+    });
   }
   async function reload() {
+    if (busy) return;
+    setConsentFor("");
     setBusy(true);
     try {
       accept(await api<UsageStatus>("/usage"));
+      setNoticeStale(false);
       setError("");
     } catch (e) {
       setError(errorMessage(e));
@@ -64,14 +77,25 @@ export default function UsageSettings() {
     }
   }
   async function update(path: string, method: string, body: unknown) {
+    if (busy || !writable) return;
     setBusy(true);
     try {
       accept(await api<UsageStatus>(path, method, body));
       if (path === "/usage/bind") setCode("");
-      if (path === "/usage") setConsent(false);
+      if (path === "/usage") setConsentFor("");
       setError("");
     } catch (e) {
       setError(errorMessage(e));
+      if (
+        e instanceof APIError &&
+        typeof e.display !== "string" &&
+        (e.display.key ===
+          "Activation destination has changed; review it again" ||
+          e.display.key === "Activation notice has changed; review it again")
+      ) {
+        setConsentFor("");
+        setNoticeStale(true);
+      }
     } finally {
       setBusy(false);
     }
@@ -79,13 +103,30 @@ export default function UsageSettings() {
   useEffect(() => {
     void reload();
   }, []);
+  useEffect(() => {
+    if (!usageSettingsRequested || !status) return;
+    appStore.setState({ usageSettingsRequested: false });
+    heading.current?.scrollIntoView({ block: "start" });
+    heading.current?.focus({ preventScroll: true });
+  }, [usageSettingsRequested, status]);
   const destination = consoleLink(status?.consoleUrl || "");
+  const consentKey = status
+    ? JSON.stringify([status.consoleUrl, status.noticeVersion])
+    : "";
+  const consent = !!consentKey && consentFor === consentKey;
+  const canConfirm =
+    !!status?.configured &&
+    !!destination &&
+    status?.noticeVersion === "2" &&
+    !noticeStale;
   return (
     <section className="panel usage-settings" aria-labelledby="usage-title">
       <header className="panel-head ruled">
         <div>
-          <h2 id="usage-title">{t("使用情况统计与账号绑定")}</h2>
-          <p>{t("管理员可随时关闭上报，也可在阅读说明后重新开启。")}</p>
+          <h2 id="usage-title" ref={heading} tabIndex={-1}>
+            {t("使用情况统计与账号绑定")}
+          </h2>
+          <p>{t("标准客户端确认规则后持续上报，程序内不提供关闭开关。")}</p>
         </div>
         <button className="btn" type="button" disabled={busy} onClick={reload}>
           <Icon name="RefreshCw" />
@@ -101,12 +142,12 @@ export default function UsageSettings() {
         </p>
         <p className="note">
           {t(
-            "开启后会生成独立实例凭据，用于验证登记、上报及账号绑定请求；预览不会显示该凭据。",
+            "确认后生成独立实例凭据，用于验证登记、上报及账号绑定请求；预览不会显示该凭据。",
           )}
         </p>
         <p className="note">
           {t(
-            "程序运行与有人使用分开统计。安装完成后，上报在后台低频执行，服务不可用或关闭上报不会影响登录、监控和告警。",
+            "激活后持续上报，程序内不提供关闭选项。管理后台不可用时会稍后重试，不影响本地登录、监控和告警。",
           )}
         </p>
         {error ? (
@@ -121,7 +162,11 @@ export default function UsageSettings() {
             <dl className="kv rows usage-summary">
               <div>
                 <dt>{t("使用情况上报")}</dt>
-                <dd>{status.enabled ? t("已启用上报") : t("上报已关闭")}</dd>
+                <dd>
+                  {status.enabled
+                    ? t("持续上报中")
+                    : t("待管理员确认持续上报规则")}
+                </dd>
               </div>
               <div>
                 <dt>{t("上报目的地")}</dt>
@@ -167,36 +212,27 @@ export default function UsageSettings() {
             ) : null}
             {!status.configured ? (
               <p className="note">
-                {t("请先由部署者配置管理后台地址，再决定是否开启上报。")}
+                {t("请部署者配置管理后台地址，再阅读并确认持续上报规则。")}
+              </p>
+            ) : null}
+            {status.confirmationRequired && status.noticeVersion !== "2" ? (
+              <p role="alert" className="form-error">
+                {t("Activation notice has changed; review it again")}
               </p>
             ) : null}
             {writable ? (
-              status.enabled ? (
-                <div className="usage-actions">
-                  <button
-                    type="button"
-                    className="btn"
-                    disabled={busy}
-                    onClick={() =>
-                      void update("/usage", "PATCH", { enabled: false })
-                    }
-                  >
-                    <Icon name="Pause" />
-                    {t("立即关闭上报")}
-                  </button>
-                  <p>
-                    {t(
-                      "关闭后停止上报并清除待发送的活跃记录。账号关联会保留，可在管理后台解除。",
-                    )}
-                  </p>
-                </div>
-              ) : (
+              status.confirmationRequired ? (
                 <Form
                   className="usage-consent"
                   onSubmit={(event) => {
                     event.preventDefault();
-                    if (consent && status.configured)
-                      void update("/usage", "PATCH", { enabled: true });
+                    if (consent && canConfirm)
+                      void update("/usage", "PATCH", {
+                        enabled: true,
+                        usageConsent: true,
+                        usageNoticeVersion: status.noticeVersion,
+                        usageConsoleUrl: status.consoleUrl,
+                      });
                   }}
                 >
                   <label className="check">
@@ -204,21 +240,25 @@ export default function UsageSettings() {
                       type="checkbox"
                       required
                       checked={consent}
-                      disabled={busy || !status.configured}
+                      disabled={busy || !canConfirm}
                       onChange={(event) =>
-                        setConsent(event.currentTarget.checked)
+                        setConsentFor(
+                          event.currentTarget.checked ? consentKey : "",
+                        )
                       }
                     />
-                    {t("我已了解上报内容，同意向上述管理后台分享使用情况。")}
+                    {t(
+                      "我已阅读目的地、字段和规则，同意激活后持续上报，且程序内无法关闭。",
+                    )}
                   </label>
                   <button
                     className="btn primary"
-                    disabled={busy || !status.configured || !consent}
+                    disabled={busy || !canConfirm || !consent}
                   >
-                    {t("启用使用情况上报")}
+                    {t("确认规则并激活上报")}
                   </button>
                 </Form>
-              )
+              ) : null
             ) : (
               <p className="note">
                 {t("当前账号只能查看设置，修改需要“修改系统设置”权限。")}
@@ -230,7 +270,7 @@ export default function UsageSettings() {
                 <div>
                   <dt>{t("随机实例编号")}</dt>
                   <dd className="mono">
-                    {status.preview.instanceId || t("开启后生成")}
+                    {status.preview.instanceId || t("确认后生成")}
                   </dd>
                 </div>
                 <div>
@@ -281,12 +321,12 @@ export default function UsageSettings() {
                   {t("打开管理后台")}
                 </a>
               ) : null}
-              {writable && status.enabled ? (
+              {writable ? (
                 status.account ? (
                   <button
                     className="btn"
                     type="button"
-                    disabled={busy}
+                    disabled={busy || !status.enabled}
                     onClick={() => void update("/usage/unbind", "POST", {})}
                   >
                     {t("解除 Console 账号绑定")}
@@ -296,7 +336,10 @@ export default function UsageSettings() {
                     className="usage-bind-form"
                     onSubmit={(event) => {
                       event.preventDefault();
-                      void update("/usage/bind", "POST", { code: code.trim() });
+                      if (status.enabled)
+                        void update("/usage/bind", "POST", {
+                          code: code.trim(),
+                        });
                     }}
                   >
                     <label className="field">
@@ -319,15 +362,19 @@ export default function UsageSettings() {
                         {t("绑定码有效期为 10 分钟，只能使用一次。")}
                       </small>
                     </label>
-                    <button className="btn" disabled={busy || !code.trim()}>
+                    <button
+                      className="btn"
+                      disabled={busy || !status.enabled || !code.trim()}
+                    >
                       {t("绑定 Console 账号")}
                     </button>
                   </Form>
                 )
-              ) : !status.enabled ? (
+              ) : null}
+              {!status.enabled ? (
                 <p className="note">
                   {t(
-                    "启用上报后可在此绑定或解除账号；上报关闭期间可直接到管理后台解除关联。",
+                    "确认持续上报规则后可在此自愿绑定账号。账号绑定不会识别实例内的其他成员。",
                   )}
                 </p>
               ) : null}

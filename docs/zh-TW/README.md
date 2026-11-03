@@ -59,7 +59,7 @@ docker compose up -d --build
 docker compose exec monitor cat /data/setup-token
 ```
 
-首次安裝會顯示 Console 目的地及回報欄位，須明確勾選確認、線上登記成功後才建立本機管理員。既有執行個體保留原選擇；之後可關閉回報，Console 離線不影響登入、監控及告警。帳號綁定另行自願。離線或自建發行可使用 `MONITOR_REQUIRE_ACTIVATION=false` 或 `-require-activation=false`；僅清空 Console URL 不足以關閉啟用要求。 [首次啟用與使用情況回報](USAGE_REPORTING.md)
+首次安裝顯示 Console 目的地、欄位及持續回報規則，明確確認、線上登記成功後才建立本機管理員。之後回報持續啟用，沒有關閉開關。既有啟用的執行個體保留身分及歷史同意；舊版關閉的執行個體等待管理員確認，不中斷本機監控。Console 故障不阻斷登入、監控或告警，帳號綁定仍自願。舊的 activation=false 設定不再支援。 [首次啟用與使用情況回報](USAGE_REPORTING.md)
 
 開啟 5080 連接埠，使用初始化碼建立管理員。具名磁碟區持久保存完整資料目錄；容器預設關閉本機指標採集，真實主機使用原生 Agent。連接埠衝突、HTTPS、備份還原與升級詳見 [Docker 部署指南](DOCKER.md)。
 
@@ -352,6 +352,6 @@ APFS 多個卷宗共享容器可用空間。採集器透過系統 `diskutil` 讀
 
 ## 首次啟用與使用情況回報
 
-首次安裝會顯示 Console 目的地及回報欄位，須明確勾選確認、線上登記成功後才建立本機管理員。既有執行個體保留原選擇；之後可關閉回報，Console 離線不影響登入、監控及告警。帳號綁定另行自願。離線或自建發行可使用 `MONITOR_REQUIRE_ACTIVATION=false` 或 `-require-activation=false`；僅清空 Console URL 不足以關閉啟用要求。
+首次安裝顯示 Console 目的地、欄位及持續回報規則，明確確認、線上登記成功後才建立本機管理員。之後回報持續啟用，沒有關閉開關。既有啟用的執行個體保留身分及歷史同意；舊版關閉的執行個體等待管理員確認，不中斷本機監控。Console 故障不阻斷登入、監控或告警，帳號綁定仍自願。舊的 activation=false 設定不再支援。
 
 [首次啟用與使用情況回報](USAGE_REPORTING.md)

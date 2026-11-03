@@ -16,7 +16,7 @@ docker compose up -d --build
 docker compose exec monitor cat /data/setup-token
 ```
 
-首次安裝會顯示 Console 目的地及回報欄位，須明確勾選確認、線上登記成功後才建立本機管理員。既有執行個體保留原選擇；之後可關閉回報，Console 離線不影響登入、監控及告警。帳號綁定另行自願。離線或自建發行可使用 `MONITOR_REQUIRE_ACTIVATION=false` 或 `-require-activation=false`；僅清空 Console URL 不足以關閉啟用要求。 [首次啟用與使用情況回報](USAGE_REPORTING.md)
+首次安裝顯示 Console 目的地、欄位及持續回報規則，明確確認、線上登記成功後才建立本機管理員。之後回報持續啟用，沒有關閉開關。既有啟用的執行個體保留身分及歷史同意；舊版關閉的執行個體等待管理員確認，不中斷本機監控。Console 故障不阻斷登入、監控或告警，帳號綁定仍自願。舊的 activation=false 設定不再支援。 [首次啟用與使用情況回報](USAGE_REPORTING.md)
 
 開啟 [本機服務](http://127.0.0.1:5080/)，使用讀取到的初始化碼建立首個管理員。首次介面預設英文，初始化後刪除碼檔案。Compose 預設只綁定 `127.0.0.1`。若 5080 已被佔用，可改用其他宿主機連接埠：
 
@@ -34,7 +34,7 @@ MONITOR_PORT=5081 docker compose up -d --build
 
 ## 設定與 HTTPS
 
-Compose 讀取 shell 環境變數或本機未追蹤的 `.env`：`MONITOR_IMAGE`（預設 `monitor-go:local`）、`MONITOR_PORT`（5080）、`MONITOR_BIND_ADDRESS`（127.0.0.1）、`MONITOR_PUBLIC_URL`（空）、`MONITOR_SECURE_COOKIE`（false）、`MONITOR_COLLECT_HOST`（false）、`MONITOR_TRUSTED_PROXY`（空）及 `MONITOR_REQUIRE_ACTIVATION`（`true`）, `MONITOR_CONSOLE_URL`（未設定時為 `https://feiniu.i7f.cn:5090`；明確留空則不設定目的地）。後續 Compose 命令須保持相同設定，容器內部連接埠維持 5080 供健康檢查使用。
+Compose 讀取 shell 環境變數或本機未追蹤的 `.env`：`MONITOR_IMAGE`（預設 `monitor-go:local`）、`MONITOR_PORT`（5080）、`MONITOR_BIND_ADDRESS`（127.0.0.1）、`MONITOR_PUBLIC_URL`（空）、`MONITOR_SECURE_COOKIE`（false）、`MONITOR_COLLECT_HOST`（false）、`MONITOR_TRUSTED_PROXY`（空）及 `MONITOR_REQUIRE_ACTIVATION`（只兼容 `true`）、`MONITOR_CONSOLE_URL`（未設定時為 `https://feiniu.i7f.cn:5090`；空值或純空白值是無效設定）。後續 Compose 命令須保持相同設定，容器內部連接埠維持 5080 供健康檢查使用。
 
 遠端瀏覽器與 Agent 存取應在宿主機連接埠前部署可信的 HTTPS 反向代理，並設定不帶結尾斜線的實際外部來源：
 
@@ -131,17 +131,11 @@ docker compose exec -T monitor tar -C /data/backups/snapshot-001 -czf - . > back
 
 ## 首次啟用與使用情況回報
 
-首次安裝會顯示 Console 目的地及回報欄位，須明確勾選確認、線上登記成功後才建立本機管理員。既有執行個體保留原選擇；之後可關閉回報，Console 離線不影響登入、監控及告警。帳號綁定另行自願。離線或自建發行可使用 `MONITOR_REQUIRE_ACTIVATION=false` 或 `-require-activation=false`；僅清空 Console URL 不足以關閉啟用要求。
+首次安裝顯示 Console 目的地、欄位及持續回報規則，明確確認、線上登記成功後才建立本機管理員。之後回報持續啟用，沒有關閉開關。既有啟用的執行個體保留身分及歷史同意；舊版關閉的執行個體等待管理員確認，不中斷本機監控。Console 故障不阻斷登入、監控或告警，帳號綁定仍自願。舊的 activation=false 設定不再支援。
 
-`MONITOR_CONSOLE_URL` 未設定時，原生程式和 Compose 使用 `https://feiniu.i7f.cn:5090`。可將其設為其他 HTTPS 來源以覆寫目的地，或明確設定 `MONITOR_CONSOLE_URL=` 以取消目的地設定。原生程式的 `-console-url` 參數優先於環境變數；`-console-url=` 同樣會取消目的地設定。
+`MONITOR_CONSOLE_URL` 未設定時，原生程式及 Compose 使用 `https://feiniu.i7f.cn:5090`；可設為其他 HTTPS 來源以更換目的地，原生 `-console-url` 參數優先。空值或只有空白的目的地（包括環境變數提供的值）屬於無效設定，標準 CLI 會拒絕啟動，不能用於關閉回報或略過啟用。版本查詢與備份命令不依賴啟用設定。
 
-標準 CLI 與 Compose 的 `MONITOR_REQUIRE_ACTIVATION` / `-require-activation` 預設值為 `true`。自建發行版或離線環境可明確設定 `MONITOR_REQUIRE_ACTIVATION=false` 或傳入 `-require-activation=false`；此時在本機完成安裝，回報保持關閉，直到另行開啟。僅清空 Console URL 無法略過必要啟用：須正確設定目的地或明確關閉啟用要求。命令列參數優先於環境變數。
-
-明確選擇離線安裝的範例：
-
-```sh
-MONITOR_REQUIRE_ACTIVATION=false MONITOR_CONSOLE_URL= docker compose up -d --build
-```
+標準 CLI 與 Compose 必須啟用並回報。舊的 `-require-activation=false` 及 `MONITOR_REQUIRE_ACTIVATION=false` 設定會明確報錯，不再支援；`true` 保留相容。沒有受支援的離線安裝或關閉回報參數。應設定可達的 HTTPS Console 網址，空值或只有空白的目的地屬於無效啟動設定，不能用於關閉回報或略過啟用要求。Console URL 參數優先於對應環境變數；既有 activation=false 設定不能透過另加 true 參數變為有效。
 
 原生程式預設使用 `native`；Docker 映像和 Compose 自動設定為 `docker`。
 

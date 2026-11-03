@@ -23,7 +23,7 @@ Docker deployment guides: [English](en-US/DOCKER.md) · [简体中文](zh-CN/DOC
 | Need | Reference |
 |---|---|
 | Preview each interface language with synthetic demonstration data | [简体中文](zh-CN/SCREENSHOTS.md) · [English](en-US/SCREENSHOTS.md) · [日本語](ja-JP/SCREENSHOTS.md) · [한국어](ko-KR/SCREENSHOTS.md) · [繁體中文](zh-TW/SCREENSHOTS.md) |
-| Configure first-install activation, usage reporting and voluntary account linking | [简体中文](zh-CN/USAGE_REPORTING.md) · [English](en-US/USAGE_REPORTING.md) · [日本語](ja-JP/USAGE_REPORTING.md) · [한국어](ko-KR/USAGE_REPORTING.md) · [繁體中文](zh-TW/USAGE_REPORTING.md) |
+| Configure disclosed first-install activation, mandatory ongoing reporting and voluntary account linking | [简体中文](zh-CN/USAGE_REPORTING.md) · [English](en-US/USAGE_REPORTING.md) · [日本語](ja-JP/USAGE_REPORTING.md) · [한국어](ko-KR/USAGE_REPORTING.md) · [繁體中文](zh-TW/USAGE_REPORTING.md) |
 | Build, develop or submit a PR | [CONTRIBUTING.md](../CONTRIBUTING.md) |
 | Find help or report a bug | [SUPPORT.md](../SUPPORT.md) |
 | Report a vulnerability privately | [SECURITY.md](../SECURITY.md) |

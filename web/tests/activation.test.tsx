@@ -21,7 +21,7 @@ const activation: SetupActivation = {
   required: true,
   configured: true,
   consoleUrl: destination,
-  noticeVersion: "1",
+  noticeVersion: "2",
 };
 const user: User = {
   id: "1",
@@ -109,7 +109,9 @@ function fillDraft() {
 }
 function consent() {
   return screen.getByRole("checkbox", {
-    name: t("我已阅读上述说明，同意在线激活并启用使用情况上报。"),
+    name: t(
+      "我已阅读目的地、字段和规则，同意激活后持续上报，且程序内无法关闭。",
+    ),
   }) as HTMLInputElement;
 }
 function submit(fields: HTMLInputElement[]) {
@@ -149,7 +151,9 @@ it("discloses the destination and fields in every language, retains drafts and n
     ).toBeTruthy();
     expect(
       screen.getByText(
-        t("安装完成后可在系统设置中关闭后续上报，监控和告警仍独立运行。"),
+        t(
+          "激活后持续上报，程序内不提供关闭选项。管理后台不可用时会稍后重试，不影响本地登录、监控和告警。",
+        ),
       ),
     ).toBeTruthy();
     expect(consent().checked).toBe(false);
@@ -188,7 +192,7 @@ it("keeps affirmative consent through language changes and sends the exact displ
       body: {
         ...draft,
         usageConsent: true,
-        usageNoticeVersion: "1",
+        usageNoticeVersion: "2",
         usageConsoleUrl: destination,
       },
     },
@@ -202,13 +206,13 @@ it.each([
   {
     configured: false,
     consoleUrl: "",
-    noticeVersion: "1",
+    noticeVersion: "2",
     error: "Activation service is not configured" as const,
   },
   {
     configured: true,
     consoleUrl: destination,
-    noticeVersion: "2",
+    noticeVersion: "3",
     error: "Activation notice has changed; review it again" as const,
   },
 ])(
@@ -288,7 +292,7 @@ it.each([
     ).toEqual({
       ...draft,
       usageConsent: true,
-      usageNoticeVersion: "1",
+      usageNoticeVersion: "2",
       usageConsoleUrl: currentActivation.consoleUrl,
     });
   },

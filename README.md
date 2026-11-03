@@ -67,7 +67,7 @@ docker compose up -d --build
 docker compose exec monitor cat /data/setup-token
 ```
 
-首次安装会展示 Console 目的地和上报字段，需明确勾选确认、在线登记成功后才创建本地管理员。已有实例保留原选择；之后可关闭上报，Console 离线不影响登录、监控和告警。账号绑定另行自愿。离线或自建发行可使用 `MONITOR_REQUIRE_ACTIVATION=false` 或 `-require-activation=false`；仅清空 Console URL 不足以关闭激活要求。 [完整说明](docs/zh-CN/USAGE_REPORTING.md)。
+首次安装展示 Console 目的地、字段和持续上报规则，明确确认、在线登记成功后才创建本地管理员。之后上报持续开启，没有关闭开关。已有开启实例保留身份和历史同意；旧版关闭实例等待管理员确认，不中断本地监控。Console 故障不阻断登录、监控或告警，账号绑定仍自愿。旧的 activation=false 配置不再支持。 [完整说明](docs/zh-CN/USAGE_REPORTING.md)。
 
 打开[本地服务](http://127.0.0.1:5080/)，使用初始化令牌创建管理员。命名卷保存 SQLite、密钥和上传文件。若 5080 已被占用，可使用 `MONITOR_PORT=5081 docker compose up -d --build`。
 
@@ -127,8 +127,8 @@ npm --prefix web run format:check
 
 ## 首次激活与使用情况上报
 
-标准新安装要求先在线激活，再创建首个本地管理员。安装页明确展示目的地（预设为 `https://feiniu.i7f.cn:5090`）、统计用途与具体字段，需要手动勾选确认。实例登记成功后才创建管理员并启用上报；不会发送本地用户名、显示名称或密码。登记失败时不创建管理员，修复网络后可用同一实例身份重试。激活不要求 Console 账号、GitHub 登录，也不会自动绑定开发者账号。
+标准新安装须先在线激活，再创建首个本地管理员。安装页明确展示目的地（预设为 `https://feiniu.i7f.cn:5090`）、统计用途、具体字段，以及上报持续开启且没有关闭开关的规则，要求手动确认告知版本 `2`。登记成功后创建本地管理员并启用持续后台上报；不会向 Console 发送本地用户名、显示名称或密码。登记失败不创建管理员，恢复网络后以同一实例身份重试。激活不要求 Console 账号或 GitHub 登录，也不会自动绑定开发者账号。
 
-已初始化实例升级时不强制激活，也不静默开启上报；对同一接收方保留已有选择。不含此功能的旧实例仍保持关闭，具有 `system:settings` 权限的管理员可之后查看字段并自行开启。更换接收方需要重新同意。激活后仍可关闭上报，Console 离线不会阻断登录、监控或告警。
+已有开启上报的实例升级时保留身份、凭据、账号绑定和历史同意记录，不补造新的确认。旧版关闭上报的实例不会被静默开启；具有 `system:settings` 权限的管理员需要查看当前目的地、字段和不可关闭规则，进行一次确认，登记成功后才启用上报。登记或本地事务失败仍保持关闭。等待确认期间，本地登录、监控和告警继续运行。更换接收方会清除原本地上报身份，并要求确认新目的地后才向其发送。
 
-标准 CLI 与 Compose 的 `MONITOR_REQUIRE_ACTIVATION` / `-require-activation` 默认值为 `true`。自建发行版或离线环境可显式设置 `MONITOR_REQUIRE_ACTIVATION=false` 或传入 `-require-activation=false`；此时本地完成安装，上报保持关闭，直到另行开启。仅清空 Console URL 不能绕过必需激活：需正确配置目的地或明确关闭激活要求。命令行参数优先于环境变量。 [配置、字段及隐私边界](docs/zh-CN/USAGE_REPORTING.md)。
+标准 CLI 与 Compose 必须激活并上报。旧的 `-require-activation=false` 和 `MONITOR_REQUIRE_ACTIVATION=false` 配置会明确报错，不再支持；`true` 保留兼容。没有受支持的离线安装或关闭上报参数。应配置可达的 HTTPS Console 地址，空或纯空白目的地属于无效启动配置，不能用于关闭上报或绕过激活。Console URL 参数优先于对应环境变量；已有 activation=false 配置不能通过另加 true 参数变为有效。 [配置、字段及隐私边界](docs/zh-CN/USAGE_REPORTING.md)。

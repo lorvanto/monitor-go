@@ -16,7 +16,7 @@ docker compose up -d --build
 docker compose exec monitor cat /data/setup-token
 ```
 
-최초 설정에서 Console 목적지와 전송 항목을 표시하고 명시적 확인과 온라인 등록 성공 후 로컬 관리자를 만듭니다. 기존 설치의 선택은 유지되며 보고는 나중에 끌 수 있습니다. Console 장애는 로그인, 모니터링 및 알림을 차단하지 않습니다. 계정 연결은 별도 선택 사항입니다. 오프라인 또는 자체 배포 환경에는 `MONITOR_REQUIRE_ACTIVATION=false` 또는 `-require-activation=false`를 사용하세요. Console URL을 비우는 것만으로는 요구 사항이 해제되지 않습니다. [최초 활성화와 사용 현황 보고](USAGE_REPORTING.md)
+최초 설정에서 Console 목적지, 항목 및 지속 보고 규칙을 표시하고 명시적 확인과 온라인 등록 성공 후 로컬 관리자를 만듭니다. 이후 보고는 계속 켜지며 끄기 스위치가 없습니다. 이미 켜진 설치는 ID와 과거 동의를 유지하고 이전 버전에서 꺼진 설치는 관리자 확인을 기다립니다. 확인 대기나 Console 장애는 로컬 로그인, 모니터링 및 알림을 중단하지 않습니다. 계정 연결은 선택 사항입니다. 기존 activation=false 설정은 더 이상 지원하지 않습니다. [최초 활성화와 사용 현황 보고](USAGE_REPORTING.md)
 
 [로컬 서비스](http://127.0.0.1:5080/)를 열고 출력된 초기화 코드로 첫 관리자를 만드세요. 처음에는 영어로 표시되며 초기화 후 코드 파일을 삭제합니다. 기본 바인딩은 `127.0.0.1`뿐입니다. 5080을 사용 중이면 호스트 포트를 바꾸세요.
 
@@ -34,7 +34,7 @@ UID/GID는 `10001:10001`입니다. Compose는 읽기 전용 루트 파일 시스
 
 ## 설정 및 HTTPS
 
-Compose는 shell 환경 또는 추적하지 않는 `.env`에서 `MONITOR_IMAGE`(`monitor-go:local`), `MONITOR_PORT`(5080), `MONITOR_BIND_ADDRESS`(127.0.0.1), `MONITOR_PUBLIC_URL`(비어 있음), `MONITOR_SECURE_COOKIE`(false), `MONITOR_COLLECT_HOST`(false), `MONITOR_TRUSTED_PROXY`(비어 있음), `MONITOR_REQUIRE_ACTIVATION`(`true`), `MONITOR_CONSOLE_URL`(미설정 시 `https://feiniu.i7f.cn:5090`, 명시적 빈 값은 목적지 미설정)를 읽습니다. 이후 명령에도 같은 값을 유지하세요. 상태 검사를 위해 컨테이너 내부 포트는 5080을 유지합니다.
+Compose는 shell 환경 또는 추적하지 않는 `.env`에서 `MONITOR_IMAGE`(`monitor-go:local`), `MONITOR_PORT`(5080), `MONITOR_BIND_ADDRESS`(127.0.0.1), `MONITOR_PUBLIC_URL`(비어 있음), `MONITOR_SECURE_COOKIE`(false), `MONITOR_COLLECT_HOST`(false), `MONITOR_TRUSTED_PROXY`(비어 있음), `MONITOR_REQUIRE_ACTIVATION`(`true`), `MONITOR_CONSOLE_URL`(미설정 시 `https://feiniu.i7f.cn:5090`, 빈 값 또는 공백만 있는 값은 오류)를 읽습니다. 이후 명령에도 같은 값을 유지하세요. 상태 검사를 위해 컨테이너 내부 포트는 5080을 유지합니다.
 
 원격 브라우저 및 Agent 접근에는 호스트 포트 앞에 신뢰할 수 있는 HTTPS 프록시를 놓고 끝에 슬래시가 없는 외부 오리진을 지정하세요.
 
@@ -131,17 +131,11 @@ docker compose exec -T monitor tar -C /data/backups/snapshot-001 -czf - . > back
 
 ## 최초 활성화와 사용 현황 보고
 
-최초 설정에서 Console 목적지와 전송 항목을 표시하고 명시적 확인과 온라인 등록 성공 후 로컬 관리자를 만듭니다. 기존 설치의 선택은 유지되며 보고는 나중에 끌 수 있습니다. Console 장애는 로그인, 모니터링 및 알림을 차단하지 않습니다. 계정 연결은 별도 선택 사항입니다. 오프라인 또는 자체 배포 환경에는 `MONITOR_REQUIRE_ACTIVATION=false` 또는 `-require-activation=false`를 사용하세요. Console URL을 비우는 것만으로는 요구 사항이 해제되지 않습니다.
+최초 설정에서 Console 목적지, 항목 및 지속 보고 규칙을 표시하고 명시적 확인과 온라인 등록 성공 후 로컬 관리자를 만듭니다. 이후 보고는 계속 켜지며 끄기 스위치가 없습니다. 이미 켜진 설치는 ID와 과거 동의를 유지하고 이전 버전에서 꺼진 설치는 관리자 확인을 기다립니다. 확인 대기나 Console 장애는 로컬 로그인, 모니터링 및 알림을 중단하지 않습니다. 계정 연결은 선택 사항입니다. 기존 activation=false 설정은 더 이상 지원하지 않습니다.
 
-`MONITOR_CONSOLE_URL`을 설정하지 않으면 네이티브 실행 파일과 Compose는 `https://feiniu.i7f.cn:5090`을 사용합니다. 다른 HTTPS 오리진을 지정해 목적지를 바꾸거나, `MONITOR_CONSOLE_URL=`로 명시적으로 비워 목적지 설정을 해제할 수 있습니다. 네이티브 실행 파일의 `-console-url` 인수가 환경 변수보다 우선하며, `-console-url=`도 목적지 설정을 해제합니다.
+`MONITOR_CONSOLE_URL`을 설정하지 않으면 네이티브 실행 파일과 Compose는 `https://feiniu.i7f.cn:5090`을 사용합니다. 다른 HTTPS 오리진으로 목적지를 바꿀 수 있으며 네이티브 `-console-url` 인수가 우선합니다. 비어 있거나 공백만 있는 목적지는 환경 변수로 지정해도 잘못된 구성으로 간주되어 표준 CLI가 시작을 거부합니다. 보고를 끄거나 활성화를 우회할 수 없습니다. 버전 조회와 백업 명령은 활성화 구성이 필요하지 않습니다.
 
-표준 CLI와 Compose의 `MONITOR_REQUIRE_ACTIVATION` / `-require-activation` 기본값은 `true`입니다. 자체 배포판 또는 오프라인 환경에서는 `MONITOR_REQUIRE_ACTIVATION=false` 또는 `-require-activation=false`를 명시하세요. 그러면 로컬에서 설정을 완료하며 별도로 켜기 전까지 보고는 꺼진 상태입니다. Console URL을 비우는 것만으로 필수 활성화를 건너뛸 수 없습니다. 유효한 목적지를 설정하거나 요구 사항을 명시적으로 꺼야 합니다. 명령줄 인수가 환경 변수보다 우선합니다.
-
-오프라인 설치를 명시적으로 선택하는 예:
-
-```sh
-MONITOR_REQUIRE_ACTIVATION=false MONITOR_CONSOLE_URL= docker compose up -d --build
-```
+표준 CLI와 Compose는 활성화 및 보고가 필수입니다. 기존 `-require-activation=false`와 `MONITOR_REQUIRE_ACTIVATION=false` 설정은 구성 오류로 거부되며 더 이상 지원하지 않습니다. `true`는 호환성을 위해 허용합니다. 오프라인 설치 또는 보고 끄기 인수는 지원하지 않습니다. 접근 가능한 HTTPS Console 주소를 설정하세요. 비어 있거나 공백만 있는 목적지는 시작 시 구성 오류로 거부되며 활성화를 건너뛸 수 없습니다. Console URL 인수는 해당 환경 변수보다 우선합니다. activation=false 설정은 true 인수를 추가해도 유효해지지 않습니다.
 
 네이티브 실행 파일의 기본값은 `native`이며 Docker 이미지와 Compose는 자동으로 `docker`를 설정합니다.
 

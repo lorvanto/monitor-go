@@ -49,7 +49,7 @@ export default function AuthView() {
     (!viewState.noticeStale &&
       activation.configured &&
       !!activation.consoleUrl &&
-      activation.noticeVersion === "1");
+      activation.noticeVersion === "2");
   async function refreshActivation() {
     if (store.getState().busy) return;
     store.setState({ busy: true, consentFor: "", error: "" });
@@ -75,7 +75,7 @@ export default function AuthView() {
     }
     if (
       activation &&
-      (viewState.noticeStale || activation.noticeVersion !== "1")
+      (viewState.noticeStale || activation.noticeVersion !== "2")
     ) {
       store.setState({
         error: notice("Activation notice has changed; review it again"),
@@ -206,15 +206,15 @@ export default function AuthView() {
                 <p>{t("统计按安装实例计算，不能识别每位使用者。")}</p>
                 <p>
                   {t(
-                    "安装完成后可在系统设置中关闭后续上报，监控和告警仍独立运行。",
+                    "激活后持续上报，程序内不提供关闭选项。管理后台不可用时会稍后重试，不影响本地登录、监控和告警。",
                   )}
                 </p>
                 {!activation.configured ||
                 !activation.consoleUrl ||
-                activation.noticeVersion !== "1" ? (
+                activation.noticeVersion !== "2" ? (
                   <p className="form-error" role="alert">
                     {t(
-                      activation.noticeVersion !== "1"
+                      activation.noticeVersion !== "2"
                         ? "Activation notice has changed; review it again"
                         : "Activation service is not configured",
                     )}
@@ -235,7 +235,9 @@ export default function AuthView() {
                     }
                   />
                   <span>
-                    {t("我已阅读上述说明，同意在线激活并启用使用情况上报。")}
+                    {t(
+                      "我已阅读目的地、字段和规则，同意激活后持续上报，且程序内无法关闭。",
+                    )}
                   </span>
                 </label>
                 <button

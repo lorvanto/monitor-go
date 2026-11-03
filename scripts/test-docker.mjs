@@ -26,22 +26,34 @@ const env = {
   MONITOR_SECURE_COOKIE: "false",
   MONITOR_COLLECT_HOST: "false",
   MONITOR_TRUSTED_PROXY: "",
-  MONITOR_CONSOLE_URL: "",
+  MONITOR_CONSOLE_URL: "http://127.0.0.1:5099",
   MONITOR_REQUIRE_ACTIVATION: "true",
 };
 const platform = process.env.MONITOR_PLATFORM;
 if (platform) assert.match(platform, /^linux\/(amd64|arm64)$/);
-const overrideDirectory = platform
-  ? fs.mkdtempSync(path.join(os.tmpdir(), "monitor-go-docker-"))
-  : null;
-const override = overrideDirectory
-  ? path.join(overrideDirectory, "compose.platform.json")
-  : null;
-if (override)
-  fs.writeFileSync(
-    override,
-    JSON.stringify({ services: { monitor: { platform } } }),
-  );
+const overrideDirectory = fs.mkdtempSync(
+  path.join(os.tmpdir(), "monitor-go-docker-"),
+);
+const fixtureBinary = path.join(overrideDirectory, "usage-console");
+const override = path.join(overrideDirectory, "compose.test.json");
+fs.writeFileSync(
+  override,
+  JSON.stringify({
+    services: {
+      monitor: {
+        ...(platform ? { platform } : {}),
+        volumes: [
+          {
+            type: "bind",
+            source: fixtureBinary,
+            target: "/opt/monitor-smoke-console",
+            read_only: true,
+          },
+        ],
+      },
+    },
+  }),
+);
 const args = (name, command) => [
   "compose",
   "-p",
@@ -94,12 +106,14 @@ async function request(endpoint, { method = "GET", body } = {}) {
   return data;
 }
 const content = Buffer.from("Monitor Go Docker persistence verification\n");
-let fileID;
+let fileID, instanceID;
 async function verifyPersistence() {
   const usage = await request("/usage");
-  assert.equal(usage.enabled, false);
-  assert.equal(usage.configured, false);
-  assert.equal(usage.instanceId, "");
+  assert.equal(usage.enabled, true);
+  assert.equal(usage.required, true);
+  assert.equal(usage.confirmationRequired, false);
+  assert.equal(usage.configured, true);
+  assert.equal(usage.instanceId, instanceID);
   assert.deepEqual(usage.pendingActiveDays, []);
   assert.equal((await request("/me")).name, "Docker smoke test");
   const response = await fetch(`${base}/api/v1/files/${fileID}/download`, {
@@ -110,6 +124,30 @@ async function verifyPersistence() {
   assert.deepEqual(Buffer.from(await response.arrayBuffer()), content);
 }
 try {
+  // The fixture binds only the container's own loopback. No production Console
+  // receives test data; the application keeps all normal TLS and network rules.
+  const architecture =
+    platform?.split("/")[1] ||
+    { aarch64: "arm64", arm64: "arm64", x86_64: "amd64", amd64: "amd64" }[
+      execFileSync("docker", ["info", "--format", "{{.Architecture}}"], {
+        encoding: "utf8",
+      }).trim()
+    ];
+  assert.ok(architecture, "unsupported Docker architecture");
+  execFileSync(
+    "go",
+    ["build", "-o", fixtureBinary, "./scripts/testfixtures/usage-console"],
+    {
+      cwd: root,
+      env: {
+        ...process.env,
+        GOOS: "linux",
+        GOARCH: architecture,
+        CGO_ENABLED: "0",
+      },
+      stdio: "inherit",
+    },
+  );
   console.log(
     `Building and testing Docker on ${base} using disposable volumes.`,
   );
@@ -139,9 +177,9 @@ try {
   const activationStatus = await request("/status");
   assert.deepEqual(activationStatus.activation, {
     required: true,
-    configured: false,
-    consoleUrl: "",
-    noticeVersion: "1",
+    configured: true,
+    consoleUrl: env.MONITOR_CONSOLE_URL,
+    noticeVersion: "2",
   });
   const setupBody = {
     token,
@@ -151,7 +189,7 @@ try {
   };
   for (const [consent, expectedStatus, message] of [
     [false, 422, "Activation consent is required"],
-    [true, 503, "Activation service is not configured"],
+    [true, 502, "Activation service is unavailable; try again"],
   ]) {
     const blocked = await fetch(`${base}/api/v1/setup`, {
       method: "POST",
@@ -163,8 +201,8 @@ try {
       body: JSON.stringify({
         ...setupBody,
         usageConsent: consent,
-        usageNoticeVersion: "1",
-        usageConsoleUrl: "",
+        usageNoticeVersion: "2",
+        usageConsoleUrl: env.MONITOR_CONSOLE_URL,
       }),
       signal: AbortSignal.timeout(10000),
     });
@@ -172,9 +210,9 @@ try {
     assert.equal((await blocked.json()).error.key, message);
     assert.equal((await request("/status")).initialized, false);
   }
-  // Explicit offline policy for isolated persistence tests; default setup above
-  // must never silently bypass a required but unconfigured activation service.
-  env.MONITOR_REQUIRE_ACTIVATION = "false";
+  // Supply a local Console fixture for mandatory activation. It is not started
+  // after recreation/restore, proving subsequent operation survives an outage.
+  env.MONITOR_CONSOLE_URL = "http://127.0.0.1:5099";
   await run([
     "up",
     "-d",
@@ -184,15 +222,24 @@ try {
     "--wait-timeout",
     "120",
   ]);
-  assert.equal((await request("/status")).activation.required, false);
+  compose(["exec", "-d", "monitor", "/opt/monitor-smoke-console"]);
+  compose([
+    "exec",
+    "-T",
+    "monitor",
+    "sh",
+    "-c",
+    "for i in 1 2 3 4 5; do wget -q -O /dev/null http://127.0.0.1:5099/health && exit 0; sleep 1; done; exit 1",
+  ]);
+  assert.equal((await request("/status")).activation.required, true);
   csrf = (
     await request("/setup", {
       method: "POST",
       body: {
-        token,
-        username: "docker_smoke",
-        name: "Docker smoke test",
-        password: `Smoke-${randomUUID()}`,
+        ...setupBody,
+        usageConsent: true,
+        usageNoticeVersion: "2",
+        usageConsoleUrl: env.MONITOR_CONSOLE_URL,
       },
     })
   ).csrf;
@@ -201,10 +248,28 @@ try {
   assert.equal(system.database, "SQLite");
   assert.equal(system.schema, 10);
   const usage = await request("/usage");
-  assert.equal(usage.enabled, false);
-  assert.equal(usage.configured, false);
-  assert.equal(usage.instanceId, "");
-  assert.deepEqual(usage.pendingActiveDays, []);
+  assert.equal(usage.enabled, true);
+  assert.equal(usage.required, true);
+  assert.equal(usage.confirmationRequired, false);
+  assert.equal(usage.noticeVersion, "2");
+  assert.match(usage.instanceId, /^[0-9a-f]{32}$/);
+  instanceID = usage.instanceId;
+  const disable = await fetch(`${base}/api/v1/usage`, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+      Origin: base,
+      Cookie: cookie,
+      "X-CSRF-Token": csrf,
+    },
+    body: JSON.stringify({ enabled: false }),
+  });
+  assert.equal(disable.status, 403);
+  assert.equal(
+    (await disable.json()).error.key,
+    "Usage reporting is required and cannot be disabled",
+  );
+  assert.equal((await request("/usage")).enabled, true);
   assert.equal(usage.preview.deployment, "docker");
   assert.equal(system.version, env.MONITOR_VERSION);
   if (platform) assert.equal(system.platform, platform.replace("/", " / "));
@@ -340,7 +405,7 @@ try {
     keyHash,
   );
   console.log(
-    `Docker verified on port ${port}: non-root, read-only root, health, English setup, disabled usage reporting, SQLite/session/upload persistence, recreation, cold backup/restore, and online backup/restore.`,
+    `Docker verified on port ${port}: non-root, read-only root, health, English setup, mandatory disclosed activation, rejected opt-out, SQLite/session/upload persistence, recreation, cold backup/restore, and online backup/restore.`,
   );
 } finally {
   for (const name of [restoredProject, project]) {
