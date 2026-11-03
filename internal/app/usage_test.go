@@ -417,7 +417,7 @@ func TestUsageConfigurationAndMigration(t *testing.T) {
 	migrated.DB.QueryRow("SELECT max(version) FROM schema_migrations").Scan(&version)
 	migrated.DB.QueryRow("SELECT enabled FROM usage_settings WHERE id=1").Scan(&enabled)
 	migrated.DB.QueryRow("SELECT count(*) FROM usage_activity").Scan(&count)
-	if version != 9 || enabled != 0 || count != 0 {
+	if version != currentSchemaVersion || enabled != 0 || count != 0 {
 		t.Fatal("migration enabled collection")
 	}
 	migrated.Close()

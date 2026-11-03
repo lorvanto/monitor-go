@@ -16,6 +16,8 @@ docker compose up -d --build
 docker compose exec monitor cat /data/setup-token
 ```
 
+首次安裝會顯示 Console 目的地及回報欄位，須明確勾選確認、線上登記成功後才建立本機管理員。既有執行個體保留原選擇；之後可關閉回報，Console 離線不影響登入、監控及告警。帳號綁定另行自願。離線或自建發行可使用 `MONITOR_REQUIRE_ACTIVATION=false` 或 `-require-activation=false`；僅清空 Console URL 不足以關閉啟用要求。 [首次啟用與使用情況回報](USAGE_REPORTING.md)
+
 開啟 [本機服務](http://127.0.0.1:5080/)，使用讀取到的初始化碼建立首個管理員。首次介面預設英文，初始化後刪除碼檔案。Compose 預設只綁定 `127.0.0.1`。若 5080 已被佔用，可改用其他宿主機連接埠：
 
 ```sh
@@ -32,7 +34,7 @@ MONITOR_PORT=5081 docker compose up -d --build
 
 ## 設定與 HTTPS
 
-Compose 讀取 shell 環境變數或本機未追蹤的 `.env`：`MONITOR_IMAGE`（預設 `monitor-go:local`）、`MONITOR_PORT`（5080）、`MONITOR_BIND_ADDRESS`（127.0.0.1）、`MONITOR_PUBLIC_URL`（空）、`MONITOR_SECURE_COOKIE`（false）、`MONITOR_COLLECT_HOST`（false）、`MONITOR_TRUSTED_PROXY`（空）及 `MONITOR_CONSOLE_URL`（未設定時為 `https://feiniu.i7f.cn:5090`；明確留空則不設定目的地）。後續 Compose 命令須保持相同設定，容器內部連接埠維持 5080 供健康檢查使用。
+Compose 讀取 shell 環境變數或本機未追蹤的 `.env`：`MONITOR_IMAGE`（預設 `monitor-go:local`）、`MONITOR_PORT`（5080）、`MONITOR_BIND_ADDRESS`（127.0.0.1）、`MONITOR_PUBLIC_URL`（空）、`MONITOR_SECURE_COOKIE`（false）、`MONITOR_COLLECT_HOST`（false）、`MONITOR_TRUSTED_PROXY`（空）及 `MONITOR_REQUIRE_ACTIVATION`（`true`）, `MONITOR_CONSOLE_URL`（未設定時為 `https://feiniu.i7f.cn:5090`；明確留空則不設定目的地）。後續 Compose 命令須保持相同設定，容器內部連接埠維持 5080 供健康檢查使用。
 
 遠端瀏覽器與 Agent 存取應在宿主機連接埠前部署可信的 HTTPS 反向代理，並設定不帶結尾斜線的實際外部來源：
 
@@ -127,16 +129,22 @@ docker compose exec -T monitor tar -C /data/backups/snapshot-001 -czf - . > back
 
 還原前先停服，以完整備份取代整個資料目錄，再使用支援該結構版本或更高版本的程式啟動。驗證成功前保留舊目錄。僅支援離線還原，不要將檔案合併至運行中的執行個體。備份包含憑據，應私密保存並複製到獨立儲存；原有冷備份仍可使用。
 
-## 自願使用情況回報
+## 首次啟用與使用情況回報
+
+首次安裝會顯示 Console 目的地及回報欄位，須明確勾選確認、線上登記成功後才建立本機管理員。既有執行個體保留原選擇；之後可關閉回報，Console 離線不影響登入、監控及告警。帳號綁定另行自願。離線或自建發行可使用 `MONITOR_REQUIRE_ACTIVATION=false` 或 `-require-activation=false`；僅清空 Console URL 不足以關閉啟用要求。
 
 `MONITOR_CONSOLE_URL` 未設定時，原生程式和 Compose 使用 `https://feiniu.i7f.cn:5090`。可將其設為其他 HTTPS 來源以覆寫目的地，或明確設定 `MONITOR_CONSOLE_URL=` 以取消目的地設定。原生程式的 `-console-url` 參數優先於環境變數；`-console-url=` 同樣會取消目的地設定。
 
+標準 CLI 與 Compose 的 `MONITOR_REQUIRE_ACTIVATION` / `-require-activation` 預設值為 `true`。自建發行版或離線環境可明確設定 `MONITOR_REQUIRE_ACTIVATION=false` 或傳入 `-require-activation=false`；此時在本機完成安裝，回報保持關閉，直到另行開啟。僅清空 Console URL 無法略過必要啟用：須正確設定目的地或明確關閉啟用要求。命令列參數優先於環境變數。
+
+明確選擇離線安裝的範例：
+
+```sh
+MONITOR_REQUIRE_ACTIVATION=false MONITOR_CONSOLE_URL= docker compose up -d --build
+```
+
 原生程式預設使用 `native`；Docker 映像和 Compose 自動設定為 `docker`。
-
-新安裝以及從不含此功能的版本升級時，回報預設關閉。後台網址已預設為 `https://feiniu.i7f.cn:5090`；具有 `system:settings` 權限的管理員可在系統設定中查看目的地與欄位，再明確開啟。預設網址不會自動啟用回報。重新啟動和升級保留對同一接收方儲存的選擇；更換接收方需要重新同意。
-
-執行個體登記及活躍統計不需綁定帳號。Console 支援本機管理員使用者名稱與密碼登入，GitHub 登入為選用功能；安裝 Monitor Go 不需設定 OAuth。
 
 僅支援 HTTPS；數字迴環位址的 HTTP 僅供本機整合測試。容器中的迴環位址指向容器本身，分開部署的容器應連線真實 HTTPS 網址。不要將憑據、資料目錄或備份提交 Git；反向代理記錄應避免儲存 OAuth 查詢參數、完整來源 IP 及憑據。
 
-[自願使用情況回報](USAGE_REPORTING.md)
+[首次啟用與使用情況回報](USAGE_REPORTING.md)

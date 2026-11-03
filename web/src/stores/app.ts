@@ -19,6 +19,8 @@ import type {
   Page,
   PermissionGroup,
   Role,
+  SetupActivation,
+  SetupStatus,
   User,
 } from "../lib/types";
 export {
@@ -65,6 +67,7 @@ interface AppState {
   user: User | null;
   usageEnabled: boolean;
   initialized: boolean;
+  activation: SetupActivation | null;
   booting: boolean;
   connectionError: DisplayMessage;
   updatedAt: number;
@@ -94,6 +97,7 @@ export const appStore = create<AppState>(() => ({
   user: null,
   usageEnabled: false,
   initialized: true,
+  activation: null,
   booting: true,
   connectionError: "",
   updatedAt: 0,
@@ -466,8 +470,13 @@ export async function boot() {
   sessionVersion++;
   appStore.setState({ booting: true });
   try {
-    const status = await api<{ initialized: boolean }>("/status");
-    appStore.setState({ initialized: status.initialized, connectionError: "" });
+    const status = await api<SetupStatus>("/status");
+    if (attempt !== authAttempt) return;
+    appStore.setState({
+      initialized: status.initialized,
+      activation: status.initialized ? null : status.activation || null,
+      connectionError: "",
+    });
     if (status.initialized) {
       try {
         const user = await api<User>("/me");
@@ -491,7 +500,7 @@ export async function signIn(input: unknown, setup = false) {
   await api(setup ? "/setup" : "/auth/login", "POST", input);
   const user = await api<User>("/me");
   if (attempt !== authAttempt) return;
-  appStore.setState({ initialized: true, user });
+  appStore.setState({ initialized: true, activation: null, user });
   navigate("overview");
   await refreshAll();
 }

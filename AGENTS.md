@@ -23,6 +23,12 @@ Read the [Chinese documentation index](docs/zh-CN/INDEX.md) first. Documentation
 - Preserve Go, frontend and database lockfiles. Record each selected dependency's version and purpose.
 - Keep Simplified Chinese documentation in `docs/zh-CN/` and Traditional Chinese documentation in `docs/zh-TW/`. Use English directory and file names, and update the indexes when adding documentation.
 
+## Activation and reporting boundaries
+
+- Standard first setup requires disclosed online activation before creating the local administrator: show the exact destination, purpose and fields, require an explicit confirmation, and register with a separate random installation identity. Support the explicit `-require-activation=false` / `MONITOR_REQUIRE_ACTIVATION=false` override for offline or custom distributions. An empty destination alone must not bypass required activation.
+- Do not silently enable reporting on existing installations. Preserve the choice for the same destination, allow reporting to be stopped after activation, and never make subsequent login, monitoring or alerts depend on Console availability. Do not add hidden tracking, remote shutdown or remote execution.
+- Do not transmit local usernames/passwords, monitored resources, files or monitoring/application keys. Console account binding remains separate and voluntary; never automatically bind installations to a developer account or describe installation counts as individual users.
+
 ## Verification requirements
 
 - After Go implementation changes, check formatting and run `go test ./...`. Run builds, race checks or integration tests as appropriate for the change.

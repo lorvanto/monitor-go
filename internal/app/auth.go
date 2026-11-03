@@ -78,10 +78,13 @@ func (s *Server) setup(w http.ResponseWriter, r *http.Request, u *User) (any, er
 		return nil, &apiError{429, "请求过于频繁，请 5 分钟后再试"}
 	}
 	var in struct {
-		Token    string `json:"token"`
-		Username string `json:"username"`
-		Name     string `json:"name"`
-		Password string `json:"password"`
+		Token              string `json:"token"`
+		Username           string `json:"username"`
+		Name               string `json:"name"`
+		Password           string `json:"password"`
+		UsageConsent       bool   `json:"usageConsent"`
+		UsageNoticeVersion string `json:"usageNoticeVersion"`
+		UsageConsoleURL    string `json:"usageConsoleUrl"`
 	}
 	if e := decode(r, &in); e != nil {
 		return nil, e
@@ -93,9 +96,36 @@ func (s *Server) setup(w http.ResponseWriter, r *http.Request, u *User) (any, er
 	if !usernamePattern.MatchString(in.Username) || !validPassword(in.Password) || len(strings.TrimSpace(in.Name)) < 1 || len(in.Name) > 80 {
 		return nil, bad("用户名需要 3–40 位英文数字，密码需要 12–72 字节，姓名不能为空")
 	}
+	// Only first-install setup is serialized. No login, monitoring or reporting
+	// operation waits on this gate, and waiting requests can be cancelled.
+	select {
+	case s.setupGate <- struct{}{}:
+		defer func() { <-s.setupGate }()
+	case <-r.Context().Done():
+		return nil, r.Context().Err()
+	}
+	var users int
+	if e := s.Store.reader().QueryRowContext(r.Context(), "SELECT count(*) FROM users").Scan(&users); e != nil {
+		return nil, e
+	}
+	if users > 0 {
+		return nil, &apiError{409, "系统已完成初始化"}
+	}
+	if s.cfg.RequireActivation {
+		if e := s.validateActivationConsent(in.UsageConsent, in.UsageNoticeVersion, in.UsageConsoleURL); e != nil {
+			return nil, e
+		}
+	}
 	hash, e := bcrypt.GenerateFromPassword([]byte(in.Password), 12)
 	if e != nil {
 		return nil, e
+	}
+	var activation *setupActivation
+	if s.cfg.RequireActivation {
+		activation, e = s.activateInstallation(r.Context())
+		if e != nil {
+			return nil, e
+		}
 	}
 	var id int64
 	e = s.Store.write(r.Context(), func(tx *sql.Tx) error {
@@ -114,10 +144,18 @@ func (s *Server) setup(w http.ResponseWriter, r *http.Request, u *User) (any, er
 		if _, e = tx.Exec("INSERT INTO user_roles VALUES(?,1)", id); e != nil {
 			return e
 		}
+		if activation != nil {
+			if e = activation.commit(r.Context(), tx); e != nil {
+				return e
+			}
+		}
 		return auditRequest(tx, r, in.Name, "创建首个管理员", in.Username)
 	})
 	if e != nil {
 		return nil, e
+	}
+	if activation != nil {
+		s.usage.resume()
 	}
 	os.Remove(filepath.Join(s.Store.Dir, "setup-token"))
 	return s.session(w, id)

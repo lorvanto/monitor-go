@@ -2107,6 +2107,58 @@
     font-size: 12px;
     text-align: center;
   }
+  .auth-card-activation {
+    width: min(520px, 100%);
+    min-width: 0;
+  }
+  .activation-notice {
+    display: grid;
+    gap: 10px;
+    min-width: 0;
+    padding: 16px;
+    border: 1px solid var(--rule);
+    border-radius: 8px;
+    background: var(--surface-2);
+    font-size: 13px;
+    line-height: 1.6;
+    overflow-wrap: anywhere;
+  }
+  .activation-notice h2 {
+    font-size: 15px;
+  }
+  .activation-notice p,
+  .activation-notice dl,
+  .activation-notice dd {
+    margin: 0;
+  }
+  .activation-notice dt {
+    color: var(--ink-3);
+  }
+  .activation-notice code {
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+  .activation-consent {
+    align-items: flex-start;
+    min-height: 44px;
+    padding-block: 8px;
+  }
+  .activation-consent input {
+    flex: 0 0 auto;
+    margin-top: 3px;
+  }
+  .activation-notice > .link {
+    min-height: 44px;
+    justify-self: start;
+    white-space: normal;
+    text-align: start;
+  }
+  .auth-card-activation .auth-panel .btn.primary {
+    height: auto;
+    min-height: 44px;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
 
   /* 总览 */
   .state {

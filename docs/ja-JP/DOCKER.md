@@ -16,6 +16,8 @@ docker compose up -d --build
 docker compose exec monitor cat /data/setup-token
 ```
 
+初期設定で Console の送信先と項目を表示し、明示的な確認とオンライン登録の成功後にローカル管理者を作成します。既存インストールの選択は維持され、送信は後から無効にできます。Console の停止はログイン、監視、アラートを妨げません。アカウント連携は別途任意です。独自配布やオフライン環境には `MONITOR_REQUIRE_ACTIVATION=false` または `-require-activation=false` を指定してください。Console URL を空にするだけでは要件は解除されません。 [初回アクティベーションと利用状況の送信](USAGE_REPORTING.md)
+
 [ローカルサービス](http://127.0.0.1:5080/)を開き、取得した初期化コードで最初の管理者を作成します。初回表示は英語で、初期化後にコードファイルを削除します。既定の公開先は`127.0.0.1`のみです。5080が使用中の場合はホストポートを変更します。
 
 ```sh
@@ -32,7 +34,7 @@ UID/GIDは`10001:10001`です。Composeではルートファイルシステム�
 
 ## 設定とHTTPS
 
-Composeはshell環境または追跡しない`.env`から`MONITOR_IMAGE`（`monitor-go:local`）、`MONITOR_PORT`（5080）、`MONITOR_BIND_ADDRESS`（127.0.0.1）、`MONITOR_PUBLIC_URL`（空）、`MONITOR_SECURE_COOKIE`（false）、`MONITOR_COLLECT_HOST`（false）、`MONITOR_TRUSTED_PROXY`（空）、`MONITOR_CONSOLE_URL`（未設定時は `https://feiniu.i7f.cn:5090`、明示的な空値では送信先なし）を読みます。以降のコマンドでも同じ設定を使います。ヘルスチェック用の内部ポートは5080を保持します。
+Composeはshell環境または追跡しない`.env`から`MONITOR_IMAGE`（`monitor-go:local`）、`MONITOR_PORT`（5080）、`MONITOR_BIND_ADDRESS`（127.0.0.1）、`MONITOR_PUBLIC_URL`（空）、`MONITOR_SECURE_COOKIE`（false）、`MONITOR_COLLECT_HOST`（false）、`MONITOR_TRUSTED_PROXY`（空）、`MONITOR_REQUIRE_ACTIVATION`（`true`）, `MONITOR_CONSOLE_URL`（未設定時は `https://feiniu.i7f.cn:5090`、明示的な空値では送信先なし）を読みます。以降のコマンドでも同じ設定を使います。ヘルスチェック用の内部ポートは5080を保持します。
 
 リモートのブラウザー／Agentには、ホストポートの前に信頼されたHTTPSプロキシを置き、末尾スラッシュなしの外部オリジンを設定します。
 
@@ -127,16 +129,22 @@ docker compose exec -T monitor tar -C /data/backups/snapshot-001 -czf - . > back
 
 復元時はサービスを停止し、データディレクトリ全体を完全なバックアップに置き換え、そのスキーマ以上に対応するバイナリで起動します。検証完了まで旧ディレクトリを保持してください。復元はオフラインのみで、稼働中のデータに混在させません。認証情報を含むため非公開で保管し、独立したストレージにコピーします。コールドバックアップも引き続き利用できます。
 
-## 任意の利用状況送信
+## 初回アクティベーションと利用状況の送信
+
+初期設定で Console の送信先と項目を表示し、明示的な確認とオンライン登録の成功後にローカル管理者を作成します。既存インストールの選択は維持され、送信は後から無効にできます。Console の停止はログイン、監視、アラートを妨げません。アカウント連携は別途任意です。独自配布やオフライン環境には `MONITOR_REQUIRE_ACTIVATION=false` または `-require-activation=false` を指定してください。Console URL を空にするだけでは要件は解除されません。
 
 `MONITOR_CONSOLE_URL` が未設定の場合、ネイティブ版と Compose は `https://feiniu.i7f.cn:5090` を使用します。別の HTTPS オリジンを指定して送信先を変更するか、`MONITOR_CONSOLE_URL=` と明示的に空にして送信先を未設定にできます。ネイティブ版の `-console-url` 引数は環境変数より優先され、`-console-url=` でも送信先を未設定にできます。
 
+標準 CLI と Compose の `MONITOR_REQUIRE_ACTIVATION` / `-require-activation` の既定値は `true` です。独自配布やオフライン環境では `MONITOR_REQUIRE_ACTIVATION=false` または `-require-activation=false` を明示してください。その場合はローカルで初期設定し、別途有効にするまで送信しません。Console URL を空にするだけでは必須のアクティベーションを回避できません。有効な送信先を設定するか、要件を明示的に無効にしてください。コマンドライン引数は環境変数より優先されます。
+
+明示的にオフライン導入を選ぶ例：
+
+```sh
+MONITOR_REQUIRE_ACTIVATION=false MONITOR_CONSOLE_URL= docker compose up -d --build
+```
+
 ネイティブ版の既定値は `native` です。Docker イメージと Compose は自動的に `docker` を設定します。
-
-新規インストールと、この機能のない旧バージョンからの更新では送信は既定で無効です。送信先には `https://feiniu.i7f.cn:5090` が設定されています。`system:settings` 権限の管理者がシステム設定で送信先と項目を確認し、明示的に有効にします。URL の既定値だけで送信が有効になることはありません。再起動や更新では同じ送信先への選択を維持し、送信先の変更には再同意が必要です。
-
-インストールの登録と活動統計にアカウント連携は不要です。Console はローカル管理者のユーザー名とパスワードでログインでき、GitHub ログインは任意です。Monitor Go の導入に OAuth 設定は不要です。
 
 HTTPS が必要です。数値ループバックの HTTP はローカル統合テスト専用です。コンテナー内のループバックは自身を指すため、別コンテナーには実際の HTTPS URL を使用します。認証情報、データやバックアップを Git に保存しないでください。プロキシログには OAuth のクエリ、完全な送信元 IP や認証情報を残さないでください。
 
-[任意の利用状況送信](USAGE_REPORTING.md)
+[初回アクティベーションと利用状況の送信](USAGE_REPORTING.md)

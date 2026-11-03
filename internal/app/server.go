@@ -31,6 +31,7 @@ type Config struct {
 	SecureCookie                             bool
 	Assets                                   fs.FS
 	Collect                                  bool
+	RequireActivation                        bool
 }
 type Server struct {
 	static         http.Handler
@@ -38,6 +39,7 @@ type Server struct {
 	Store          *Store
 	cfg            Config
 	setupToken     string
+	setupGate      chan struct{}
 	limitMu        sync.Mutex
 	attempts       map[string]attempt
 	trustedProxies []netip.Prefix
@@ -87,7 +89,7 @@ func New(cfg Config) (*Server, error) {
 	if e != nil {
 		return nil, e
 	}
-	s := &Server{static: static, Store: st, cfg: cfg, trustedProxies: proxies, attempts: map[string]attempt{}, uploadSlots: make(chan struct{}, 2), codeSlots: make(chan struct{}, 2)}
+	s := &Server{static: static, Store: st, cfg: cfg, trustedProxies: proxies, attempts: map[string]attempt{}, uploadSlots: make(chan struct{}, 2), codeSlots: make(chan struct{}, 2), setupGate: make(chan struct{}, 1)}
 	var count int
 	e = st.DB.QueryRow("SELECT count(*) FROM users").Scan(&count)
 	if e != nil {
@@ -356,7 +358,7 @@ func (s *Server) Wait() { s.work.Wait() }
 func (s *Server) status(w http.ResponseWriter, r *http.Request, u *User) (any, error) {
 	var n int
 	e := s.Store.DB.QueryRowContext(r.Context(), "SELECT count(*) FROM users").Scan(&n)
-	return map[string]any{"initialized": n > 0, "version": buildinfo.Version, "storage": "SQLite"}, e
+	return map[string]any{"initialized": n > 0, "version": buildinfo.Version, "storage": "SQLite", "activation": activationStatus{Required: n == 0 && s.cfg.RequireActivation, Configured: s.usage.origin != "", ConsoleURL: s.usage.origin, NoticeVersion: activationNoticeVersion}}, e
 }
 func actor(u *User) string {
 	if u == nil {

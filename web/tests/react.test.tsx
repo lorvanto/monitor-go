@@ -1551,8 +1551,17 @@ it.each([
         description: "读取全部检测目标和最近状态，不包含访问凭据",
       },
     ];
-    render(<Page />);
-    await act(async () => {});
+    // FilesView schedules an initial debounced search. Settle it before the
+    // request baseline so slower locale renders cannot be mistaken for reloads.
+    if (Page === FilesView) vi.useFakeTimers();
+    try {
+      render(<Page />);
+      await act(async () => {});
+      if (Page === FilesView)
+        await act(async () => vi.runOnlyPendingTimersAsync());
+    } finally {
+      if (Page === FilesView) vi.useRealTimers();
+    }
     if (key === "新增样式")
       fireEvent.click(screen.getByRole("button", { name: /Image styles/ }));
     fireEvent.click(screen.getAllByRole("button", { name: t(key) })[0]);

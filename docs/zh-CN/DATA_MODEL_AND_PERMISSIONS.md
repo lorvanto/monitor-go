@@ -4,9 +4,9 @@
 
 本方案基于内置 SQLite 文件数据库，面向一套安装内的多人协作。业务资源共享，用户和角色控制操作范围。表名、字段和表拆分属于建议，实施迁移前进一步确定类型与索引。
 
-## 当前结构版本 8 实现
+## 当前结构版本 10 实现
 
-实际迁移源见 `internal/app/schema.sql`、`migration2.sql`、`migration3.sql`、`migration4.sql`、`migration5.sql`、`migration6.sql`、`migration7.sql` 和 `migration8.sql`。结构版本 6 的 `system_settings` 增加 `host_cpu_percent`、`host_memory_percent`、`host_disk_percent`（0–100，0 关闭）及 `host_alert_minutes`（1–60），由本机和远程主机共用。结构版本 7 新增 HTTP 关键字、反向匹配和耗时警告规则；结构版本 8 新增检测小时汇总、原始行消费标记及指标保留期。以下表为已实现，其余完整产品表设计仍是规划。
+实际迁移源见 `internal/app/schema.sql`、`migration2.sql`、`migration3.sql`、`migration4.sql`、`migration5.sql`、`migration6.sql`、`migration7.sql`、`migration8.sql`、`migration9.sql` 和 `migration10.sql`。结构版本 6 的 `system_settings` 增加 `host_cpu_percent`、`host_memory_percent`、`host_disk_percent`（0–100，0 关闭）及 `host_alert_minutes`（1–60），由本机和远程主机共用。结构版本 7 新增 HTTP 关键字、反向匹配和耗时警告规则；结构版本 8 新增检测小时汇总、原始行消费标记及指标保留期。结构版本 9 新增 `usage_settings` 与 `usage_activity`；版本 10 为 `usage_settings` 增加 `notice_version`、`consent_at`、`activated_at`（后两者内部存储为 UTC Unix 秒），与首个管理员创建在同一事务提交。旧实例迁移不会被静默开启上报。以下表为已实现，其余完整产品表设计仍是规划。
 
 | 表 | 本轮实际职责 |
 |---|---|
@@ -18,6 +18,8 @@
 | `image_styles` | 名称、宽高、contain/cover、版本与软归档 |
 | `system_settings` | 单行强类型实例配置：名称、上传上限、存储配额、默认目录、审计天数、主机阈值、原始/汇总指标保留天数、版本 |
 | `check_hourly` | 按检测目标与 UTC 小时累计样本数、成功数、平均/最大耗时；与原始行消费标记在同一事务更新 |
+| `usage_settings` | 上报开关、目的地、随机身份、加密凭据、登记状态、绑定快照、调度状态，以及告知版本/同意时间/激活时间 |
+| `usage_activity` | 最多待发送 7 个 UTC 活跃日期，不存本地成员名单或监控内容 |
 | `audit_logs` | 在原日志上增加服务端请求编号、HTTP 方法、接口路径与时间索引 |
 
 根目录使用固定记录（id=1），避免空父级绕过目录内唯一约束；默认上传目录为 id=2。有效文件/目录名称通过 `WHERE deleted_at IS NULL AND purged_at IS NULL` 的部分唯一索引约束。磁盘对象路径与用户文件名无关，单次上传最终入库时在事务内重新检查目录及配额。回收站按 `trash_root` 恢复一个完整删除批次，物理回收完成后清空对象键，保留元数据墓碑。

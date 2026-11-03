@@ -141,7 +141,7 @@ func newUsageReporter(s *Server) (*usageReporter, error) {
 	// origin always revokes local consent and never sends an old secret elsewhere.
 	if st.ConsoleURL != origin {
 		err = p.write(context.Background(), func(tx *sql.Tx) error {
-			if _, e := tx.Exec(`UPDATE usage_settings SET enabled=0,console_url=?,instance_id='',credential='',registered=0,last_report_at=0,next_report_at=0,last_error='',account_login='',failures=0 WHERE id=1`, origin); e != nil {
+			if _, e := tx.Exec(`UPDATE usage_settings SET enabled=0,console_url=?,instance_id='',credential='',registered=0,last_report_at=0,next_report_at=0,last_error='',account_login='',failures=0,notice_version='',consent_at=0,activated_at=0 WHERE id=1`, origin); e != nil {
 				return e
 			}
 			_, e := tx.Exec("DELETE FROM usage_activity")
@@ -316,15 +316,19 @@ func (s *Server) saveUsage(_ http.ResponseWriter, r *http.Request, u *User) (any
 		return nil, err
 	}
 	if *in.Enabled {
-		p.mu.Lock()
-		if !p.stopped {
-			p.session, p.cancel = context.WithCancel(context.Background())
-			p.enabled.Store(true)
-		}
-		p.mu.Unlock()
+		p.resume()
 	}
 	p.signal()
 	return p.status(r.Context())
+}
+func (p *usageReporter) resume() {
+	p.mu.Lock()
+	if !p.stopped && !p.enabled.Load() {
+		p.session, p.cancel = context.WithCancel(context.Background())
+		p.enabled.Store(true)
+	}
+	p.mu.Unlock()
+	p.signal()
 }
 func (s *Server) usageActivity(_ http.ResponseWriter, r *http.Request, _ *User) (any, error) {
 	var in struct{}
@@ -521,9 +525,9 @@ func (p *usageReporter) perform(parent context.Context, action, code string, r *
 		return auditRequest(tx, r, u.Name, audit, "usage")
 	})
 }
-func (p *usageReporter) register(ctx context.Context, st usageState, credential string) error {
-	payload := p.payload(st.InstanceID, nil)
-	registration := struct {
+func (p *usageReporter) registration(instanceID, credential string) any {
+	payload := p.payload(instanceID, nil)
+	return struct {
 		InstanceID string `json:"instanceId"`
 		Credential string `json:"credential"`
 		Version    string `json:"version"`
@@ -531,7 +535,9 @@ func (p *usageReporter) register(ctx context.Context, st usageState, credential 
 		Arch       string `json:"arch"`
 		Deployment string `json:"deployment"`
 	}{payload.InstanceID, credential, payload.Version, payload.OS, payload.Arch, payload.Deployment}
-	result, e := p.post(ctx, "register", "", registration)
+}
+func (p *usageReporter) register(ctx context.Context, st usageState, credential string) error {
+	result, e := p.post(ctx, "register", "", p.registration(st.InstanceID, credential))
 	if e != nil {
 		return e
 	}

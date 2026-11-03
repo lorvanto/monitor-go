@@ -10,7 +10,7 @@
 | Repository name and URL | [lorvanto/monitor-go](https://github.com/lorvanto/monitor-go), public |
 | Display name | Monitor Go |
 | Project license | [Apache-2.0](../../LICENSE) |
-| Application/schema baseline | `0.4.0-dev` / schema `9`; not a published release |
+| Application/schema baseline | `0.4.0-dev` / schema `10`; not a published release |
 | Go module | `github.com/lorvanto/monitor-go` |
 | Release targets, tag and date | To be selected after target-specific validation |
 | Publishing automation | Not configured; the files in `.github/` are report/review templates |
@@ -65,7 +65,7 @@ Rehearse upgrade and rollback using copies of test databases for supported schem
 
 ## Versioning and packaging
 
-Choose the release version and update `web/package.json`, the root package metadata in `web/package-lock.json`, and the version returned by `internal/app/server.go` / `internal/app/settings.go`. Update `CHANGELOG.md` and affected guides. SQLite schema changes are separate from application versions. The project currently has no `-version` CLI flag or release-time linker version injection; do not document unsupported switches.
+Choose the release version and update `web/package.json`, the root package metadata in `web/package-lock.json`, and `internal/buildinfo.Version`. `make build VERSION=<version>` injects the build version; both server and Agent support `-version`. Update `CHANGELOG.md` and affected guides. SQLite schema changes are separate from application versions.
 
 Build frontend assets before Go binaries. Name artifacts by product, component, OS and architecture. Each archive should include the appropriate binary, quick-start instructions, `LICENSE`, `NOTICE`, and the complete applicable third-party notices for that artifact. Do not include setup tokens, runtime databases, credentials, test accounts or `node_modules`.
 

@@ -16,6 +16,8 @@ docker compose up -d --build
 docker compose exec monitor cat /data/setup-token
 ```
 
+First setup displays the Console destination and reporting fields and requires explicit confirmation and a successful online registration before creating the local administrator. Existing installations retain their saved choice; reporting can later be disabled and Console outages do not block login, monitoring or alerts. Account linking is separate and voluntary. For offline/custom installations use `MONITOR_REQUIRE_ACTIVATION=false` or `-require-activation=false`; clearing the Console URL alone is insufficient. [First activation and usage reporting](USAGE_REPORTING.md)
+
 Open [the local service](http://127.0.0.1:5080/) and create the first administrator with that setup token. The UI starts in English on first use. The token file is deleted after setup. Compose binds only to `127.0.0.1` by default. If 5080 is occupied, use a different host port:
 
 ```sh
@@ -32,7 +34,7 @@ Container-local host collection is disabled by default. Install a native Agent o
 
 ## Settings and HTTPS
 
-Compose reads these shell variables (or a local, untracked `.env`): `MONITOR_IMAGE` (default `monitor-go:local`), `MONITOR_PORT` (5080), `MONITOR_BIND_ADDRESS` (127.0.0.1), `MONITOR_PUBLIC_URL` (empty), `MONITOR_SECURE_COOKIE` (false), and `MONITOR_COLLECT_HOST` (false), plus `MONITOR_TRUSTED_PROXY` (empty) and `MONITOR_CONSOLE_URL` (`https://feiniu.i7f.cn:5090` when unset; an explicit empty value leaves the destination unconfigured). Preserve these values on later Compose commands. Keep the container port at 5080 for the health check.
+Compose reads these shell variables (or a local, untracked `.env`): `MONITOR_IMAGE` (default `monitor-go:local`), `MONITOR_PORT` (5080), `MONITOR_BIND_ADDRESS` (127.0.0.1), `MONITOR_PUBLIC_URL` (empty), `MONITOR_SECURE_COOKIE` (false), and `MONITOR_COLLECT_HOST` (false), plus `MONITOR_TRUSTED_PROXY` (empty) and `MONITOR_REQUIRE_ACTIVATION` (`true`), `MONITOR_CONSOLE_URL` (`https://feiniu.i7f.cn:5090` when unset; an explicit empty value leaves the destination unconfigured). Preserve these values on later Compose commands. Keep the container port at 5080 for the health check.
 
 For remote browser and Agent access, place a trusted HTTPS proxy in front of the host port and set the exact external origin without a trailing slash:
 
@@ -127,16 +129,22 @@ docker compose exec -T monitor tar -C /data/backups/snapshot-001 -czf - . > back
 
 To restore, stop the service, replace the entire data directory with a complete backup, and start a binary supporting at least its schema version. Keep the old directory until verification succeeds. Restore offline only; do not merge files into a running installation. Treat backups as private credentials and copy them to independent storage. Cold backups remain supported.
 
-## Optional usage reporting
+## First activation and usage reporting
+
+First setup displays the Console destination and reporting fields and requires explicit confirmation and a successful online registration before creating the local administrator. Existing installations retain their saved choice; reporting can later be disabled and Console outages do not block login, monitoring or alerts. Account linking is separate and voluntary. For offline/custom installations use `MONITOR_REQUIRE_ACTIVATION=false` or `-require-activation=false`; clearing the Console URL alone is insufficient.
 
 When `MONITOR_CONSOLE_URL` is unset, the native binary and Compose use `https://feiniu.i7f.cn:5090`. Set it to another HTTPS origin to override the destination, or explicitly set `MONITOR_CONSOLE_URL=` to leave it unconfigured. The native `-console-url` flag takes precedence over the environment; `-console-url=` also leaves the destination unconfigured.
 
+The standard CLI and Compose default to `MONITOR_REQUIRE_ACTIVATION=true` / `-require-activation=true`. For a self-built distribution or an offline environment, explicitly set `MONITOR_REQUIRE_ACTIVATION=false` or pass `-require-activation=false`; setup then remains local and reporting stays off until separately enabled. An empty Console URL does not bypass required activation: configure a valid destination or explicitly disable the requirement. Command-line flags take precedence over environment variables.
+
+Example for a deliberately offline installation:
+
+```sh
+MONITOR_REQUIRE_ACTIVATION=false MONITOR_CONSOLE_URL= docker compose up -d --build
+```
+
 The native binary defaults to `native`; the Docker image and Compose set `docker` automatically.
-
-Reporting is disabled on fresh installations and when upgrading from a version without this feature. The console URL is preset to `https://feiniu.i7f.cn:5090`; an administrator with `system:settings` can review the destination and fields, then explicitly enable reporting in System settings. A preset URL never enables reporting by itself. Restarts and upgrades preserve the saved choice for the same recipient; changing the recipient requires new consent.
-
-Installation registration and activity statistics do not require account binding. Console supports a local administrator username/password; GitHub sign-in is optional. Installing Monitor Go does not require OAuth configuration.
 
 Use HTTPS; numeric loopback HTTP is permitted only for local integration. Docker containers cannot reach a host service through their own loopback; use a real HTTPS endpoint for separate containers. Never publish credentials, data directories or backups to Git. Configure reverse-proxy access logs to avoid OAuth query strings, full source IPs and credentials.
 
-[Optional usage reporting](USAGE_REPORTING.md)
+[First activation and usage reporting](USAGE_REPORTING.md)

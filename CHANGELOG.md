@@ -1,17 +1,17 @@
 # Changelog
 
-User-visible changes belong here. Entries under **Unreleased** describe the current development tree; they are not published releases. Application version `0.4.0-dev` and schema version `9` currently identify the implementation baseline. A maintainer will create a dated release entry only when an actual tag and release are published.
+User-visible changes belong here. Entries under **Unreleased** describe the current development tree; they are not published releases. Application version `0.4.0-dev` and schema version `10` currently identify the implementation baseline. A maintainer will create a dated release entry only when an actual tag and release are published.
 
 ## Unreleased
 
-### Optional usage reporting
+### Disclosed first-install activation and usage reporting
 
-- Label optional account associations as Console accounts, supporting local Console sign-in as well as optional GitHub sign-in; preserve explicit reporting consent and unsaved binding codes across language changes.
-
-- Preset the Console destination to `https://feiniu.i7f.cn:5090` when no override is supplied, while keeping reporting off until explicit consent. Preserve custom and explicitly empty destinations; clarify that installation statistics do not require GitHub account binding.
-- Add default-off installation registration, voluntary GitHub account binding and coarse UTC-day usage reporting to a separately deployed Monitor Console.
-- Keep reporting on an independent cancellable worker; disabling clears pending activity without affecting monitoring or alerts. Add five-language consent, field preview, controls and deployment/privacy guides.
-- Schema 9 stores sealed instance credentials, consent and bounded activity dates. Back up before upgrading.
+- Standard new installations disclose the Console destination, purpose and exact report fields and require explicit confirmation before online registration and local administrator creation. Registration sends no local administrator identity or password and does not bind a Console/developer account.
+- Add `-require-activation` and `MONITOR_REQUIRE_ACTIVATION`, defaulting to `true`; an explicit `false` supports offline/custom installations and keeps reporting off until separately enabled. Empty destinations cannot bypass required activation. The default destination remains `https://feiniu.i7f.cn:5090`.
+- Preserve existing installations and their saved reporting choices. Allow reporting to be stopped after activation. Console outages never block subsequent login, monitoring or alerts; the periodic reporting worker remains independent and cancellable.
+- Keep Console account linking voluntary, with local Console accounts or optional GitHub sign-in. Statistics count random installations and coarse UTC active days, not individual people or all completed installations. A registered random instance can remain if local setup later fails; retries reuse its identity.
+- Schema 9 introduced reporting settings, sealed instance credentials and bounded activity dates. Schema 10 adds disclosure version, consent time and activation time, committed with local administrator creation. Stop and back up the complete data directory before upgrading; rollback requires that backup.
+- Update all five current guides, deployment prerequisites and data boundaries. No release, CI result or production activation validation is implied by this entry.
 
 ### Repository presentation
 

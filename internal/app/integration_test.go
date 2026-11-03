@@ -50,7 +50,10 @@ func (c *testClient) call(method, path string, body any, want int) json.RawMessa
 }
 func client(t *testing.T, base string) *testClient {
 	jar, _ := cookiejar.New(nil)
-	return &testClient{t: t, base: base, c: &http.Client{Jar: jar, Timeout: 10 * time.Second}}
+	// bcrypt's production cost is deliberately retained under -race, where it
+	// can exceed ten seconds on a busy CI runner. Network deadlines are asserted
+	// separately by the tests for each bounded outbound subsystem.
+	return &testClient{t: t, base: base, c: &http.Client{Jar: jar, Timeout: 45 * time.Second}}
 }
 func (c *testClient) login(username, password string) {
 	c.call("POST", "/auth/login", map[string]string{"username": username, "password": password}, 200)

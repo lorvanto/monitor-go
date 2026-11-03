@@ -27,6 +27,7 @@ const env = {
   MONITOR_COLLECT_HOST: "false",
   MONITOR_TRUSTED_PROXY: "",
   MONITOR_CONSOLE_URL: "",
+  MONITOR_REQUIRE_ACTIVATION: "true",
 };
 const platform = process.env.MONITOR_PLATFORM;
 if (platform) assert.match(platform, /^linux\/(amd64|arm64)$/);
@@ -135,6 +136,55 @@ try {
     "sha256sum",
     "/data/master.key",
   ]).toString();
+  const activationStatus = await request("/status");
+  assert.deepEqual(activationStatus.activation, {
+    required: true,
+    configured: false,
+    consoleUrl: "",
+    noticeVersion: "1",
+  });
+  const setupBody = {
+    token,
+    username: "docker_smoke",
+    name: "Docker smoke test",
+    password: `Smoke-${randomUUID()}`,
+  };
+  for (const [consent, expectedStatus, message] of [
+    [false, 422, "Activation consent is required"],
+    [true, 503, "Activation service is not configured"],
+  ]) {
+    const blocked = await fetch(`${base}/api/v1/setup`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Accept-Language": "en-US",
+        Origin: base,
+      },
+      body: JSON.stringify({
+        ...setupBody,
+        usageConsent: consent,
+        usageNoticeVersion: "1",
+        usageConsoleUrl: "",
+      }),
+      signal: AbortSignal.timeout(10000),
+    });
+    assert.equal(blocked.status, expectedStatus);
+    assert.equal((await blocked.json()).error.key, message);
+    assert.equal((await request("/status")).initialized, false);
+  }
+  // Explicit offline policy for isolated persistence tests; default setup above
+  // must never silently bypass a required but unconfigured activation service.
+  env.MONITOR_REQUIRE_ACTIVATION = "false";
+  await run([
+    "up",
+    "-d",
+    "--no-build",
+    "--force-recreate",
+    "--wait",
+    "--wait-timeout",
+    "120",
+  ]);
+  assert.equal((await request("/status")).activation.required, false);
   csrf = (
     await request("/setup", {
       method: "POST",
@@ -149,7 +199,7 @@ try {
   compose(["exec", "-T", "monitor", "sh", "-c", "test ! -e /data/setup-token"]);
   const system = await request("/system");
   assert.equal(system.database, "SQLite");
-  assert.equal(system.schema, 9);
+  assert.equal(system.schema, 10);
   const usage = await request("/usage");
   assert.equal(usage.enabled, false);
   assert.equal(usage.configured, false);

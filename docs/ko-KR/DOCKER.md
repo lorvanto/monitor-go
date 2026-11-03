@@ -16,6 +16,8 @@ docker compose up -d --build
 docker compose exec monitor cat /data/setup-token
 ```
 
+최초 설정에서 Console 목적지와 전송 항목을 표시하고 명시적 확인과 온라인 등록 성공 후 로컬 관리자를 만듭니다. 기존 설치의 선택은 유지되며 보고는 나중에 끌 수 있습니다. Console 장애는 로그인, 모니터링 및 알림을 차단하지 않습니다. 계정 연결은 별도 선택 사항입니다. 오프라인 또는 자체 배포 환경에는 `MONITOR_REQUIRE_ACTIVATION=false` 또는 `-require-activation=false`를 사용하세요. Console URL을 비우는 것만으로는 요구 사항이 해제되지 않습니다. [최초 활성화와 사용 현황 보고](USAGE_REPORTING.md)
+
 [로컬 서비스](http://127.0.0.1:5080/)를 열고 출력된 초기화 코드로 첫 관리자를 만드세요. 처음에는 영어로 표시되며 초기화 후 코드 파일을 삭제합니다. 기본 바인딩은 `127.0.0.1`뿐입니다. 5080을 사용 중이면 호스트 포트를 바꾸세요.
 
 ```sh
@@ -32,7 +34,7 @@ UID/GID는 `10001:10001`입니다. Compose는 읽기 전용 루트 파일 시스
 
 ## 설정 및 HTTPS
 
-Compose는 shell 환경 또는 추적하지 않는 `.env`에서 `MONITOR_IMAGE`(`monitor-go:local`), `MONITOR_PORT`(5080), `MONITOR_BIND_ADDRESS`(127.0.0.1), `MONITOR_PUBLIC_URL`(비어 있음), `MONITOR_SECURE_COOKIE`(false), `MONITOR_COLLECT_HOST`(false), `MONITOR_TRUSTED_PROXY`(비어 있음), `MONITOR_CONSOLE_URL`(미설정 시 `https://feiniu.i7f.cn:5090`, 명시적 빈 값은 목적지 미설정)를 읽습니다. 이후 명령에도 같은 값을 유지하세요. 상태 검사를 위해 컨테이너 내부 포트는 5080을 유지합니다.
+Compose는 shell 환경 또는 추적하지 않는 `.env`에서 `MONITOR_IMAGE`(`monitor-go:local`), `MONITOR_PORT`(5080), `MONITOR_BIND_ADDRESS`(127.0.0.1), `MONITOR_PUBLIC_URL`(비어 있음), `MONITOR_SECURE_COOKIE`(false), `MONITOR_COLLECT_HOST`(false), `MONITOR_TRUSTED_PROXY`(비어 있음), `MONITOR_REQUIRE_ACTIVATION`(`true`), `MONITOR_CONSOLE_URL`(미설정 시 `https://feiniu.i7f.cn:5090`, 명시적 빈 값은 목적지 미설정)를 읽습니다. 이후 명령에도 같은 값을 유지하세요. 상태 검사를 위해 컨테이너 내부 포트는 5080을 유지합니다.
 
 원격 브라우저 및 Agent 접근에는 호스트 포트 앞에 신뢰할 수 있는 HTTPS 프록시를 놓고 끝에 슬래시가 없는 외부 오리진을 지정하세요.
 
@@ -127,16 +129,22 @@ docker compose exec -T monitor tar -C /data/backups/snapshot-001 -czf - . > back
 
 복원 전에 서비스를 중지하고 전체 데이터 디렉터리를 완전한 백업으로 교체한 다음 해당 스키마 이상을 지원하는 바이너리로 시작합니다. 검증이 끝날 때까지 이전 디렉터리를 보관합니다. 오프라인 복원만 지원하며 실행 중인 데이터에 파일을 병합하지 않습니다. 백업에는 자격 증명이 포함되므로 비공개로 보관하고 독립 저장소에 복사합니다. 기존 콜드 백업도 계속 지원합니다.
 
-## 선택적 사용 현황 보고
+## 최초 활성화와 사용 현황 보고
+
+최초 설정에서 Console 목적지와 전송 항목을 표시하고 명시적 확인과 온라인 등록 성공 후 로컬 관리자를 만듭니다. 기존 설치의 선택은 유지되며 보고는 나중에 끌 수 있습니다. Console 장애는 로그인, 모니터링 및 알림을 차단하지 않습니다. 계정 연결은 별도 선택 사항입니다. 오프라인 또는 자체 배포 환경에는 `MONITOR_REQUIRE_ACTIVATION=false` 또는 `-require-activation=false`를 사용하세요. Console URL을 비우는 것만으로는 요구 사항이 해제되지 않습니다.
 
 `MONITOR_CONSOLE_URL`을 설정하지 않으면 네이티브 실행 파일과 Compose는 `https://feiniu.i7f.cn:5090`을 사용합니다. 다른 HTTPS 오리진을 지정해 목적지를 바꾸거나, `MONITOR_CONSOLE_URL=`로 명시적으로 비워 목적지 설정을 해제할 수 있습니다. 네이티브 실행 파일의 `-console-url` 인수가 환경 변수보다 우선하며, `-console-url=`도 목적지 설정을 해제합니다.
 
+표준 CLI와 Compose의 `MONITOR_REQUIRE_ACTIVATION` / `-require-activation` 기본값은 `true`입니다. 자체 배포판 또는 오프라인 환경에서는 `MONITOR_REQUIRE_ACTIVATION=false` 또는 `-require-activation=false`를 명시하세요. 그러면 로컬에서 설정을 완료하며 별도로 켜기 전까지 보고는 꺼진 상태입니다. Console URL을 비우는 것만으로 필수 활성화를 건너뛸 수 없습니다. 유효한 목적지를 설정하거나 요구 사항을 명시적으로 꺼야 합니다. 명령줄 인수가 환경 변수보다 우선합니다.
+
+오프라인 설치를 명시적으로 선택하는 예:
+
+```sh
+MONITOR_REQUIRE_ACTIVATION=false MONITOR_CONSOLE_URL= docker compose up -d --build
+```
+
 네이티브 실행 파일의 기본값은 `native`이며 Docker 이미지와 Compose는 자동으로 `docker`를 설정합니다.
-
-새 설치와 이 기능이 없는 이전 버전에서의 업그레이드는 기본적으로 보고가 꺼져 있습니다. 콘솔 주소는 `https://feiniu.i7f.cn:5090`으로 미리 설정됩니다. `system:settings` 권한의 관리자가 시스템 설정에서 목적지와 전송 항목을 확인한 뒤 명시적으로 켭니다. 기본 주소만으로 보고가 켜지지는 않습니다. 재시작과 업그레이드는 동일한 수신 주소에 대한 선택을 유지하며, 수신 주소를 바꾸면 다시 동의해야 합니다.
-
-설치 등록과 활동 통계에는 계정 연결이 필요하지 않습니다. Console은 로컬 관리자 사용자 이름과 비밀번호로 로그인할 수 있으며 GitHub 로그인은 선택 사항입니다. Monitor Go 설치에는 OAuth 설정이 필요하지 않습니다.
 
 HTTPS가 필요하며 숫자 루프백 HTTP는 로컬 통합 테스트에만 허용됩니다. 컨테이너 루프백은 자신을 가리키므로 별도 컨테이너에는 실제 HTTPS 주소를 사용하세요. 자격 증명, 데이터와 백업을 Git에 저장하지 마세요. 프록시 로그에 OAuth 쿼리, 전체 원본 IP나 자격 증명을 남기지 마세요.
 
-[선택적 사용 현황 보고](USAGE_REPORTING.md)
+[최초 활성화와 사용 현황 보고](USAGE_REPORTING.md)

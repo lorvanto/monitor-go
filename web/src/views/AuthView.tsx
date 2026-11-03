@@ -1,4 +1,4 @@
-import { errorMessage, type DisplayMessage } from "../lib/messages";
+import { errorMessage, notice, type DisplayMessage } from "../lib/messages";
 import Form from "../components/Form";
 import { useState } from "react";
 import { createStore, useStore } from "zustand";
@@ -6,25 +6,86 @@ import BrandMark from "../components/BrandMark";
 import LanguageSelect from "../components/LanguageSelect";
 import StatusGlyph from "../components/StatusGlyph";
 import { t, useI18n } from "../i18n";
-import { appStore, boot, signIn, useApp } from "../stores/app";
+import {
+  APIError,
+  api,
+  appStore,
+  boot,
+  signIn,
+  useApp,
+  type SetupStatus,
+} from "../stores/app";
 export default function AuthView() {
   const initialState = {
     username: "",
     password: "",
     name: "",
     token: "",
+    consentFor: "",
+    noticeStale: false,
     error: "" as DisplayMessage,
     busy: false,
   };
   type LocalState = typeof initialState;
   const [store] = useState(() => createStore<LocalState>(() => initialState));
   const viewState = useStore(store);
-  const appState = useApp(({ initialized, connectionError }) => ({
+  const appState = useApp(({ initialized, connectionError, activation }) => ({
     initialized,
     connectionError,
+    activation,
   }));
   useI18n();
+  const activation =
+    !appState.initialized && appState.activation?.required
+      ? appState.activation
+      : null;
+  // Consent applies to the exact destination and notice shown to the installer.
+  const consentKey = activation
+    ? JSON.stringify([activation.consoleUrl, activation.noticeVersion])
+    : "";
+  const consented = !!consentKey && viewState.consentFor === consentKey;
+  const activationReady =
+    !activation ||
+    (!viewState.noticeStale &&
+      activation.configured &&
+      !!activation.consoleUrl &&
+      activation.noticeVersion === "1");
+  async function refreshActivation() {
+    if (store.getState().busy) return;
+    store.setState({ busy: true, consentFor: "", error: "" });
+    try {
+      const status = await api<SetupStatus>("/status");
+      appStore.setState({
+        initialized: status.initialized,
+        activation: status.initialized ? null : status.activation || null,
+        connectionError: "",
+      });
+      store.setState({ noticeStale: false });
+    } catch (error) {
+      store.setState({ error: errorMessage(error) });
+    } finally {
+      store.setState({ busy: false });
+    }
+  }
   async function submit() {
+    if (store.getState().busy || appState.connectionError) return;
+    if (activation && (!activation.configured || !activation.consoleUrl)) {
+      store.setState({ error: notice("Activation service is not configured") });
+      return;
+    }
+    if (
+      activation &&
+      (viewState.noticeStale || activation.noticeVersion !== "1")
+    ) {
+      store.setState({
+        error: notice("Activation notice has changed; review it again"),
+      });
+      return;
+    }
+    if (activation && !consented) {
+      store.setState({ error: notice("Activation consent is required") });
+      return;
+    }
     store.setState({ busy: true });
     store.setState({ error: "" });
     try {
@@ -39,11 +100,27 @@ export default function AuthView() {
               password: store.getState().password,
               name: store.getState().name,
               token: store.getState().token,
+              ...(activation
+                ? {
+                    usageConsent: true,
+                    usageNoticeVersion: activation.noticeVersion,
+                    usageConsoleUrl: activation.consoleUrl,
+                  }
+                : {}),
             },
         !appStore.getState().initialized,
       );
     } catch (e) {
       store.setState({ error: errorMessage(e) });
+      if (
+        e instanceof APIError &&
+        typeof e.display !== "string" &&
+        (e.display.key ===
+          "Activation destination has changed; review it again" ||
+          e.display.key === "Activation notice has changed; review it again")
+      ) {
+        store.setState({ consentFor: "", noticeStale: true });
+      }
     } finally {
       store.setState({ busy: false });
     }
@@ -52,7 +129,9 @@ export default function AuthView() {
   return (
     <>
       <main className="auth">
-        <div className="auth-card">
+        <div
+          className={`auth-card${activation ? " auth-card-activation" : ""}`}
+        >
           <div className="auth-brand">
             <BrandMark size={24}></BrandMark>
             {"Monitor Go"}
@@ -90,6 +169,85 @@ export default function AuthView() {
               submit();
             }}
           >
+            {activation ? (
+              <section
+                className="activation-notice"
+                aria-labelledby="activation-heading"
+              >
+                <h2 id="activation-heading">{t("首次安装在线激活")}</h2>
+                <p>
+                  {t(
+                    "首次安装需要连接下方管理后台，登记此安装并统计活跃情况。",
+                  )}
+                </p>
+                <dl>
+                  <dt>{t("上报目的地")}</dt>
+                  <dd>
+                    <code>
+                      {activation.consoleUrl || t("尚未配置管理后台")}
+                    </code>
+                  </dd>
+                </dl>
+                <p>
+                  {t(
+                    "随机实例 ID、程序版本、操作系统与架构、部署方式、UTC 日期及当日活跃标记。",
+                  )}
+                </p>
+                <p>
+                  {t(
+                    "不会发送监控目标或指标、文件、密码、监控密钥、应用密钥或本地成员列表。",
+                  )}
+                </p>
+                <p>
+                  {t(
+                    "独立实例凭据仅用于验证登记和后续上报请求，不会在页面显示。",
+                  )}
+                </p>
+                <p>{t("统计按安装实例计算，不能识别每位使用者。")}</p>
+                <p>
+                  {t(
+                    "安装完成后可在系统设置中关闭后续上报，监控和告警仍独立运行。",
+                  )}
+                </p>
+                {!activation.configured ||
+                !activation.consoleUrl ||
+                activation.noticeVersion !== "1" ? (
+                  <p className="form-error" role="alert">
+                    {t(
+                      activation.noticeVersion !== "1"
+                        ? "Activation notice has changed; review it again"
+                        : "Activation service is not configured",
+                    )}
+                  </p>
+                ) : null}
+                <label className="check activation-consent">
+                  <input
+                    type="checkbox"
+                    required
+                    checked={consented}
+                    disabled={viewState.busy || !activationReady}
+                    onChange={(event) =>
+                      store.setState({
+                        consentFor: event.currentTarget.checked
+                          ? consentKey
+                          : "",
+                      })
+                    }
+                  />
+                  <span>
+                    {t("我已阅读上述说明，同意在线激活并启用使用情况上报。")}
+                  </span>
+                </label>
+                <button
+                  type="button"
+                  className="link"
+                  disabled={viewState.busy}
+                  onClick={refreshActivation}
+                >
+                  {t("刷新激活说明")}
+                </button>
+              </section>
+            ) : null}
             {!appState.initialized ? (
               <label className="field">
                 {t("初始化码")}
@@ -159,16 +317,25 @@ export default function AuthView() {
               </p>
             ) : null}
             <button
-              disabled={viewState.busy || !!appState.connectionError}
+              disabled={
+                viewState.busy ||
+                !!appState.connectionError ||
+                !activationReady ||
+                (!!activation && !consented)
+              }
               className="btn primary"
             >
               {appState.initialized
                 ? viewState.busy
                   ? t("正在登录…")
                   : t("登录")
-                : viewState.busy
-                  ? t("正在创建…")
-                  : t("创建管理员并进入")}
+                : activation
+                  ? viewState.busy
+                    ? t("正在激活并创建…")
+                    : t("激活并创建管理员")
+                  : viewState.busy
+                    ? t("正在创建…")
+                    : t("创建管理员并进入")}
             </button>
           </Form>
           <p className="auth-foot">

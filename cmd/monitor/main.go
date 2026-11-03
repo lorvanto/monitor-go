@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strconv"
 	"syscall"
 	"time"
 )
@@ -23,21 +24,27 @@ func main() {
 		}
 		return
 	}
+	activationDefault, err := defaultRequireActivation()
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(2)
+	}
 	listen := flag.String("listen", "127.0.0.1:5080", "HTTP 监听地址")
 	data := flag.String("data", "data", "SQLite 和密钥目录")
 	public := flag.String("public-url", "", "浏览器访问的完整来源，例如 https://monitor.example.com")
 	secure := flag.Bool("secure-cookie", false, "HTTPS 部署时启用 Secure Cookie")
 	collect := flag.Bool("collect-host", true, "采集运行服务的本机指标")
 	trustedProxy := flag.String("trusted-proxy", "", "Comma-separated trusted proxy CIDRs for X-Forwarded-For; empty trusts none")
-	consoleURL := flag.String("console-url", defaultConsoleURL(), "Monitor Console origin; empty disables the destination; reporting remains off until explicitly enabled")
-	deployment := flag.String("deployment", envDefault("MONITOR_DEPLOYMENT", "native"), "Deployment type for optional usage reporting: native or docker")
+	consoleURL := flag.String("console-url", defaultConsoleURL(), "Monitor Console origin for disclosed first-install activation and usage reporting")
+	requireActivation := flag.Bool("require-activation", activationDefault, "Require disclosed online registration during first setup; false supports offline or self-managed distributions")
+	deployment := flag.String("deployment", envDefault("MONITOR_DEPLOYMENT", "native"), "Deployment type: native or docker")
 	version := flag.Bool("version", false, "Print application version and exit")
 	flag.Parse()
 	if *version {
 		fmt.Println(buildinfo.Version)
 		return
 	}
-	s, e := app.New(app.Config{Listen: *listen, DataDir: *data, PublicURL: *public, TrustedProxy: *trustedProxy, SecureCookie: *secure, Collect: *collect, ConsoleURL: *consoleURL, Deployment: *deployment, Assets: web.Assets()})
+	s, e := app.New(app.Config{Listen: *listen, DataDir: *data, PublicURL: *public, TrustedProxy: *trustedProxy, SecureCookie: *secure, Collect: *collect, ConsoleURL: *consoleURL, RequireActivation: *requireActivation, Deployment: *deployment, Assets: web.Assets()})
 	if e != nil {
 		slog.Error("启动失败", "error", e)
 		os.Exit(1)
@@ -92,10 +99,22 @@ func envDefault(name, fallback string) string {
 }
 
 func defaultConsoleURL() string {
-	// An explicitly empty value opts out of configuring a destination. Merely
-	// providing the default never enables reporting or associates an account.
+	// An empty destination does not silently bypass required first activation.
+	// Offline distributions explicitly disable require-activation as well.
 	if value, set := os.LookupEnv("MONITOR_CONSOLE_URL"); set {
 		return value
 	}
 	return "https://feiniu.i7f.cn:5090"
+}
+
+func defaultRequireActivation() (bool, error) {
+	value, set := os.LookupEnv("MONITOR_REQUIRE_ACTIVATION")
+	if !set {
+		return true, nil
+	}
+	enabled, err := strconv.ParseBool(value)
+	if err != nil {
+		return false, fmt.Errorf("MONITOR_REQUIRE_ACTIVATION must be true or false")
+	}
+	return enabled, nil
 }

@@ -85,7 +85,7 @@ export default function UsageSettings() {
       <header className="panel-head ruled">
         <div>
           <h2 id="usage-title">{t("使用情况统计与账号绑定")}</h2>
-          <p>{t("默认关闭，由管理员自愿开启，可随时关闭。")}</p>
+          <p>{t("管理员可随时关闭上报，也可在阅读说明后重新开启。")}</p>
         </div>
         <button className="btn" type="button" disabled={busy} onClick={reload}>
           <Icon name="RefreshCw" />
@@ -106,7 +106,7 @@ export default function UsageSettings() {
         </p>
         <p className="note">
           {t(
-            "程序运行与有人使用分开统计。上报在后台低频执行，服务不可用或关闭上报不会影响安装、登录、监控和告警。",
+            "程序运行与有人使用分开统计。安装完成后，上报在后台低频执行，服务不可用或关闭上报不会影响登录、监控和告警。",
           )}
         </p>
         {error ? (

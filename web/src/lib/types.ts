@@ -17,6 +17,16 @@ export type MonitorStatus =
   | "warning"
   | "paused"
   | "unknown";
+export interface SetupActivation {
+  required: boolean;
+  configured: boolean;
+  consoleUrl: string;
+  noticeVersion: string;
+}
+export interface SetupStatus {
+  initialized: boolean;
+  activation?: SetupActivation;
+}
 export interface Point {
   at: number;
   value: number | null;

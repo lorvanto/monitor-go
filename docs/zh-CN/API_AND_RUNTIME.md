@@ -18,7 +18,7 @@
 | `GET /api/v1/releases/{id}/download` | 发布且启用才可下载；需 `release:download` |
 | `GET /api/v1/integrations/me`、`hosts`、`monitors`、`alerts`、`releases`、`releases/{id}/download` | 独立 Bearer 身份，固定范围与应用隔离，详情见应用分发文档 |
 | `POST /api/v1/tools/codes` | 生成 PNG/SVG base64、返回标准化内容与尺寸；需 `tool:generate` |
-| `GET /api/v1/status`、`POST /api/v1/setup` | 安装状态、一次性初始化码创建管理员 |
+| `GET /api/v1/status`、`POST /api/v1/setup` | 安装状态、明示激活配置、一次性初始化码与确认后创建管理员 |
 | `POST /api/v1/auth/login`、`POST /api/v1/auth/logout`、`GET /api/v1/me` | Cookie 会话、CSRF、注销、当前权限 |
 | `GET /api/v1/overview?hours=1\|24\|168\|720\|2160&group=...` | 权限范围内的真实检测聚合和操作审计 |
 | `GET /api/v1/hosts`、`PATCH /api/v1/hosts/{id}` | 本机与远程 Agent、连接状态、备注保存与版本冲突 |
@@ -69,6 +69,14 @@
 本机每 15 秒采样，远程 Agent 约每 15 秒主动上报，90 秒未上报产生离线告警。Agent 不下发执行命令或检测任务。HTTP、TCP、Redis、SSL 和 MySQL 的执行均为真实协议调用；MySQL 使用 `SELECT 1`，Redis 使用 `PING`。登录密码使用 bcrypt，检测凭据使用 AES-GCM 加密，主密钥独立保存在数据目录。
 
 告警同时记录站内事件并按启用渠道发送 SMTP / Webhook。达到各检测目标的连续异常阈值后建立事件，一次正常检查恢复。主机磁盘阈值通过全局设置配置（默认 85%，0 关闭）。静默期在发送前跳过待投递消息，不补发。通知任务与事件变更在同一事务入库，最多 4 次尝试，重启可续投，接收端需按稳定投递 ID 去重。完整部署、安全与语义见 [完整中文指南](README.md)。菜单、文件、图片样式、设置与审计已实现；证书签发、通知路由、远程执行等仍为规划。
+
+## 当前首次激活接口
+
+`GET /api/v1/status` 返回 `activation: {required, configured, consoleUrl, noticeVersion}`。`required` 仅在尚未初始化且配置要求激活时为 true，当前告知版本为 `"1"`。标准命令行与 Compose 默认要求激活，`-require-activation=false` / `MONITOR_REQUIRE_ACTIVATION=false` 明确用于离线或自建发行；原生命令行将无效或空的布尔环境值视为配置错误；Compose 的空值使用 `true`，仍不绕过激活。清空 Console URL 不会绕过要求。
+
+要求激活时，`POST /api/v1/setup` 除原初始化码和管理员字段，还需提交 `usageConsent: true`、`usageNoticeVersion: "1"` 和 `usageConsoleUrl`（必须等于所展示的当前目的地），以防旧页面的同意被用于新接收方。服务端先校验初始化码、用户字段、同意与目的地，再使用随机实例身份向 Console 登记，成功后在同一 SQLite 事务中创建本地管理员、启用上报并保存告知版本、同意时间和激活时间。初始化接口不会向 Console 发送本地管理员用户名、显示名称或密码。
+
+登记失败不创建管理员，重试复用同一实例身份。若远端登记成功而本地事务失败或安装被取消，后台可能保留未绑定的随机登记；因此登记数不等于成功安装数或真实用户人数。已安装实例升级不被要求重新激活，也不静默启用上报。后续可关闭上报；Console 离线不影响登录、监控或告警。完整字段、保留策略与自愿绑定见 [首次激活与使用情况上报](USAGE_REPORTING.md)。
 
 ## 当前磁盘容量报告
 

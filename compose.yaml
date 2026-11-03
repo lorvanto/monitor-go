@@ -30,6 +30,7 @@ services:
       - -secure-cookie=${MONITOR_SECURE_COOKIE:-false}
       - -trusted-proxy=${MONITOR_TRUSTED_PROXY:-}
       - -console-url=${MONITOR_CONSOLE_URL-https://feiniu.i7f.cn:5090}
+      - -require-activation=${MONITOR_REQUIRE_ACTIVATION:-true}
       - -deployment=docker
 volumes:
   monitor-data:

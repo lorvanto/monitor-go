@@ -4,7 +4,7 @@
 
 **简体中文** · [English](docs/en-US/README.md) · [日本語](docs/ja-JP/README.md) · [한국어](docs/ko-KR/README.md) · [繁體中文](docs/zh-TW/README.md)
 
-**当前状态：**预发布开发基线 `0.4.0-dev`，SQLite 结构版本 `9`。公开发布包和目标平台验证仍在准备中；当前版本号不代表已发布 GitHub Release。详见[完整使用指南](docs/zh-CN/README.md)和[路线图](ROADMAP.md)。
+**当前状态：**预发布开发基线 `0.4.0-dev`，SQLite 结构版本 `10`。公开发布包和目标平台验证仍在准备中；当前版本号不代表已发布 GitHub Release。详见[完整使用指南](docs/zh-CN/README.md)和[路线图](ROADMAP.md)。
 
 ## 功能
 
@@ -67,6 +67,8 @@ docker compose up -d --build
 docker compose exec monitor cat /data/setup-token
 ```
 
+首次安装会展示 Console 目的地和上报字段，需明确勾选确认、在线登记成功后才创建本地管理员。已有实例保留原选择；之后可关闭上报，Console 离线不影响登录、监控和告警。账号绑定另行自愿。离线或自建发行可使用 `MONITOR_REQUIRE_ACTIVATION=false` 或 `-require-activation=false`；仅清空 Console URL 不足以关闭激活要求。 [完整说明](docs/zh-CN/USAGE_REPORTING.md)。
+
 打开[本地服务](http://127.0.0.1:5080/)，使用初始化令牌创建管理员。命名卷保存 SQLite、密钥和上传文件。若 5080 已被占用，可使用 `MONITOR_PORT=5081 docker compose up -d --build`。
 
 容器以非 root 用户运行，默认关闭容器内主机采集；监控真实主机时接入原生 Agent。`monitor-go:local` 为本地构建镜像，目前没有发布预构建镜像。HTTPS、持久化、备份恢复和升级见 [Docker 部署指南](docs/zh-CN/DOCKER.md)。
@@ -123,6 +125,10 @@ npm --prefix web run format:check
 
 项目自有代码和文档采用 [Apache License 2.0](LICENSE)。第三方依赖、图标与字体保留各自许可，详见 [NOTICE](NOTICE) 和[第三方声明](THIRD_PARTY_NOTICES.md)。
 
-## 自愿使用情况上报
+## 首次激活与使用情况上报
 
-上报默认关闭，可随时关闭。后台地址已预设为 `https://feiniu.i7f.cn:5090`，无需手动填写；管理员查看目的地与字段并明确同意后，才会登记实例和上报活跃统计。实例统计无需绑定账号；Console 使用本地管理员账号密码登录，GitHub 为可选登录方式。监控、告警和登录不依赖统计后台。[配置、字段及隐私边界](docs/zh-CN/USAGE_REPORTING.md)。
+标准新安装要求先在线激活，再创建首个本地管理员。安装页明确展示目的地（预设为 `https://feiniu.i7f.cn:5090`）、统计用途与具体字段，需要手动勾选确认。实例登记成功后才创建管理员并启用上报；不会发送本地用户名、显示名称或密码。登记失败时不创建管理员，修复网络后可用同一实例身份重试。激活不要求 Console 账号、GitHub 登录，也不会自动绑定开发者账号。
+
+已初始化实例升级时不强制激活，也不静默开启上报；对同一接收方保留已有选择。不含此功能的旧实例仍保持关闭，具有 `system:settings` 权限的管理员可之后查看字段并自行开启。更换接收方需要重新同意。激活后仍可关闭上报，Console 离线不会阻断登录、监控或告警。
+
+标准 CLI 与 Compose 的 `MONITOR_REQUIRE_ACTIVATION` / `-require-activation` 默认值为 `true`。自建发行版或离线环境可显式设置 `MONITOR_REQUIRE_ACTIVATION=false` 或传入 `-require-activation=false`；此时本地完成安装，上报保持关闭，直到另行开启。仅清空 Console URL 不能绕过必需激活：需正确配置目的地或明确关闭激活要求。命令行参数优先于环境变量。 [配置、字段及隐私边界](docs/zh-CN/USAGE_REPORTING.md)。

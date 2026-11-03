@@ -16,6 +16,8 @@ docker compose up -d --build
 docker compose exec monitor cat /data/setup-token
 ```
 
+首次安装会展示 Console 目的地和上报字段，需明确勾选确认、在线登记成功后才创建本地管理员。已有实例保留原选择；之后可关闭上报，Console 离线不影响登录、监控和告警。账号绑定另行自愿。离线或自建发行可使用 `MONITOR_REQUIRE_ACTIVATION=false` 或 `-require-activation=false`；仅清空 Console URL 不足以关闭激活要求。 [首次激活与使用情况上报](USAGE_REPORTING.md)
+
 打开 [本地服务](http://127.0.0.1:5080/)，使用读取到的初始化码创建首个管理员。首次界面默认英文，初始化后删除码文件。Compose 默认仅绑定 `127.0.0.1`。如果 5080 已被占用，可换一个宿主机端口：
 
 ```sh
@@ -32,7 +34,7 @@ MONITOR_PORT=5081 docker compose up -d --build
 
 ## 配置与 HTTPS
 
-Compose 读取 shell 环境变量或本机未跟踪的 `.env`：`MONITOR_IMAGE`（默认 `monitor-go:local`）、`MONITOR_PORT`（5080）、`MONITOR_BIND_ADDRESS`（127.0.0.1）、`MONITOR_PUBLIC_URL`（空）、`MONITOR_SECURE_COOKIE`（false）、`MONITOR_COLLECT_HOST`（false）、`MONITOR_TRUSTED_PROXY`（空）及 `MONITOR_CONSOLE_URL`（未设置时为 `https://feiniu.i7f.cn:5090`；明确留空则不配置目的地）。后续 Compose 命令保持相同配置。容器内部端口保持 5080，以便健康检查正常运行。
+Compose 读取 shell 环境变量或本机未跟踪的 `.env`：`MONITOR_IMAGE`（默认 `monitor-go:local`）、`MONITOR_PORT`（5080）、`MONITOR_BIND_ADDRESS`（127.0.0.1）、`MONITOR_PUBLIC_URL`（空）、`MONITOR_SECURE_COOKIE`（false）、`MONITOR_COLLECT_HOST`（false）、`MONITOR_TRUSTED_PROXY`（空）及 `MONITOR_REQUIRE_ACTIVATION`（`true`）, `MONITOR_CONSOLE_URL`（未设置时为 `https://feiniu.i7f.cn:5090`；明确留空则不配置目的地）。后续 Compose 命令保持相同配置。容器内部端口保持 5080，以便健康检查正常运行。
 
 远程浏览器和 Agent 访问应在宿主机端口前部署可信 HTTPS 反向代理，并配置不带末尾斜杠的实际外部来源：
 
@@ -127,16 +129,22 @@ docker compose exec -T monitor tar -C /data/backups/snapshot-001 -czf - . > back
 
 恢复时先停服，用完整备份替换整个数据目录，再使用支持该结构版本或更高版本的程序启动。验证成功前保留旧目录。只支持离线恢复，不要向运行中的实例合并文件。备份包含凭据，应私密保存并复制到独立存储；原有冷备份方式仍可使用。
 
-## 自愿使用情况上报
+## 首次激活与使用情况上报
+
+首次安装会展示 Console 目的地和上报字段，需明确勾选确认、在线登记成功后才创建本地管理员。已有实例保留原选择；之后可关闭上报，Console 离线不影响登录、监控和告警。账号绑定另行自愿。离线或自建发行可使用 `MONITOR_REQUIRE_ACTIVATION=false` 或 `-require-activation=false`；仅清空 Console URL 不足以关闭激活要求。
 
 `MONITOR_CONSOLE_URL` 未设置时，原生程序和 Compose 使用 `https://feiniu.i7f.cn:5090`。可将其设为其他 HTTPS 来源以覆盖目的地，或明确设置 `MONITOR_CONSOLE_URL=` 以取消目的地配置。原生程序的 `-console-url` 参数优先于环境变量；`-console-url=` 同样会取消目的地配置。
 
+标准 CLI 与 Compose 的 `MONITOR_REQUIRE_ACTIVATION` / `-require-activation` 默认值为 `true`。自建发行版或离线环境可显式设置 `MONITOR_REQUIRE_ACTIVATION=false` 或传入 `-require-activation=false`；此时本地完成安装，上报保持关闭，直到另行开启。仅清空 Console URL 不能绕过必需激活：需正确配置目的地或明确关闭激活要求。命令行参数优先于环境变量。
+
+明确选择离线安装的示例：
+
+```sh
+MONITOR_REQUIRE_ACTIVATION=false MONITOR_CONSOLE_URL= docker compose up -d --build
+```
+
 原生程序默认使用 `native`；Docker 镜像和 Compose 自动设置为 `docker`。
-
-新安装以及从不含此功能的版本升级时，上报默认关闭。后台地址已预设为 `https://feiniu.i7f.cn:5090`；具有 `system:settings` 权限的管理员可在系统设置中查看目的地和字段，再明确开启。预设地址不会自动启用上报。重启和升级保留对同一接收方保存的选择；更换接收方需要重新同意。
-
-实例登记和活跃统计无需绑定账号。Console 支持本地管理员账号密码登录，GitHub 登录为可选功能；安装 Monitor Go 无需配置 OAuth。
 
 仅支持 HTTPS；数字回环地址的 HTTP 仅供本机联调。容器中的回环地址指向容器自身，分开部署的容器应连接真实 HTTPS 地址。不要将凭据、数据目录或备份提交 Git；反向代理日志应避免记录 OAuth 查询参数、完整来源 IP 和凭据。
 
-[自愿使用情况上报](USAGE_REPORTING.md)
+[首次激活与使用情况上报](USAGE_REPORTING.md)
