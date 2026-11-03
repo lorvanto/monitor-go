@@ -1187,5 +1187,24 @@
   "/notification-deliveries": [],
   "/alerts/summary": {
     "open": 0
+  },
+  "/usage": {
+    "enabled": false,
+    "configured": false,
+    "consoleUrl": "",
+    "instanceId": "",
+    "lastReportAt": 0,
+    "nextReportAt": 0,
+    "lastError": "",
+    "account": null,
+    "pendingActiveDays": [],
+    "preview": {
+      "instanceId": "",
+      "version": "fixture",
+      "os": "linux",
+      "arch": "amd64",
+      "deployment": "native",
+      "activeDays": []
+    }
   }
 }

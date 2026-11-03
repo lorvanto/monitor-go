@@ -43,7 +43,10 @@ var migration7 string
 //go:embed migration8.sql
 var migration8 string
 
-const currentSchemaVersion = 8
+//go:embed migration9.sql
+var migration9 string
+
+const currentSchemaVersion = 9
 
 type Store struct {
 	checkWake        chan struct{}
@@ -121,7 +124,7 @@ func OpenStore(dir string) (*Store, error) {
 		return nil, err
 	}
 	for version >= 1 && version < currentSchemaVersion {
-		migrations := []string{migration2, migration3, migration4, migration5, migration6, migration7, migration8}
+		migrations := []string{migration2, migration3, migration4, migration5, migration6, migration7, migration8, migration9}
 		tx, e := db.Begin()
 		if e != nil {
 			return nil, e
@@ -142,7 +145,7 @@ func OpenStore(dir string) (*Store, error) {
 	key, err := os.ReadFile(keyPath)
 	if errors.Is(err, os.ErrNotExist) {
 		var n int
-		if err = db.QueryRow("SELECT (SELECT count(*) FROM monitors WHERE secret <> '') + (SELECT count(*) FROM notification_channels)").Scan(&n); err != nil {
+		if err = db.QueryRow("SELECT (SELECT count(*) FROM monitors WHERE secret <> '') + (SELECT count(*) FROM notification_channels) + (SELECT count(*) FROM usage_settings WHERE credential <> '')").Scan(&n); err != nil {
 			return nil, err
 		}
 		if n > 0 {

@@ -1,5 +1,6 @@
 import { notice, errorMessage, type DisplayMessage } from "../lib/messages";
 import Form from "../components/Form";
+import UsageSettings from "../components/UsageSettings";
 import { resourceName } from "../lib/resourceLabels";
 import { useEffect, useState } from "react";
 import { createStore, useStore } from "zustand";
@@ -553,6 +554,7 @@ export default function SettingsView() {
           </p>
         </aside>
       </div>
+      <UsageSettings />
       {viewState.clear ? (
         <Modal
           title={t("清理图片缓存")}

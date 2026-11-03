@@ -2,9 +2,9 @@
 
 **English** · [简体中文](../zh-CN/README.md) · [日本語](../ja-JP/README.md) · [한국어](../ko-KR/README.md) · [繁體中文](../zh-TW/README.md) · [Documentation](../README.md)
 
-> Status: pre-release development baseline `0.4.0-dev`, SQLite schema `8`; no published release is implied. Examples use a POSIX shell; Windows developers can use WSL.
+> Status: pre-release development baseline `0.4.0-dev`, SQLite schema `9`; no published release is implied. Examples use a POSIX shell; Windows developers can use WSL.
 
-Schema 5 adds a partial index for queued scheduler jobs, avoiding scans of completed-job history. Job retention remains seven days. Stop the service and back up the complete data directory before upgrading; older binaries cannot read schema 8, and rollback requires that backup.
+Schema 5 adds a partial index for queued scheduler jobs, avoiding scans of completed-job history. Job retention remains seven days. Stop the service and back up the complete data directory before upgrading; binaries without schema 9 support cannot read the upgraded database, and rollback requires that backup.
 
 See the [English screenshot gallery](SCREENSHOTS.md) for a feature tour with synthetic demonstration data. GitHub’s default README and About use Simplified Chinese; the application still starts in English on first use.
 
@@ -129,7 +129,7 @@ npm --prefix web run format:check
 
 Stop the service cleanly, then back up the entire data directory: SQLite and any companion files, `master.key`, and original `uploads/` files. Copying only a live `monitor.db` is not a complete backup. Restore the whole directory with a compatible server version.
 
-Database versions 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 migrate transactionally. Older binaries cannot directly read schema 8; rollback requires the entire pre-upgrade backup. New permissions are not silently assigned to custom roles. This internationalization change requires no new schema migration.
+Database versions 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 → 9 migrate transactionally. Binaries without schema 9 support cannot read the upgraded database; rollback requires the entire pre-upgrade backup. New permissions are not silently assigned to custom roles. Schema 9 adds optional reporting settings and coarse activity dates; existing installations remain opted out until an administrator enables the feature.
 
 ## Current limits
 
@@ -159,7 +159,7 @@ Generic keeps its existing JSON and signature-header contract. Chat formats requ
 
 ## Host alert thresholds
 
-System settings provides installation-wide CPU, memory and disk thresholds (defaults: 90%, 90%, 85%) and a sustained duration of 1–60 minutes (default: 5). Set an individual threshold to 0 to disable that metric alert. Schema 6 adds these validated settings; stop the service and back up the whole data directory before upgrading. Older binaries cannot read schema 8.
+System settings provides installation-wide CPU, memory and disk thresholds (defaults: 90%, 90%, 85%) and a sustained duration of 1–60 minutes (default: 5). Set an individual threshold to 0 to disable that metric alert. Schema 6 adds these validated settings; stop the service and back up the whole data directory before upgrading. Binaries without schema 9 support cannot read the upgraded database.
 
 Local and remote hosts use the same rules. CPU/memory must stay at or above the threshold throughout the duration: samples must cover the whole window, including a sample at or before its start, with no missing values or gaps over 45 seconds. Insufficient data does not open an alert or resolve an existing one. The latest valid reading below the threshold resolves it. Disk alerts use the latest available disk readings immediately. Disabling a threshold resolves that metric's incident on the next report; settings changes also take effect on the next report. The 90-second remote-host offline rule is unchanged. Per-host overrides are not implemented.
 
@@ -208,7 +208,7 @@ Network/server failures use a linear delay of 5 seconds per consecutive failure,
 
 ## Long-term availability and retention
 
-Schema 8 adds hourly check summaries (total/good counts and average/maximum latency), transactional consumed-row markers and an index for pending rows. At startup and each hourly maintenance run, closed hours are accumulated before raw data is removed. Repeated runs and late results do not double-count; a failed rollup preserves raw rows. Settings default to 7 days of raw host/check metrics (1–30 configurable) and 90 days of check summaries (90–730 configurable). Cleanup is batched and aligned to UTC hours, so raw retention can exceed the requested duration by an hour plus the maintenance backlog. There is no host summary table. Stop and back up before upgrading; older binaries cannot read schema 8.
+Schema 8 adds hourly check summaries (total/good counts and average/maximum latency), transactional consumed-row markers and an index for pending rows. At startup and each hourly maintenance run, closed hours are accumulated before raw data is removed. Repeated runs and late results do not double-count; a failed rollup preserves raw rows. Settings default to 7 days of raw host/check metrics (1–30 configurable) and 90 days of check summaries (90–730 configurable). Cleanup is batched and aligned to UTC hours, so raw retention can exceed the requested duration by an hour plus the maintenance backlog. There is no host summary table. Stop and back up before upgrading; binaries without schema 9 support cannot read the upgraded database.
 
 Overview and Service checks offer 30/90-day availability. GET /api/v1/monitors/availability?hours=720 or 2160 requires monitor:read. Overview accepts the same ranges. Results combine hourly summaries and unconsumed raw rows in one SQLite snapshot, weighted by actual check count. Healthy and warning checks count as available, matching the existing 24-hour definition. Windows start at a UTC hour boundary; the current partial hour is included. Missing samples are not inferred as successes, so no history yields null/“—”. Previously deleted history cannot be reconstructed.
 
@@ -253,3 +253,7 @@ Performance work preserves 15-second dynamic sampling and configured check/alert
 ## System incident text
 
 Known system-generated incident titles, timeline events, engine labels and check diagnostics follow the selected interface language at display time, including existing records. The compatibility renderer matches complete engine templates only in incident/diagnostic fields. Names, notes, paths, unknown external errors and stored records stay unchanged; it never rewrites the database or replaces arbitrary text. Overview, host warnings and incident details share this behavior. Language switching preserves open silence selections without submitting or refetching history. Notification payloads and server/Agent logs retain their original text.
+
+## Optional usage reporting
+
+Reporting is disabled on fresh installations and when upgrading from a version without this feature. Later restarts and upgrades preserve an administrator’s saved choice for the same recipient. Configure the console origin on the server, then an administrator with system:settings can review the fields and explicitly enable reporting in System settings. Configuring a URL alone does not enable reporting. Changing the recipient origin requires new consent. [Optional usage reporting](USAGE_REPORTING.md)

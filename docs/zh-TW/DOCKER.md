@@ -32,7 +32,7 @@ MONITOR_PORT=5081 docker compose up -d --build
 
 ## 設定與 HTTPS
 
-Compose 讀取 shell 環境變數或本機未追蹤的 `.env`：`MONITOR_IMAGE`（預設 `monitor-go:local`）、`MONITOR_PORT`（5080）、`MONITOR_BIND_ADDRESS`（127.0.0.1）、`MONITOR_PUBLIC_URL`（空）、`MONITOR_SECURE_COOKIE`（false）、`MONITOR_COLLECT_HOST`（false）及 `MONITOR_TRUSTED_PROXY`（空）。後續 Compose 命令須保持相同設定，容器內部連接埠維持 5080 供健康檢查使用。
+Compose 讀取 shell 環境變數或本機未追蹤的 `.env`：`MONITOR_IMAGE`（預設 `monitor-go:local`）、`MONITOR_PORT`（5080）、`MONITOR_BIND_ADDRESS`（127.0.0.1）、`MONITOR_PUBLIC_URL`（空）、`MONITOR_SECURE_COOKIE`（false）、`MONITOR_COLLECT_HOST`（false）、`MONITOR_TRUSTED_PROXY`（空）及 `MONITOR_CONSOLE_URL`（空）。後續 Compose 命令須保持相同設定，容器內部連接埠維持 5080 供健康檢查使用。
 
 遠端瀏覽器與 Agent 存取應在宿主機連接埠前部署可信的 HTTPS 反向代理，並設定不帶結尾斜線的實際外部來源：
 
@@ -126,3 +126,13 @@ docker compose exec -T monitor tar -C /data/backups/snapshot-001 -czf - . > back
 ```
 
 還原前先停服，以完整備份取代整個資料目錄，再使用支援該結構版本或更高版本的程式啟動。驗證成功前保留舊目錄。僅支援離線還原，不要將檔案合併至運行中的執行個體。備份包含憑據，應私密保存並複製到獨立儲存；原有冷備份仍可使用。
+
+## 自願使用情況回報
+
+`MONITOR_CONSOLE_URL=https://console.example.com`
+
+原生程式預設使用 `native`；Docker 映像和 Compose 自動設定為 `docker`。
+
+新安裝以及從不含此功能的版本升級時，回報預設關閉。後續重新啟動或升級會保留管理員對同一接收方儲存的選擇。先在伺服器設定統計後台網址，再由具有 system:settings 權限的管理員，在系統設定中查看欄位並明確開啟。僅設定網址不會開啟回報；更換接收方網址需要重新同意。 僅支援 HTTPS；數字迴環位址的 HTTP 僅供本機整合測試。預設不內建官方後台網域。容器中的迴環位址指向容器本身，分開部署的容器應連線真實 HTTPS 網址。不要將憑據、資料目錄或備份提交 Git；反向代理記錄應避免儲存 OAuth 查詢參數、完整來源 IP 及憑據。
+
+[自願使用情況回報](USAGE_REPORTING.md)

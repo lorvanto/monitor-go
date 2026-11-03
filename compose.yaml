@@ -29,5 +29,7 @@ services:
       - -public-url=${MONITOR_PUBLIC_URL:-}
       - -secure-cookie=${MONITOR_SECURE_COOKIE:-false}
       - -trusted-proxy=${MONITOR_TRUSTED_PROXY:-}
+      - -console-url=${MONITOR_CONSOLE_URL:-}
+      - -deployment=docker
 volumes:
   monitor-data:

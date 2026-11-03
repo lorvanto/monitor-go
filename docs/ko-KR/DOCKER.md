@@ -32,7 +32,7 @@ UID/GID는 `10001:10001`입니다. Compose는 읽기 전용 루트 파일 시스
 
 ## 설정 및 HTTPS
 
-Compose는 shell 환경 또는 추적하지 않는 `.env`에서 `MONITOR_IMAGE`(`monitor-go:local`), `MONITOR_PORT`(5080), `MONITOR_BIND_ADDRESS`(127.0.0.1), `MONITOR_PUBLIC_URL`(비어 있음), `MONITOR_SECURE_COOKIE`(false), `MONITOR_COLLECT_HOST`(false), `MONITOR_TRUSTED_PROXY`(비어 있음)를 읽습니다. 이후 명령에도 같은 값을 유지하세요. 상태 검사를 위해 컨테이너 내부 포트는 5080을 유지합니다.
+Compose는 shell 환경 또는 추적하지 않는 `.env`에서 `MONITOR_IMAGE`(`monitor-go:local`), `MONITOR_PORT`(5080), `MONITOR_BIND_ADDRESS`(127.0.0.1), `MONITOR_PUBLIC_URL`(비어 있음), `MONITOR_SECURE_COOKIE`(false), `MONITOR_COLLECT_HOST`(false), `MONITOR_TRUSTED_PROXY`(비어 있음), `MONITOR_CONSOLE_URL`(비어 있음)를 읽습니다. 이후 명령에도 같은 값을 유지하세요. 상태 검사를 위해 컨테이너 내부 포트는 5080을 유지합니다.
 
 원격 브라우저 및 Agent 접근에는 호스트 포트 앞에 신뢰할 수 있는 HTTPS 프록시를 놓고 끝에 슬래시가 없는 외부 오리진을 지정하세요.
 
@@ -126,3 +126,13 @@ docker compose exec -T monitor tar -C /data/backups/snapshot-001 -czf - . > back
 ```
 
 복원 전에 서비스를 중지하고 전체 데이터 디렉터리를 완전한 백업으로 교체한 다음 해당 스키마 이상을 지원하는 바이너리로 시작합니다. 검증이 끝날 때까지 이전 디렉터리를 보관합니다. 오프라인 복원만 지원하며 실행 중인 데이터에 파일을 병합하지 않습니다. 백업에는 자격 증명이 포함되므로 비공개로 보관하고 독립 저장소에 복사합니다. 기존 콜드 백업도 계속 지원합니다.
+
+## 선택적 사용 현황 보고
+
+`MONITOR_CONSOLE_URL=https://console.example.com`
+
+네이티브 실행 파일의 기본값은 `native`이며 Docker 이미지와 Compose는 자동으로 `docker`를 설정합니다.
+
+새 설치와 이 기능이 없는 이전 버전에서의 업그레이드는 기본적으로 보고가 꺼져 있습니다. 이후 재시작이나 업그레이드에서는 동일한 수신 주소에 대해 관리자가 저장한 선택을 유지합니다. 서버에 콘솔 주소를 설정한 후 system:settings 권한의 관리자가 시스템 설정에서 전송 항목을 확인하고 명시적으로 켭니다. 주소만 설정해도 보고가 켜지는 것은 아닙니다. 수신 주소를 변경하면 다시 동의해야 합니다. HTTPS가 필요하며 숫자 루프백 HTTP는 로컬 통합 테스트에만 허용됩니다. 기본 공식 콘솔 도메인은 없습니다. 컨테이너 루프백은 자신을 가리키므로 별도 컨테이너에는 실제 HTTPS 주소를 사용하세요. 자격 증명, 데이터와 백업을 Git에 저장하지 마세요. 프록시 로그에 OAuth 쿼리, 전체 원본 IP나 자격 증명을 남기지 마세요.
+
+[선택적 사용 현황 보고](USAGE_REPORTING.md)

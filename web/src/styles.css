@@ -3300,6 +3300,84 @@
     line-height: 1.6;
   }
 
+  .usage-settings {
+    margin-top: 16px;
+    min-width: 0;
+  }
+  .usage-settings .panel-head {
+    flex-wrap: wrap;
+  }
+  .usage-content {
+    display: grid;
+    gap: 16px;
+    min-width: 0;
+  }
+  .usage-summary dd,
+  .usage-preview dd {
+    overflow-wrap: anywhere;
+    min-width: 0;
+  }
+  .usage-actions,
+  .usage-consent {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 12px 16px;
+  }
+  .usage-actions p {
+    color: var(--ink-3);
+    flex: 1 1 260px;
+  }
+  .usage-consent .check {
+    flex: 1 1 260px;
+  }
+  .usage-preview {
+    border-top: 1px solid var(--rule);
+    padding-top: 16px;
+  }
+  .usage-preview summary {
+    cursor: pointer;
+    padding: 8px 0;
+    font-weight: 600;
+  }
+  .usage-binding {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 12px;
+    border-top: 1px solid var(--rule);
+    padding-top: 16px;
+    min-width: 0;
+  }
+  .usage-binding h3,
+  .usage-binding > p {
+    flex-basis: 100%;
+  }
+  .usage-binding > p {
+    color: var(--ink-3);
+    line-height: 1.6;
+  }
+  .usage-bind-form {
+    display: flex;
+    align-items: start;
+    flex-wrap: wrap;
+    gap: 12px;
+    flex-basis: 100%;
+    min-width: 0;
+  }
+  .usage-bind-form .field {
+    flex: 1 1 260px;
+    min-width: 0;
+  }
+  .usage-bind-form .btn {
+    align-self: center;
+  }
+  .usage-settings .btn {
+    white-space: normal;
+    overflow-wrap: anywhere;
+    max-width: 100%;
+  }
+
   /* 应用与密钥 */
   .app-detail-head {
     display: flex;

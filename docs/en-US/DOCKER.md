@@ -32,7 +32,7 @@ Container-local host collection is disabled by default. Install a native Agent o
 
 ## Settings and HTTPS
 
-Compose reads these shell variables (or a local, untracked `.env`): `MONITOR_IMAGE` (default `monitor-go:local`), `MONITOR_PORT` (5080), `MONITOR_BIND_ADDRESS` (127.0.0.1), `MONITOR_PUBLIC_URL` (empty), `MONITOR_SECURE_COOKIE` (false), and `MONITOR_COLLECT_HOST` (false), plus `MONITOR_TRUSTED_PROXY` (empty). Preserve these values on later Compose commands. Keep the container port at 5080 for the health check.
+Compose reads these shell variables (or a local, untracked `.env`): `MONITOR_IMAGE` (default `monitor-go:local`), `MONITOR_PORT` (5080), `MONITOR_BIND_ADDRESS` (127.0.0.1), `MONITOR_PUBLIC_URL` (empty), `MONITOR_SECURE_COOKIE` (false), and `MONITOR_COLLECT_HOST` (false), plus `MONITOR_TRUSTED_PROXY` (empty) and `MONITOR_CONSOLE_URL` (empty). Preserve these values on later Compose commands. Keep the container port at 5080 for the health check.
 
 For remote browser and Agent access, place a trusted HTTPS proxy in front of the host port and set the exact external origin without a trailing slash:
 
@@ -126,3 +126,13 @@ docker compose exec -T monitor tar -C /data/backups/snapshot-001 -czf - . > back
 ```
 
 To restore, stop the service, replace the entire data directory with a complete backup, and start a binary supporting at least its schema version. Keep the old directory until verification succeeds. Restore offline only; do not merge files into a running installation. Treat backups as private credentials and copy them to independent storage. Cold backups remain supported.
+
+## Optional usage reporting
+
+`MONITOR_CONSOLE_URL=https://console.example.com`
+
+The native binary defaults to `native`; the Docker image and Compose set `docker` automatically.
+
+Reporting is disabled on fresh installations and when upgrading from a version without this feature. Later restarts and upgrades preserve an administrator’s saved choice for the same recipient. Configure the console origin on the server, then an administrator with system:settings can review the fields and explicitly enable reporting in System settings. Configuring a URL alone does not enable reporting. Changing the recipient origin requires new consent. Use HTTPS; numeric loopback HTTP is permitted only for local integration. No official console domain is configured by default. Docker containers cannot reach a host service through their own loopback; use a real HTTPS endpoint for separate containers. Never publish credentials, data directories or backups to Git. Configure reverse-proxy access logs to avoid OAuth query strings, full source IPs and credentials.
+
+[Optional usage reporting](USAGE_REPORTING.md)

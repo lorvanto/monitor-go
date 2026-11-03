@@ -4,7 +4,7 @@
 
 **简体中文** · [English](docs/en-US/README.md) · [日本語](docs/ja-JP/README.md) · [한국어](docs/ko-KR/README.md) · [繁體中文](docs/zh-TW/README.md)
 
-**当前状态：**预发布开发基线 `0.4.0-dev`，SQLite 结构版本 `8`。公开发布包和目标平台验证仍在准备中；当前版本号不代表已发布 GitHub Release。详见[完整使用指南](docs/zh-CN/README.md)和[路线图](ROADMAP.md)。
+**当前状态：**预发布开发基线 `0.4.0-dev`，SQLite 结构版本 `9`。公开发布包和目标平台验证仍在准备中；当前版本号不代表已发布 GitHub Release。详见[完整使用指南](docs/zh-CN/README.md)和[路线图](ROADMAP.md)。
 
 ## 功能
 
@@ -122,3 +122,7 @@ npm --prefix web run format:check
 ## 许可证
 
 项目自有代码和文档采用 [Apache License 2.0](LICENSE)。第三方依赖、图标与字体保留各自许可，详见 [NOTICE](NOTICE) 和[第三方声明](THIRD_PARTY_NOTICES.md)。
+
+## 自愿使用情况上报
+
+默认关闭，可随时关闭；由独立后台 Monitor Console 进行实例登记、GitHub 账号自愿绑定和活跃统计。监控、告警和登录不依赖统计后台。配置地址不会自动启用，需管理员明确同意。[配置、字段及隐私边界](docs/zh-CN/USAGE_REPORTING.md)。

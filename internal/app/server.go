@@ -27,12 +27,14 @@ import (
 
 type Config struct {
 	Listen, DataDir, PublicURL, TrustedProxy string
+	ConsoleURL, Deployment                   string
 	SecureCookie                             bool
 	Assets                                   fs.FS
 	Collect                                  bool
 }
 type Server struct {
 	static         http.Handler
+	usage          *usageReporter
 	Store          *Store
 	cfg            Config
 	setupToken     string
@@ -108,6 +110,11 @@ func New(cfg Config) (*Server, error) {
 			st.Close()
 			return nil, errors.New("初始化码文件无效")
 		}
+	}
+	s.usage, e = newUsageReporter(s)
+	if e != nil {
+		st.Close()
+		return nil, e
 	}
 	return s, nil
 }
@@ -246,6 +253,11 @@ func (s *Server) Handler() http.Handler {
 	add("PATCH /api/v1/menus/{id}", "menu:manage", false, s.saveMenu)
 	add("DELETE /api/v1/menus/{id}", "menu:manage", false, s.deleteMenu)
 	add("POST /api/v1/menus/reset", "menu:manage", false, s.resetMenus)
+	add("GET /api/v1/usage", "system:access", false, s.getUsage)
+	add("PATCH /api/v1/usage", "system:settings", false, s.saveUsage)
+	add("POST /api/v1/usage/bind", "system:settings", false, s.bindUsage)
+	add("POST /api/v1/usage/unbind", "system:settings", false, s.unbindUsage)
+	add("POST /api/v1/usage/activity", "", false, s.usageActivity)
 	add("GET /api/v1/settings", "system:access", false, s.getSettings)
 	add("PATCH /api/v1/settings", "system:settings", false, s.saveSettings)
 	add("GET /api/v1/system", "system:access", false, s.systemInfo)
@@ -329,7 +341,8 @@ func (s *Server) Handler() http.Handler {
 	})
 }
 func (s *Server) Start(ctx context.Context) {
-	s.work.Add(4)
+	s.work.Add(5)
+	go func() { defer s.work.Done(); s.usage.loop(ctx) }()
 	go func() { defer s.work.Done(); s.scheduler(ctx) }()
 	go func() { defer s.work.Done(); s.maintenanceLoop(ctx) }()
 	go func() { defer s.work.Done(); s.agentLoop(ctx) }()

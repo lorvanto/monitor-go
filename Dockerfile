@@ -43,6 +43,7 @@ LABEL org.opencontainers.image.version="${VERSION}" \
       org.opencontainers.image.description="Self-hosted Go monitoring with embedded React and SQLite" \
       org.opencontainers.image.source="https://github.com/lorvanto/monitor-go" \
       org.opencontainers.image.licenses="Apache-2.0"
+ENV MONITOR_DEPLOYMENT=docker
 USER 10001:10001
 WORKDIR /data
 VOLUME ["/data"]

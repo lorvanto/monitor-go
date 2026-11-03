@@ -28,6 +28,10 @@ import {
   type Page,
 } from "./stores/app";
 import AuthView from "./views/AuthView";
+import {
+  createUsageActivityRecorder,
+  sendUsageActivity,
+} from "./lib/usageActivity";
 const OverviewView = lazy(() => import("./views/OverviewView"));
 const HostView = lazy(() => import("./views/HostView"));
 const MonitorsView = lazy(() => import("./views/MonitorsView"));
@@ -252,6 +256,28 @@ export default function App() {
   useEffect(() => {
     document.title = `${appState.pageTitle} · Monitor Go`;
   }, [appState.pageTitle]);
+  useEffect(() => {
+    let storage: Storage | undefined;
+    try {
+      storage = localStorage;
+    } catch {
+      /* Keep in-memory deduplication. */
+    }
+    const recordUsage = createUsageActivityRecorder({
+      state: () => ({
+        enabled: appStore.getState().usageEnabled,
+        csrf: appStore.getState().user?.csrf,
+      }),
+      send: sendUsageActivity,
+      storage,
+    });
+    document.addEventListener("pointerdown", recordUsage, { passive: true });
+    document.addEventListener("keydown", recordUsage, { passive: true });
+    return () => {
+      document.removeEventListener("pointerdown", recordUsage);
+      document.removeEventListener("keydown", recordUsage);
+    };
+  }, []);
   useEffect(() => {
     void boot();
     document.addEventListener("keydown", keydown);

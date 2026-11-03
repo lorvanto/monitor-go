@@ -29,13 +29,15 @@ func main() {
 	secure := flag.Bool("secure-cookie", false, "HTTPS 部署时启用 Secure Cookie")
 	collect := flag.Bool("collect-host", true, "采集运行服务的本机指标")
 	trustedProxy := flag.String("trusted-proxy", "", "Comma-separated trusted proxy CIDRs for X-Forwarded-For; empty trusts none")
+	consoleURL := flag.String("console-url", os.Getenv("MONITOR_CONSOLE_URL"), "Optional Monitor Console origin; reporting remains off until explicitly enabled")
+	deployment := flag.String("deployment", envDefault("MONITOR_DEPLOYMENT", "native"), "Deployment type for optional usage reporting: native or docker")
 	version := flag.Bool("version", false, "Print application version and exit")
 	flag.Parse()
 	if *version {
 		fmt.Println(buildinfo.Version)
 		return
 	}
-	s, e := app.New(app.Config{Listen: *listen, DataDir: *data, PublicURL: *public, TrustedProxy: *trustedProxy, SecureCookie: *secure, Collect: *collect, Assets: web.Assets()})
+	s, e := app.New(app.Config{Listen: *listen, DataDir: *data, PublicURL: *public, TrustedProxy: *trustedProxy, SecureCookie: *secure, Collect: *collect, ConsoleURL: *consoleURL, Deployment: *deployment, Assets: web.Assets()})
 	if e != nil {
 		slog.Error("启动失败", "error", e)
 		os.Exit(1)
@@ -80,4 +82,11 @@ func runBackup(args []string) error {
 	}
 	fmt.Printf("Backup complete: %s (schema %d, %d objects)\n", *output, manifest.SchemaVersion, manifest.FileCount)
 	return nil
+}
+
+func envDefault(name, fallback string) string {
+	if value := os.Getenv(name); value != "" {
+		return value
+	}
+	return fallback
 }

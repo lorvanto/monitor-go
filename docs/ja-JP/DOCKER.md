@@ -32,7 +32,7 @@ UID/GIDは`10001:10001`です。Composeではルートファイルシステム�
 
 ## 設定とHTTPS
 
-Composeはshell環境または追跡しない`.env`から`MONITOR_IMAGE`（`monitor-go:local`）、`MONITOR_PORT`（5080）、`MONITOR_BIND_ADDRESS`（127.0.0.1）、`MONITOR_PUBLIC_URL`（空）、`MONITOR_SECURE_COOKIE`（false）、`MONITOR_COLLECT_HOST`（false）、`MONITOR_TRUSTED_PROXY`（空）を読みます。以降のコマンドでも同じ設定を使います。ヘルスチェック用の内部ポートは5080を保持します。
+Composeはshell環境または追跡しない`.env`から`MONITOR_IMAGE`（`monitor-go:local`）、`MONITOR_PORT`（5080）、`MONITOR_BIND_ADDRESS`（127.0.0.1）、`MONITOR_PUBLIC_URL`（空）、`MONITOR_SECURE_COOKIE`（false）、`MONITOR_COLLECT_HOST`（false）、`MONITOR_TRUSTED_PROXY`（空）、`MONITOR_CONSOLE_URL`（空）を読みます。以降のコマンドでも同じ設定を使います。ヘルスチェック用の内部ポートは5080を保持します。
 
 リモートのブラウザー／Agentには、ホストポートの前に信頼されたHTTPSプロキシを置き、末尾スラッシュなしの外部オリジンを設定します。
 
@@ -126,3 +126,13 @@ docker compose exec -T monitor tar -C /data/backups/snapshot-001 -czf - . > back
 ```
 
 復元時はサービスを停止し、データディレクトリ全体を完全なバックアップに置き換え、そのスキーマ以上に対応するバイナリで起動します。検証完了まで旧ディレクトリを保持してください。復元はオフラインのみで、稼働中のデータに混在させません。認証情報を含むため非公開で保管し、独立したストレージにコピーします。コールドバックアップも引き続き利用できます。
+
+## 任意の利用状況送信
+
+`MONITOR_CONSOLE_URL=https://console.example.com`
+
+ネイティブ版の既定値は `native` です。Docker イメージと Compose は自動的に `docker` を設定します。
+
+新規インストールと、この機能のない旧バージョンからの更新では送信は既定で無効です。その後の再起動や更新では、同じ送信先について管理者が保存した選択を維持します。サーバーで送信先を設定した後、system:settings 権限の管理者がシステム設定で送信項目を確認し、明示的に有効にします。URL の設定だけでは有効になりません。送信先の変更には再同意が必要です。 HTTPS が必要です。数値ループバックの HTTP はローカル統合テスト専用です。公式コンソールのドメインは既定で設定しません。コンテナー内のループバックは自身を指すため、別コンテナーには実際の HTTPS URL を使用します。認証情報、データやバックアップを Git に保存しないでください。プロキシログには OAuth のクエリ、完全な送信元 IP や認証情報を残さないでください。
+
+[任意の利用状況送信](USAGE_REPORTING.md)

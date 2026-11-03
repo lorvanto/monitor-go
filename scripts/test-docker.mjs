@@ -26,6 +26,7 @@ const env = {
   MONITOR_SECURE_COOKIE: "false",
   MONITOR_COLLECT_HOST: "false",
   MONITOR_TRUSTED_PROXY: "",
+  MONITOR_CONSOLE_URL: "",
 };
 const platform = process.env.MONITOR_PLATFORM;
 if (platform) assert.match(platform, /^linux\/(amd64|arm64)$/);
@@ -94,6 +95,11 @@ async function request(endpoint, { method = "GET", body } = {}) {
 const content = Buffer.from("Monitor Go Docker persistence verification\n");
 let fileID;
 async function verifyPersistence() {
+  const usage = await request("/usage");
+  assert.equal(usage.enabled, false);
+  assert.equal(usage.configured, false);
+  assert.equal(usage.instanceId, "");
+  assert.deepEqual(usage.pendingActiveDays, []);
   assert.equal((await request("/me")).name, "Docker smoke test");
   const response = await fetch(`${base}/api/v1/files/${fileID}/download`, {
     headers: { Cookie: cookie },
@@ -143,7 +149,13 @@ try {
   compose(["exec", "-T", "monitor", "sh", "-c", "test ! -e /data/setup-token"]);
   const system = await request("/system");
   assert.equal(system.database, "SQLite");
-  assert.equal(system.schema, 8);
+  assert.equal(system.schema, 9);
+  const usage = await request("/usage");
+  assert.equal(usage.enabled, false);
+  assert.equal(usage.configured, false);
+  assert.equal(usage.instanceId, "");
+  assert.deepEqual(usage.pendingActiveDays, []);
+  assert.equal(usage.preview.deployment, "docker");
   assert.equal(system.version, env.MONITOR_VERSION);
   if (platform) assert.equal(system.platform, platform.replace("/", " / "));
   assert.deepEqual(await request("/hosts"), []);
@@ -278,7 +290,7 @@ try {
     keyHash,
   );
   console.log(
-    `Docker verified on port ${port}: non-root, read-only root, health, English setup, SQLite/session/upload persistence, recreation, cold backup/restore, and online backup/restore.`,
+    `Docker verified on port ${port}: non-root, read-only root, health, English setup, disabled usage reporting, SQLite/session/upload persistence, recreation, cold backup/restore, and online backup/restore.`,
   );
 } finally {
   for (const name of [restoredProject, project]) {

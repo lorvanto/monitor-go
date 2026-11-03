@@ -1,6 +1,6 @@
 # Documentation
 
-Start with a current guide in your preferred language. The application is a pre-release development baseline (`0.4.0-dev`, SQLite schema `8`). The project uses Apache-2.0; third-party components retain their own licenses.
+Start with a current guide in your preferred language. The application is a pre-release development baseline (`0.4.0-dev`, SQLite schema `9`). The project uses Apache-2.0; third-party components retain their own licenses.
 
 All documentation uses English directory and file names under `docs/<locale>/`: `en-US`, `zh-CN`, `ja-JP`, `ko-KR` and `zh-TW`. Each directory contains a current `README.md` guide; Simplified Chinese design documents and historical records live in `zh-CN/` with an `INDEX.md` entry point.
 
@@ -23,6 +23,7 @@ Docker deployment guides: [English](en-US/DOCKER.md) · [简体中文](zh-CN/DOC
 | Need | Reference |
 |---|---|
 | Preview each interface language with synthetic demonstration data | [简体中文](zh-CN/SCREENSHOTS.md) · [English](en-US/SCREENSHOTS.md) · [日本語](ja-JP/SCREENSHOTS.md) · [한국어](ko-KR/SCREENSHOTS.md) · [繁體中文](zh-TW/SCREENSHOTS.md) |
+| Configure optional usage reporting and account linking | [简体中文](zh-CN/USAGE_REPORTING.md) · [English](en-US/USAGE_REPORTING.md) · [日本語](ja-JP/USAGE_REPORTING.md) · [한국어](ko-KR/USAGE_REPORTING.md) · [繁體中文](zh-TW/USAGE_REPORTING.md) |
 | Build, develop or submit a PR | [CONTRIBUTING.md](../CONTRIBUTING.md) |
 | Find help or report a bug | [SUPPORT.md](../SUPPORT.md) |
 | Report a vulnerability privately | [SECURITY.md](../SECURITY.md) |

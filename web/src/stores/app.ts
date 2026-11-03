@@ -63,6 +63,7 @@ interface AppState {
   instanceNameKey: string;
   data: AppData;
   user: User | null;
+  usageEnabled: boolean;
   initialized: boolean;
   booting: boolean;
   connectionError: DisplayMessage;
@@ -91,6 +92,7 @@ export const appStore = create<AppState>(() => ({
   instanceNameKey: "我的监控中心",
   data: emptyData(),
   user: null,
+  usageEnabled: false,
   initialized: true,
   booting: true,
   connectionError: "",
@@ -166,6 +168,7 @@ export function shareEqual<T>(previous: T, next: T): T {
 }
 interface PollResponse {
   user: User;
+  usageEnabled?: boolean;
   navigation: {
     items: NavItem[];
     instanceName: string;
@@ -270,6 +273,7 @@ function clearSession() {
   sessionVersion++;
   appStore.setState({
     user: null,
+    usageEnabled: false,
     navigation: [],
     data: emptyData(),
     updatedAt: 0,
@@ -435,6 +439,7 @@ async function loadAll(session: number, page: Page, afterMutation: boolean) {
         permissions,
       }),
       openAlertCount: poll.openAlertCount,
+      usageEnabled: poll.usageEnabled === true,
       navigation: shareEqual(
         appStore.getState().navigation,
         poll.navigation.items,
