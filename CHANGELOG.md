@@ -6,6 +6,8 @@ User-visible changes belong here. Entries under **Unreleased** describe the curr
 
 ### Optional usage reporting
 
+- Label optional account associations as Console accounts, supporting local Console sign-in as well as optional GitHub sign-in; preserve explicit reporting consent and unsaved binding codes across language changes.
+
 - Preset the Console destination to `https://feiniu.i7f.cn:5090` when no override is supplied, while keeping reporting off until explicit consent. Preserve custom and explicitly empty destinations; clarify that installation statistics do not require GitHub account binding.
 - Add default-off installation registration, voluntary GitHub account binding and coarse UTC-day usage reporting to a separately deployed Monitor Console.
 - Keep reporting on an independent cancellable worker; disabling clears pending activity without affecting monitoring or alerts. Add five-language consent, field preview, controls and deployment/privacy guides.

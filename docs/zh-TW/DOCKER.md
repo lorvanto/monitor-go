@@ -135,7 +135,7 @@ docker compose exec -T monitor tar -C /data/backups/snapshot-001 -czf - . > back
 
 新安裝以及從不含此功能的版本升級時，回報預設關閉。後台網址已預設為 `https://feiniu.i7f.cn:5090`；具有 `system:settings` 權限的管理員可在系統設定中查看目的地與欄位，再明確開啟。預設網址不會自動啟用回報。重新啟動和升級保留對同一接收方儲存的選擇；更換接收方需要重新同意。
 
-執行個體登記和活躍統計不需要綁定帳號。GitHub OAuth 僅用於 Console 後台登入及選擇性的帳號關聯，不是安裝 Monitor Go 的必要步驟。
+執行個體登記及活躍統計不需綁定帳號。Console 支援本機管理員使用者名稱與密碼登入，GitHub 登入為選用功能；安裝 Monitor Go 不需設定 OAuth。
 
 僅支援 HTTPS；數字迴環位址的 HTTP 僅供本機整合測試。容器中的迴環位址指向容器本身，分開部署的容器應連線真實 HTTPS 網址。不要將憑據、資料目錄或備份提交 Git；反向代理記錄應避免儲存 OAuth 查詢參數、完整來源 IP 及憑據。
 

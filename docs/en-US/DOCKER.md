@@ -135,7 +135,7 @@ The native binary defaults to `native`; the Docker image and Compose set `docker
 
 Reporting is disabled on fresh installations and when upgrading from a version without this feature. The console URL is preset to `https://feiniu.i7f.cn:5090`; an administrator with `system:settings` can review the destination and fields, then explicitly enable reporting in System settings. A preset URL never enables reporting by itself. Restarts and upgrades preserve the saved choice for the same recipient; changing the recipient requires new consent.
 
-Installation registration and activity statistics do not require account binding. GitHub OAuth is needed only for Console dashboard sign-in and optional account association; it is not a Monitor Go installation step.
+Installation registration and activity statistics do not require account binding. Console supports a local administrator username/password; GitHub sign-in is optional. Installing Monitor Go does not require OAuth configuration.
 
 Use HTTPS; numeric loopback HTTP is permitted only for local integration. Docker containers cannot reach a host service through their own loopback; use a real HTTPS endpoint for separate containers. Never publish credentials, data directories or backups to Git. Configure reverse-proxy access logs to avoid OAuth query strings, full source IPs and credentials.
 

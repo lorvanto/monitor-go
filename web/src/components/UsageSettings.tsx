@@ -154,7 +154,7 @@ export default function UsageSettings() {
                 </div>
               ) : null}
               <div>
-                <dt>{t("绑定的 GitHub 账号")}</dt>
+                <dt>{t("绑定的 Console 账号")}</dt>
                 <dd>{status.account?.login || t("尚未绑定账号")}</dd>
               </div>
             </dl>
@@ -264,10 +264,10 @@ export default function UsageSettings() {
               </dl>
             </details>
             <div className="usage-binding">
-              <h3>{t("自愿绑定官方账号")}</h3>
+              <h3>{t("自愿绑定 Console 账号")}</h3>
               <p>
                 {t(
-                  "在管理后台使用 GitHub 登录并生成一次性绑定码，再粘贴到这里。绑定确认这套安装的负责人，不会读取实例内其他成员的身份。",
+                  "登录 Monitor Console 后生成一次性绑定码，再粘贴到这里。本地账号和可选的 GitHub 登录均可使用，不会读取实例内其他成员的身份。",
                 )}
               </p>
               {destination ? (
@@ -289,7 +289,7 @@ export default function UsageSettings() {
                     disabled={busy}
                     onClick={() => void update("/usage/unbind", "POST", {})}
                   >
-                    {t("解除 GitHub 账号绑定")}
+                    {t("解除 Console 账号绑定")}
                   </button>
                 ) : (
                   <Form
@@ -320,7 +320,7 @@ export default function UsageSettings() {
                       </small>
                     </label>
                     <button className="btn" disabled={busy || !code.trim()}>
-                      {t("绑定 GitHub 账号")}
+                      {t("绑定 Console 账号")}
                     </button>
                   </Form>
                 )

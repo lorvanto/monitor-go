@@ -124,7 +124,7 @@ it("keeps consent and an unsent binding code across all five languages", async (
     expect(view.container.textContent).not.toContain(secret);
   }
   expect(vi.mocked(fetch).mock.calls).toHaveLength(before);
-  fireEvent.click(screen.getByRole("button", { name: t("绑定 GitHub 账号") }));
+  fireEvent.click(screen.getByRole("button", { name: t("绑定 Console 账号") }));
   await screen.findByText("demo-owner");
   expect(
     vi
@@ -133,7 +133,7 @@ it("keeps consent and an unsent binding code across all five languages", async (
       .map(([, init]) => JSON.parse(String(init?.body))),
   ).toEqual([{ code: secret }]);
   fireEvent.click(
-    screen.getByRole("button", { name: t("解除 GitHub 账号绑定") }),
+    screen.getByRole("button", { name: t("解除 Console 账号绑定") }),
   );
   await screen.findByLabelText(t("一次性绑定码"));
   expect(
@@ -177,7 +177,7 @@ it("translates service errors when language changes and preserves the entered co
       { status: 422 },
     ),
   );
-  fireEvent.click(screen.getByRole("button", { name: t("绑定 GitHub 账号") }));
+  fireEvent.click(screen.getByRole("button", { name: t("绑定 Console 账号") }));
   await screen.findByRole("alert");
   for (const locale of locales) {
     await act(async () => {
