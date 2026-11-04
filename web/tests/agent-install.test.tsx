@@ -59,8 +59,8 @@ beforeEach(async () => {
 });
 
 it("accepts HTTPS origins and loopback development without allowing URL credentials or paths", () => {
-  expect(agentInstallOrigin("https://feiniu.i7f.cn:5080/")).toBe(
-    "https://feiniu.i7f.cn:5080",
+  expect(agentInstallOrigin("https://monitor.example.com:5080/")).toBe(
+    "https://monitor.example.com:5080",
   );
   expect(agentInstallOrigin("http://127.0.0.1:5097")).toBe(
     "http://127.0.0.1:5097",
@@ -77,7 +77,7 @@ it("accepts HTTPS origins and loopback development without allowing URL credenti
     expect(agentInstallCommand(input, token)).toBe("");
   }
   const command = agentInstallCommand(
-    "https://feiniu.i7f.cn:5080",
+    "https://monitor.example.com:5080",
     token,
     true,
   );
@@ -98,18 +98,20 @@ it("copies a complete installer command and preserves the URL and enrollment cod
   const copy = await screen.findByRole("button", { name: t("复制安装命令") });
   const dialog = screen.getByRole("dialog");
   const server = within(dialog).getByLabelText(t("服务地址"));
-  fireEvent.change(server, { target: { value: "https://feiniu.i7f.cn:5080" } });
+  fireEvent.change(server, {
+    target: { value: "https://monitor.example.com:5080" },
+  });
   fireEvent.click(copy);
   await waitFor(() =>
     expect(clipboard).toHaveBeenCalledWith(
-      agentInstallCommand("https://feiniu.i7f.cn:5080", token),
+      agentInstallCommand("https://monitor.example.com:5080", token),
     ),
   );
   for (const code of ["zh-CN", "ja-JP", "ko-KR", "zh-TW", "en-US"] as const) {
     await act(() => setLocale(code));
     expect(
       (within(dialog).getByLabelText(t("服务地址")) as HTMLInputElement).value,
-    ).toBe("https://feiniu.i7f.cn:5080");
+    ).toBe("https://monitor.example.com:5080");
     expect(within(dialog).getByDisplayValue(token)).toBeTruthy();
     expect(
       (

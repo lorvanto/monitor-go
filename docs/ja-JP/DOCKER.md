@@ -36,7 +36,7 @@ UID/GIDは`10001:10001`です。Composeではルートファイルシステム�
 
 ## 設定とHTTPS
 
-Composeはshell環境または追跡しない`.env`から`MONITOR_IMAGE`（`monitor-go:local`）、`MONITOR_PORT`（5080）、`MONITOR_BIND_ADDRESS`（127.0.0.1）、`MONITOR_PUBLIC_URL`（空）、`MONITOR_SECURE_COOKIE`（false）、`MONITOR_COLLECT_HOST`（false）、`MONITOR_TRUSTED_PROXY`（空）、`MONITOR_REQUIRE_ACTIVATION`（`true` のみ互換対応）、`MONITOR_CONSOLE_URL`（未設定時は `https://feiniu.i7f.cn:5090`、空値や空白のみの値は無効）を読みます。以降のコマンドでも同じ設定を使います。ヘルスチェック用の内部ポートは5080を保持します。
+Composeはshell環境または追跡しない`.env`から`MONITOR_IMAGE`（`monitor-go:local`）、`MONITOR_PORT`（5080）、`MONITOR_BIND_ADDRESS`（127.0.0.1）、`MONITOR_PUBLIC_URL`（空）、`MONITOR_SECURE_COOKIE`（false）、`MONITOR_COLLECT_HOST`（false）、`MONITOR_TRUSTED_PROXY`（空）、`MONITOR_REQUIRE_ACTIVATION`（`true` のみ互換対応）、`MONITOR_CONSOLE_URL`（未設定時は既定の Console オリジンを使用し、実際のアドレスは設定・確認画面に表示。空値や空白のみの値は無効）を読みます。以降のコマンドでも同じ設定を使います。ヘルスチェック用の内部ポートは5080を保持します。
 
 リモートのブラウザー／Agentには、ホストポートの前に信頼されたHTTPSプロキシを置き、末尾スラッシュなしの外部オリジンを設定します。
 
@@ -135,7 +135,7 @@ docker compose exec -T monitor tar -C /data/backups/snapshot-001 -czf - . > back
 
 初期設定で Console の送信先、項目、継続送信のルールを表示し、明示的な確認とオンライン登録成功後にローカル管理者を作成します。その後は送信が継続し、無効化スイッチはありません。有効な既存インストールは ID と過去の同意を保持し、旧版で無効なものは管理者の確認を待ちます。確認待ちや Console 障害でもローカルのログイン、監視、アラートは止まりません。アカウント連携は任意です。旧 activation=false 設定はサポートしません。
 
-`MONITOR_CONSOLE_URL` が未設定の場合、ネイティブ版と Compose は `https://feiniu.i7f.cn:5090` を使用します。別の HTTPS オリジンで送信先を変更でき、ネイティブ版の `-console-url` 引数が優先されます。空または空白文字だけの送信先は、環境変数で指定した場合も設定エラーとして標準 CLI が拒否します。送信を無効にしたりアクティベーションを回避したりはできません。バージョン表示とバックアップのコマンドにはアクティベーション設定は不要です。
+`MONITOR_CONSOLE_URL` が未設定の場合、ネイティブ版と Compose は既定の Console オリジンを使用します。実際のアドレスは設定・確認画面で確認してください。別の HTTPS オリジンで送信先を変更でき、ネイティブ版の `-console-url` 引数が優先されます。空または空白文字だけの送信先は、環境変数で指定した場合も設定エラーとして標準 CLI が拒否します。送信を無効にしたりアクティベーションを回避したりはできません。バージョン表示とバックアップのコマンドにはアクティベーション設定は不要です。
 
 標準 CLI と Compose はアクティベーションと送信を必須とします。旧設定の `-require-activation=false` と `MONITOR_REQUIRE_ACTIVATION=false` は設定エラーとして拒否し、サポートしません。`true` は互換性のため受け付けます。オフライン導入や送信の無効化を行う引数はありません。到達可能な HTTPS Console URL を設定してください。空または空白文字だけの送信先は起動時の設定エラーとなり、アクティベーションを回避できません。Console URL の引数は対応する環境変数より優先されます。activation=false の設定は true の引数を追加しても有効にはなりません。
 

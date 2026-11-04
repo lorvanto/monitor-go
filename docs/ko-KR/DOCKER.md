@@ -36,7 +36,7 @@ UID/GID는 `10001:10001`입니다. Compose는 읽기 전용 루트 파일 시스
 
 ## 설정 및 HTTPS
 
-Compose는 shell 환경 또는 추적하지 않는 `.env`에서 `MONITOR_IMAGE`(`monitor-go:local`), `MONITOR_PORT`(5080), `MONITOR_BIND_ADDRESS`(127.0.0.1), `MONITOR_PUBLIC_URL`(비어 있음), `MONITOR_SECURE_COOKIE`(false), `MONITOR_COLLECT_HOST`(false), `MONITOR_TRUSTED_PROXY`(비어 있음), `MONITOR_REQUIRE_ACTIVATION`(`true`), `MONITOR_CONSOLE_URL`(미설정 시 `https://feiniu.i7f.cn:5090`, 빈 값 또는 공백만 있는 값은 오류)를 읽습니다. 이후 명령에도 같은 값을 유지하세요. 상태 검사를 위해 컨테이너 내부 포트는 5080을 유지합니다.
+Compose는 shell 환경 또는 추적하지 않는 `.env`에서 `MONITOR_IMAGE`(`monitor-go:local`), `MONITOR_PORT`(5080), `MONITOR_BIND_ADDRESS`(127.0.0.1), `MONITOR_PUBLIC_URL`(비어 있음), `MONITOR_SECURE_COOKIE`(false), `MONITOR_COLLECT_HOST`(false), `MONITOR_TRUSTED_PROXY`(비어 있음), `MONITOR_REQUIRE_ACTIVATION`(`true`), `MONITOR_CONSOLE_URL`(미설정 시 사전 지정된 Console 오리진 사용, 실제 주소는 설치 또는 확인 화면에 표시, 빈 값 또는 공백만 있는 값은 오류)를 읽습니다. 이후 명령에도 같은 값을 유지하세요. 상태 검사를 위해 컨테이너 내부 포트는 5080을 유지합니다.
 
 원격 브라우저 및 Agent 접근에는 호스트 포트 앞에 신뢰할 수 있는 HTTPS 프록시를 놓고 끝에 슬래시가 없는 외부 오리진을 지정하세요.
 
@@ -135,7 +135,7 @@ docker compose exec -T monitor tar -C /data/backups/snapshot-001 -czf - . > back
 
 최초 설정에서 Console 목적지, 항목 및 지속 보고 규칙을 표시하고 명시적 확인과 온라인 등록 성공 후 로컬 관리자를 만듭니다. 이후 보고는 계속 켜지며 끄기 스위치가 없습니다. 이미 켜진 설치는 ID와 과거 동의를 유지하고 이전 버전에서 꺼진 설치는 관리자 확인을 기다립니다. 확인 대기나 Console 장애는 로컬 로그인, 모니터링 및 알림을 중단하지 않습니다. 계정 연결은 선택 사항입니다. 기존 activation=false 설정은 더 이상 지원하지 않습니다.
 
-`MONITOR_CONSOLE_URL`을 설정하지 않으면 네이티브 실행 파일과 Compose는 `https://feiniu.i7f.cn:5090`을 사용합니다. 다른 HTTPS 오리진으로 목적지를 바꿀 수 있으며 네이티브 `-console-url` 인수가 우선합니다. 비어 있거나 공백만 있는 목적지는 환경 변수로 지정해도 잘못된 구성으로 간주되어 표준 CLI가 시작을 거부합니다. 보고를 끄거나 활성화를 우회할 수 없습니다. 버전 조회와 백업 명령은 활성화 구성이 필요하지 않습니다.
+`MONITOR_CONSOLE_URL`을 설정하지 않으면 네이티브 실행 파일과 Compose는 사전 지정된 Console 오리진을 사용합니다. 실제 주소는 설치 또는 확인 화면에서 확인하세요. 다른 HTTPS 오리진으로 목적지를 바꿀 수 있으며 네이티브 `-console-url` 인수가 우선합니다. 비어 있거나 공백만 있는 목적지는 환경 변수로 지정해도 잘못된 구성으로 간주되어 표준 CLI가 시작을 거부합니다. 보고를 끄거나 활성화를 우회할 수 없습니다. 버전 조회와 백업 명령은 활성화 구성이 필요하지 않습니다.
 
 표준 CLI와 Compose는 활성화 및 보고가 필수입니다. 기존 `-require-activation=false`와 `MONITOR_REQUIRE_ACTIVATION=false` 설정은 구성 오류로 거부되며 더 이상 지원하지 않습니다. `true`는 호환성을 위해 허용합니다. 오프라인 설치 또는 보고 끄기 인수는 지원하지 않습니다. 접근 가능한 HTTPS Console 주소를 설정하세요. 비어 있거나 공백만 있는 목적지는 시작 시 구성 오류로 거부되며 활성화를 건너뛸 수 없습니다. Console URL 인수는 해당 환경 변수보다 우선합니다. activation=false 설정은 true 인수를 추가해도 유효해지지 않습니다.
 

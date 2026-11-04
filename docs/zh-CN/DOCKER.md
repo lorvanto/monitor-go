@@ -36,7 +36,7 @@ MONITOR_PORT=5081 docker compose up -d --build
 
 ## 配置与 HTTPS
 
-Compose 读取 shell 环境变量或本机未跟踪的 `.env`：`MONITOR_IMAGE`（默认 `monitor-go:local`）、`MONITOR_PORT`（5080）、`MONITOR_BIND_ADDRESS`（127.0.0.1）、`MONITOR_PUBLIC_URL`（空）、`MONITOR_SECURE_COOKIE`（false）、`MONITOR_COLLECT_HOST`（false）、`MONITOR_TRUSTED_PROXY`（空）及 `MONITOR_REQUIRE_ACTIVATION`（只兼容 `true`）、`MONITOR_CONSOLE_URL`（未设置时为 `https://feiniu.i7f.cn:5090`；空值或纯空白值是无效配置）。后续 Compose 命令保持相同配置。容器内部端口保持 5080，以便健康检查正常运行。
+Compose 读取 shell 环境变量或本机未跟踪的 `.env`：`MONITOR_IMAGE`（默认 `monitor-go:local`）、`MONITOR_PORT`（5080）、`MONITOR_BIND_ADDRESS`（127.0.0.1）、`MONITOR_PUBLIC_URL`（空）、`MONITOR_SECURE_COOKIE`（false）、`MONITOR_COLLECT_HOST`（false）、`MONITOR_TRUSTED_PROXY`（空）及 `MONITOR_REQUIRE_ACTIVATION`（只兼容 `true`）、`MONITOR_CONSOLE_URL`（未设置时使用预设的 Console 来源，实际地址以安装或确认页面展示为准；空值或纯空白值是无效配置）。后续 Compose 命令保持相同配置。容器内部端口保持 5080，以便健康检查正常运行。
 
 远程浏览器和 Agent 访问应在宿主机端口前部署可信 HTTPS 反向代理，并配置不带末尾斜杠的实际外部来源：
 
@@ -135,7 +135,7 @@ docker compose exec -T monitor tar -C /data/backups/snapshot-001 -czf - . > back
 
 首次安装展示 Console 目的地、字段和持续上报规则，明确确认、在线登记成功后才创建本地管理员。之后上报持续开启，没有关闭开关。已有开启实例保留身份和历史同意；旧版关闭实例等待管理员确认，不中断本地监控。Console 故障不阻断登录、监控或告警，账号绑定仍自愿。旧的 activation=false 配置不再支持。
 
-`MONITOR_CONSOLE_URL` 未设置时，原生程序和 Compose 使用 `https://feiniu.i7f.cn:5090`；可设为其他 HTTPS 来源以更换目的地，原生 `-console-url` 参数优先。空值或纯空白目的地（包括环境变量提供的值）属于无效配置，标准 CLI 会拒绝启动，不能用于关闭上报或绕过激活。版本查询和备份命令不依赖激活配置。
+`MONITOR_CONSOLE_URL` 未设置时，原生程序和 Compose 使用预设的 Console 来源，实际地址以安装或确认页面展示为准；可设为其他 HTTPS 来源以更换目的地，原生 `-console-url` 参数优先。空值或纯空白目的地（包括环境变量提供的值）属于无效配置，标准 CLI 会拒绝启动，不能用于关闭上报或绕过激活。版本查询和备份命令不依赖激活配置。
 
 标准 CLI 与 Compose 必须激活并上报。旧的 `-require-activation=false` 和 `MONITOR_REQUIRE_ACTIVATION=false` 配置会明确报错，不再支持；`true` 保留兼容。没有受支持的离线安装或关闭上报参数。应配置可达的 HTTPS Console 地址，空或纯空白目的地属于无效启动配置，不能用于关闭上报或绕过激活。Console URL 参数优先于对应环境变量；已有 activation=false 配置不能通过另加 true 参数变为有效。
 

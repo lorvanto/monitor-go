@@ -22,6 +22,7 @@ Read the [Chinese documentation index](docs/zh-CN/INDEX.md) first. Documentation
 - Prefer soft deletion for business configuration. Expire historical metrics according to an explicit retention policy.
 - Preserve Go, frontend and database lockfiles. Record each selected dependency's version and purpose.
 - Keep Simplified Chinese documentation in `docs/zh-CN/` and Traditional Chinese documentation in `docs/zh-TW/`. Use English directory and file names, and update the indexes when adding documentation.
+- Use reserved example domains for documentation and unrelated test fixtures. Do not put personal deployment hostnames, IP addresses or access URLs in Markdown or published screenshots. Activation and confirmation screens must still show the actual configured recipient.
 
 ## Activation and reporting boundaries
 
