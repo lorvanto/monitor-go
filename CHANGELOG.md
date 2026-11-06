@@ -7,6 +7,7 @@ User-visible changes belong here. Entries under **Unreleased** describe the curr
 ### Agent installation with pending systemd startup jobs
 
 - Accept `starting` alongside `running` and `degraded` when the systemd manager is reachable, allowing Agent installation while another startup job remains unfinished.
+- Check manager connectivity without the newer `systemctl --value` option, avoiding false connection failures with older clients such as systemd 219.
 - Reject unreachable systemd managers and all other states, including `initializing`, `maintenance`, `stopping`, `offline` and `unknown`. Hosts without systemd continue to use manual installation.
 
 ### Service-check tabs, intervals and certificate expiry

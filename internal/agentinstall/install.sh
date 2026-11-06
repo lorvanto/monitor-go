@@ -25,7 +25,7 @@ case "$system_state" in
     running|degraded|starting) ;;
     *) die "Unsupported systemd state: ${system_state:-unknown}; running, degraded or starting is required." ;;
 esac
-systemctl show --property=SystemState --value >/dev/null 2>&1 || die "Cannot contact the systemd system manager (state: $system_state)."
+systemctl show --property=SystemState >/dev/null 2>&1 || die "Cannot contact the systemd system manager (state: $system_state)."
 case "$(uname -m)" in
     x86_64|amd64) arch=amd64 ;;
     aarch64|arm64) arch=arm64 ;;

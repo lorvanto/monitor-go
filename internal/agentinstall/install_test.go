@@ -64,7 +64,24 @@ func installerTestFixture(t *testing.T) *installerFixture {
 		"systemctl": `printf 'systemctl %s\n' "$*" >> "$STUB_LOG"
 case "$1" in
     is-system-running) printf '%s\n' "${STUB_SYSTEM_STATE-running}"; exit "${STUB_SYSTEM_STATE_EXIT:-0}" ;;
-    show) [ "$*" = 'show --property=SystemState --value' ]; [ "${STUB_MANAGER_REACHABLE:-1}" = 1 ]; printf '%s\n' "${STUB_SYSTEM_STATE-running}" ;;
+    show)
+        case "$*" in
+            'show --property=SystemState') ;;
+            'show --property=SystemState --value')
+                if [ "${STUB_OLD_SYSTEMCTL:-0}" = 1 ]; then
+                    printf '%s\n' "systemctl: unrecognized option '--value'" >&2
+                    exit 1
+                fi ;;
+            *) exit 2 ;;
+        esac
+        if [ "${STUB_MANAGER_REACHABLE:-1}" != 1 ]; then
+            printf '%s\n' 'Failed to connect to bus: Host is down' >&2
+            exit 1
+        fi
+        case "$*" in
+            *' --value') printf '%s\n' "${STUB_SYSTEM_STATE-running}" ;;
+            *) printf 'SystemState=%s\n' "${STUB_SYSTEM_STATE-running}" ;;
+        esac ;;
     is-active) [ "${STUB_INACTIVE:-0}" = 0 ] ;;
     *) exit 0 ;;
 esac`,
@@ -178,17 +195,22 @@ func TestInstallerInstallationAndIdenticalRetry(t *testing.T) {
 	}
 }
 
-func TestInstallerAllowsStartingAndDegradedReachableManager(t *testing.T) {
-	for _, state := range []string{"starting", "degraded"} {
+func TestInstallerAllowsReachableLegacySystemdManager(t *testing.T) {
+	for _, state := range []string{"running", "starting", "degraded"} {
 		t.Run(state, func(t *testing.T) {
 			f := installerTestFixture(t)
-			// is-system-running reports these useful states with a nonzero exit.
-			output, err := f.run(t, strings.Repeat("a", 64), nil, "STUB_SYSTEM_STATE="+state, "STUB_SYSTEM_STATE_EXIT=1")
+			exit := "0"
+			if state != "running" {
+				// is-system-running reports these useful states with a nonzero exit.
+				exit = "1"
+			}
+			// Old clients reject --value and return the normal key=value output.
+			output, err := f.run(t, strings.Repeat("a", 64), nil, "STUB_SYSTEM_STATE="+state, "STUB_SYSTEM_STATE_EXIT="+exit, "STUB_OLD_SYSTEMCTL=1")
 			if err != nil {
 				t.Fatalf("reachable %s manager rejected: %v: %s", state, err, output)
 			}
 			commands := string(f.read(t, "commands.log"))
-			if f.requests.Load() != 2 || !strings.Contains(commands, "systemctl show --property=SystemState --value\n") || !strings.Contains(commands, "systemctl enable --now monitor-go-agent.service\n") {
+			if f.requests.Load() != 2 || !strings.Contains(commands, "systemctl show --property=SystemState\n") || !strings.Contains(commands, "systemctl enable --now monitor-go-agent.service\n") {
 				t.Fatalf("manager was not checked before successful installation: %s", commands)
 			}
 		})
@@ -196,11 +218,19 @@ func TestInstallerAllowsStartingAndDegradedReachableManager(t *testing.T) {
 }
 
 func TestInstallerRejectsUnreachableManagerAndUnsafeStatesBeforeToken(t *testing.T) {
-	for _, state := range []string{"starting", "offline", "unknown", "maintenance", "stopping", "initializing", ""} {
+	for _, state := range []string{"running", "starting", "degraded", "offline", "unknown", "maintenance", "stopping", "initializing", ""} {
 		t.Run("state="+state, func(t *testing.T) {
 			f := installerTestFixture(t)
-			oldFiles := map[string]string{"bin/agent": "existing-binary", "etc/agent.service": "existing-unit"}
+			oldFiles := map[string]string{
+				"bin/agent":                           "existing-binary",
+				"etc/agent.service":                   "existing-unit",
+				"state-parent/agent/config.json":      "existing-credentials",
+				"state-parent/agent/install-identity": "existing-installation-marker",
+			}
 			for path, content := range oldFiles {
+				if err := os.MkdirAll(filepath.Dir(filepath.Join(f.root, path)), 0700); err != nil {
+					t.Fatal(err)
+				}
 				if err := os.WriteFile(filepath.Join(f.root, path), []byte(content), 0600); err != nil {
 					t.Fatal(err)
 				}
@@ -215,23 +245,29 @@ func TestInstallerRejectsUnreachableManagerAndUnsafeStatesBeforeToken(t *testing
 			defer writer.Close()
 			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 			defer cancel()
-			command := f.command(ctx, nil, "STUB_SYSTEM_STATE="+state, "STUB_SYSTEM_STATE_EXIT=1", "STUB_MANAGER_REACHABLE=0")
+			stateExit := "1"
+			if state == "running" || state == "unknown" {
+				// Some old clients return success for unknown; the state must still fail closed.
+				stateExit = "0"
+			}
+			command := f.command(ctx, nil, "STUB_SYSTEM_STATE="+state, "STUB_SYSTEM_STATE_EXIT="+stateExit, "STUB_MANAGER_REACHABLE=0", "STUB_OLD_SYSTEMCTL=1")
 			command.Stdin = reader
 			output, err := command.CombinedOutput()
 			if err == nil || ctx.Err() != nil {
 				t.Fatalf("host check accepted unsafe state or tried to read token: %v: %s", err, output)
 			}
 			want := "Unsupported systemd state: "
-			if state == "starting" {
-				want = "Cannot contact the systemd system manager (state: starting)"
+			allowedState := state == "running" || state == "starting" || state == "degraded"
+			if allowedState {
+				want = "Cannot contact the systemd system manager (state: " + state + ")"
 			}
 			if !strings.Contains(string(output), want) {
 				t.Fatalf("missing actionable host-state diagnostic: %s", output)
 			}
 			commands := string(f.read(t, "commands.log"))
 			wantCommands := "systemctl is-system-running\n"
-			if state == "starting" {
-				wantCommands += "systemctl show --property=SystemState --value\n"
+			if allowedState {
+				wantCommands += "systemctl show --property=SystemState\n"
 			}
 			if f.requests.Load() != 0 || commands != wantCommands {
 				t.Fatalf("host rejection downloaded or modified service: requests=%d commands=%s", f.requests.Load(), commands)
@@ -240,8 +276,12 @@ func TestInstallerRejectsUnreachableManagerAndUnsafeStatesBeforeToken(t *testing
 				if string(f.read(t, path)) != content {
 					t.Fatal("existing installation changed", path)
 				}
+				info, err := os.Stat(filepath.Join(f.root, path))
+				if err != nil || info.Mode().Perm() != 0600 {
+					t.Fatal("existing installation permissions changed", path, err)
+				}
 			}
-			for _, path := range []string{"state-parent/agent", "run/install.lock"} {
+			for _, path := range []string{"state-parent/agent/backups", "bin/agent.new", "run/install.lock"} {
 				if _, err := os.Stat(filepath.Join(f.root, path)); !os.IsNotExist(err) {
 					t.Fatal("host rejection created installation state", path, err)
 				}
