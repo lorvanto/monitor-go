@@ -99,6 +99,8 @@ cat data/setup-token
 
 產生接入碼後，選擇「Linux 一鍵安裝」，按「複製安裝命令」，將整段命令貼到目標伺服器執行。安裝器會自動辨識 Linux amd64/arm64，從此 Monitor Go 實例下載對應 Agent 與 SHA-256 校驗值，完成註冊並啟用 systemd 開機自動啟動服務。目標機需要 systemd、`curl`、`sha256sum` 及 root 或 sudo 權限，不必安裝 Go 或另外複製二進位檔案。接入碼於 15 分鐘內有效，仍只對應一台主機。其他系統或沒有 systemd 的 Linux 主機使用下方手動流程；Agent 升級仍須手動執行。
 
+一鍵安裝接受 systemd 的 `running`、`degraded` 和 `starting` 狀態，並要求 systemd 管理器可達。`starting` 可能只是其他啟動工作尚未完成，管理器可用時仍支援安裝。`initializing`、`maintenance`、`stopping`、`offline`、`unknown` 及其他狀態，或管理器不可達時，會拒絕安裝；無 systemd 的主機仍使用手動流程。
+
 註冊或首次上報失敗時會保留認證資訊，可再次執行同一段複製命令。重新接入頁面產生的命令包含 `--replace`；替換既有接入前，會在目標機私有目錄備份舊認證資訊。
 
 `make build` 亦會產生供一鍵安裝下載的 `bin/agents/agent-linux-amd64` 與 `bin/agents/agent-linux-arm64`。部署原生服務時，請將 `agents/` 目錄與伺服器端執行檔放在同一目錄；可用 `-agent-dir` 指定其他安裝包目錄。僅以 `go build` 建置伺服器端時，請另行執行 `make agents` 並部署這些安裝包。Docker 映像已包含兩種安裝包。

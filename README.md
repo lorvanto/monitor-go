@@ -98,6 +98,8 @@ make build
 
 在主机详情中生成接入码，选择 **Linux 一键安装 → 复制安装命令**，将完整命令粘贴到目标服务器。目标系统需要 Linux amd64/arm64、systemd、`curl`、`sha256sum`，以及 root 或 sudo 权限。安装程序从当前 Monitor Go 实例下载 Agent，校验 SHA-256，注册主机并设置开机启动；目标服务器不需要 Go。Docker 构建包含两种架构的 Agent 包；仅通过 `go build` 构建服务端时，需要另行运行 `make agents` 并部署生成的下载包目录。其他系统仍可按[手动安装流程](docs/zh-CN/README.md#接入远程主机)接入。Agent 更新仍需手动完成。
 
+一键安装要求 systemd 管理器可达，接受 `running`、`degraded` 和 `starting` 状态。`starting` 可表示其他启动任务尚未完成，管理器可用时仍能安装 Agent；`initializing`、`maintenance`、`stopping`、`offline`、`unknown` 及其他状态会被拒绝。没有 systemd 的主机继续使用手动安装流程。
+
 在账号菜单中打开**账号设置**，通过当前密码验证后修改显示名称和登录用户名。侧边栏显示名称立即更新，当前会话保持有效。登录用户名必须唯一，修改后再次登录时使用新用户名。
 
 ## 开发与验证

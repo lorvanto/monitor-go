@@ -4,6 +4,11 @@ User-visible changes belong here. Entries under **Unreleased** describe the curr
 
 ## Unreleased
 
+### Agent installation with pending systemd startup jobs
+
+- Accept `starting` alongside `running` and `degraded` when the systemd manager is reachable, allowing Agent installation while another startup job remains unfinished.
+- Reject unreachable systemd managers and all other states, including `initializing`, `maintenance`, `stopping`, `offline` and `unknown`. Hosts without systemd continue to use manual installation.
+
 ### Service-check tabs, intervals and certificate expiry
 
 - Keep a single service-check entry with HTTP, TCP, SSL, MySQL and Redis tabs. New checks default to 60s, 60s, 24h, 180s and 60s respectively; preserve existing intervals. Offer presets and seconds/minutes/hours/days within the existing 15–86400-second range, plus atomic permission-checked bulk interval updates.

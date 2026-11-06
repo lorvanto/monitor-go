@@ -1,6 +1,7 @@
 package agentinstall
 
 import (
+	"context"
 	"crypto/sha256"
 	"fmt"
 	"io"
@@ -12,6 +13,7 @@ import (
 	"strings"
 	"sync/atomic"
 	"testing"
+	"time"
 )
 
 const fakeAgent = `#!/bin/sh
@@ -60,7 +62,12 @@ func installerTestFixture(t *testing.T) *installerFixture {
 		"id":    `case "$*" in -u) printf '%s\n' "${STUB_UID:-0}" ;; '-u monitor-go-agent') echo 123 ;; '-gn monitor-go-agent') echo monitor-go-agent ;; *) exit 2 ;; esac`,
 		"uname": `case "$1" in -s) echo Linux ;; -m) printf '%s\n' "${STUB_ARCH:-x86_64}" ;; *) exit 2 ;; esac`,
 		"systemctl": `printf 'systemctl %s\n' "$*" >> "$STUB_LOG"
-case "$1" in is-system-running) printf '%s\n' "${STUB_SYSTEM_STATE:-running}" ;; is-active) [ "${STUB_INACTIVE:-0}" = 0 ] ;; *) exit 0 ;; esac`,
+case "$1" in
+    is-system-running) printf '%s\n' "${STUB_SYSTEM_STATE-running}"; exit "${STUB_SYSTEM_STATE_EXIT:-0}" ;;
+    show) [ "$*" = 'show --property=SystemState --value' ]; [ "${STUB_MANAGER_REACHABLE:-1}" = 1 ]; printf '%s\n' "${STUB_SYSTEM_STATE-running}" ;;
+    is-active) [ "${STUB_INACTIVE:-0}" = 0 ] ;;
+    *) exit 0 ;;
+esac`,
 		"getent":  `exit 0`,
 		"useradd": `echo 'unexpected useradd' >> "$STUB_LOG"; exit 2`,
 		"chown":   `printf 'chown %s\n' "$*" >> "$STUB_LOG"`,
@@ -120,15 +127,20 @@ func testShellQuote(value string) string { return "'" + strings.ReplaceAll(value
 
 func (f *installerFixture) run(t *testing.T, token string, options []string, environment ...string) (string, error) {
 	t.Helper()
-	command := exec.Command("sh", append([]string{f.script, "--server", f.url}, options...)...)
+	command := f.command(context.Background(), options, environment...)
 	command.Stdin = strings.NewReader(token + "\n")
-	command.Env = append(os.Environ(), "PATH="+filepath.Join(f.root, "stubs")+":"+os.Getenv("PATH"), "TMPDIR="+filepath.Join(f.root, "tmp"), "STUB_LOG="+f.log)
-	command.Env = append(command.Env, environment...)
 	output, err := command.CombinedOutput()
 	if strings.Contains(string(output), token) {
 		t.Fatal("installer output exposed the enrollment token")
 	}
 	return string(output), err
+}
+
+func (f *installerFixture) command(ctx context.Context, options []string, environment ...string) *exec.Cmd {
+	command := exec.CommandContext(ctx, "sh", append([]string{f.script, "--server", f.url}, options...)...)
+	command.Env = append(os.Environ(), "PATH="+filepath.Join(f.root, "stubs")+":"+os.Getenv("PATH"), "TMPDIR="+filepath.Join(f.root, "tmp"), "STUB_LOG="+f.log)
+	command.Env = append(command.Env, environment...)
+	return command
 }
 
 func (f *installerFixture) read(t *testing.T, name string) []byte {
@@ -163,6 +175,78 @@ func TestInstallerInstallationAndIdenticalRetry(t *testing.T) {
 		if err != nil || info.Mode().Perm() != 0600 {
 			t.Fatalf("private file mode: %s", path)
 		}
+	}
+}
+
+func TestInstallerAllowsStartingAndDegradedReachableManager(t *testing.T) {
+	for _, state := range []string{"starting", "degraded"} {
+		t.Run(state, func(t *testing.T) {
+			f := installerTestFixture(t)
+			// is-system-running reports these useful states with a nonzero exit.
+			output, err := f.run(t, strings.Repeat("a", 64), nil, "STUB_SYSTEM_STATE="+state, "STUB_SYSTEM_STATE_EXIT=1")
+			if err != nil {
+				t.Fatalf("reachable %s manager rejected: %v: %s", state, err, output)
+			}
+			commands := string(f.read(t, "commands.log"))
+			if f.requests.Load() != 2 || !strings.Contains(commands, "systemctl show --property=SystemState --value\n") || !strings.Contains(commands, "systemctl enable --now monitor-go-agent.service\n") {
+				t.Fatalf("manager was not checked before successful installation: %s", commands)
+			}
+		})
+	}
+}
+
+func TestInstallerRejectsUnreachableManagerAndUnsafeStatesBeforeToken(t *testing.T) {
+	for _, state := range []string{"starting", "offline", "unknown", "maintenance", "stopping", "initializing", ""} {
+		t.Run("state="+state, func(t *testing.T) {
+			f := installerTestFixture(t)
+			oldFiles := map[string]string{"bin/agent": "existing-binary", "etc/agent.service": "existing-unit"}
+			for path, content := range oldFiles {
+				if err := os.WriteFile(filepath.Join(f.root, path), []byte(content), 0600); err != nil {
+					t.Fatal(err)
+				}
+			}
+			// An open pipe with no bytes proves host validation finishes before
+			// trying to read an enrollment token, rather than only before download.
+			reader, writer, err := os.Pipe()
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer reader.Close()
+			defer writer.Close()
+			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+			defer cancel()
+			command := f.command(ctx, nil, "STUB_SYSTEM_STATE="+state, "STUB_SYSTEM_STATE_EXIT=1", "STUB_MANAGER_REACHABLE=0")
+			command.Stdin = reader
+			output, err := command.CombinedOutput()
+			if err == nil || ctx.Err() != nil {
+				t.Fatalf("host check accepted unsafe state or tried to read token: %v: %s", err, output)
+			}
+			want := "Unsupported systemd state: "
+			if state == "starting" {
+				want = "Cannot contact the systemd system manager (state: starting)"
+			}
+			if !strings.Contains(string(output), want) {
+				t.Fatalf("missing actionable host-state diagnostic: %s", output)
+			}
+			commands := string(f.read(t, "commands.log"))
+			wantCommands := "systemctl is-system-running\n"
+			if state == "starting" {
+				wantCommands += "systemctl show --property=SystemState --value\n"
+			}
+			if f.requests.Load() != 0 || commands != wantCommands {
+				t.Fatalf("host rejection downloaded or modified service: requests=%d commands=%s", f.requests.Load(), commands)
+			}
+			for path, content := range oldFiles {
+				if string(f.read(t, path)) != content {
+					t.Fatal("existing installation changed", path)
+				}
+			}
+			for _, path := range []string{"state-parent/agent", "run/install.lock"} {
+				if _, err := os.Stat(filepath.Join(f.root, path)); !os.IsNotExist(err) {
+					t.Fatal("host rejection created installation state", path, err)
+				}
+			}
+		})
 	}
 }
 

@@ -75,6 +75,8 @@ make build
 
 호스트 상세에서 등록 코드를 발급한 뒤 「Linux 원클릭 설치」에서 「설치 명령 복사」를 선택하고 전체 명령을 대상 서버에 붙여 넣어 실행하세요. 설치 프로그램은 Linux amd64/arm64를 감지하고 이 Monitor Go 인스턴스에서 해당 Agent와 SHA-256을 내려받아 등록한 뒤 systemd 서비스와 부팅 시 자동 시작을 설정합니다. 대상에는 systemd, `curl`, `sha256sum` 및 root 또는 sudo 권한이 필요합니다. Go 설치나 실행 파일의 별도 복사는 필요하지 않습니다. 등록 코드는 15분 동안 유효하며 한 호스트에만 적용됩니다. 다른 OS와 systemd가 없는 Linux는 아래 수동 절차를 사용하세요. Agent 업데이트는 계속 수동으로 수행합니다.
 
+원클릭 설치는 systemd 관리자에 접근할 수 있고 상태가 `running`, `degraded`, `starting`일 때 지원합니다. `starting`은 다른 시작 작업이 끝나지 않았음을 나타낼 수 있으며 관리자가 사용 가능하면 설치할 수 있습니다. `initializing`, `maintenance`, `stopping`, `offline`, `unknown` 및 그 밖의 상태이거나 관리자에 접근할 수 없으면 설치를 거부합니다. systemd가 없는 호스트는 계속 수동 절차를 사용하세요.
+
 등록 또는 첫 보고에 실패하면 자격 증명을 보존하므로 복사한 같은 명령을 다시 실행할 수 있습니다. 재등록 명령에는 `--replace`가 포함되며 기존 설치를 교체하기 전에 대상 호스트의 비공개 디렉터리에 이전 자격 증명을 백업합니다.
 
 `make build`는 원클릭 설치용 `bin/agents/agent-linux-amd64`와 `bin/agents/agent-linux-arm64`도 생성합니다. 네이티브 배포 시 `agents/` 디렉터리를 서버 실행 파일 옆에 배치하세요. 다른 위치는 `-agent-dir`로 지정합니다. 서버를 `go build`만으로 빌드했다면 `make agents`를 별도로 실행하고 패키지를 함께 배포해야 합니다. Docker 이미지에는 두 패키지가 포함됩니다.

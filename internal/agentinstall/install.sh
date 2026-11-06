@@ -21,7 +21,11 @@ done
 [ "$(uname -s)" = Linux ] || die 'Only Linux with systemd is supported.'
 [ "$(id -u)" = 0 ] || die 'Run this installer as root.'
 system_state=$(systemctl is-system-running 2>/dev/null) || :
-case "$system_state" in running|degraded) ;; *) die 'An active systemd system is required.' ;; esac
+case "$system_state" in
+    running|degraded|starting) ;;
+    *) die "Unsupported systemd state: ${system_state:-unknown}; running, degraded or starting is required." ;;
+esac
+systemctl show --property=SystemState --value >/dev/null 2>&1 || die "Cannot contact the systemd system manager (state: $system_state)."
 case "$(uname -m)" in
     x86_64|amd64) arch=amd64 ;;
     aarch64|arm64) arch=arm64 ;;
