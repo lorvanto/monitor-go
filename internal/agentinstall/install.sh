@@ -162,6 +162,7 @@ WantedBy=multi-user.target
 MONITOR_GO_SERVICE
 install -m 0644 "$temporary/service" "$unit"
 systemctl daemon-reload
-systemctl enable --now monitor-go-agent.service
+systemctl enable monitor-go-agent.service
+systemctl start monitor-go-agent.service
 systemctl is-active --quiet monitor-go-agent.service || die 'The first report succeeded but the Agent service is not active; credentials were preserved.'
 printf '%s\n' 'Monitor Go Agent installed; registration and the first report succeeded.'

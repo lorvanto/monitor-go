@@ -38,6 +38,10 @@ fi
 [ "${STUB_BOOTSTRAP_FAIL:-0}" = 0 ]
 `
 
+const serviceStartCommands = "systemctl enable monitor-go-agent.service\n" +
+	"systemctl start monitor-go-agent.service\n" +
+	"systemctl is-active --quiet monitor-go-agent.service\n"
+
 type installerFixture struct {
 	root, script, log, url string
 	corrupt                atomic.Bool
@@ -62,6 +66,14 @@ func installerTestFixture(t *testing.T) *installerFixture {
 		"id":    `case "$*" in -u) printf '%s\n' "${STUB_UID:-0}" ;; '-u monitor-go-agent') echo 123 ;; '-gn monitor-go-agent') echo monitor-go-agent ;; *) exit 2 ;; esac`,
 		"uname": `case "$1" in -s) echo Linux ;; -m) printf '%s\n' "${STUB_ARCH:-x86_64}" ;; *) exit 2 ;; esac`,
 		"systemctl": `printf 'systemctl %s\n' "$*" >> "$STUB_LOG"
+if [ "${STUB_OLD_SYSTEMCTL:-0}" = 1 ]; then
+    for option in "$@"; do
+        if [ "$option" = --now ]; then
+            printf '%s\n' "systemctl: unrecognized option '--now'" >&2
+            exit 1
+        fi
+    done
+fi
 case "$1" in
     is-system-running) printf '%s\n' "${STUB_SYSTEM_STATE-running}"; exit "${STUB_SYSTEM_STATE_EXIT:-0}" ;;
     show)
@@ -184,7 +196,7 @@ func TestInstallerInstallationAndIdenticalRetry(t *testing.T) {
 		t.Fatal("identical retry changed pending credentials")
 	}
 	commands := string(f.read(t, "commands.log"))
-	if strings.Contains(commands, token) || !strings.Contains(commands, "-once -server "+f.url) || !strings.Contains(commands, "systemctl enable --now monitor-go-agent.service") || !strings.Contains(commands, "systemctl is-active --quiet monitor-go-agent.service") {
+	if strings.Contains(commands, token) || !strings.Contains(commands, "-once -server "+f.url) || !strings.Contains(commands, serviceStartCommands) {
 		t.Fatal("installer did not bootstrap and start without exposing token arguments")
 	}
 	for _, path := range []string{"state-parent/agent/config.json", "state-parent/agent/config.json.lock", "state-parent/agent/install-identity"} {
@@ -204,13 +216,13 @@ func TestInstallerAllowsReachableLegacySystemdManager(t *testing.T) {
 				// is-system-running reports these useful states with a nonzero exit.
 				exit = "1"
 			}
-			// Old clients reject --value and return the normal key=value output.
+			// Old clients reject --value/--now and return normal key=value output.
 			output, err := f.run(t, strings.Repeat("a", 64), nil, "STUB_SYSTEM_STATE="+state, "STUB_SYSTEM_STATE_EXIT="+exit, "STUB_OLD_SYSTEMCTL=1")
 			if err != nil {
 				t.Fatalf("reachable %s manager rejected: %v: %s", state, err, output)
 			}
 			commands := string(f.read(t, "commands.log"))
-			if f.requests.Load() != 2 || !strings.Contains(commands, "systemctl show --property=SystemState\n") || !strings.Contains(commands, "systemctl enable --now monitor-go-agent.service\n") {
+			if f.requests.Load() != 2 || !strings.Contains(commands, "systemctl show --property=SystemState\n") || !strings.Contains(commands, serviceStartCommands) {
 				t.Fatalf("manager was not checked before successful installation: %s", commands)
 			}
 		})
