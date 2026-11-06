@@ -105,7 +105,7 @@ func defaultConsoleURL() string {
 	if value, set := os.LookupEnv("MONITOR_CONSOLE_URL"); set {
 		return value
 	}
-	return "https://feiniu.i7f.cn:5090"
+	return "https://console.i7f.cn"
 }
 
 func defaultRequireActivation() (bool, error) {

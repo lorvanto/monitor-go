@@ -4,6 +4,11 @@ User-visible changes belong here. Entries under **Unreleased** describe the curr
 
 ## Unreleased
 
+### Default Console destination
+
+- Update the preset HTTPS Console origin used by the native CLI and Compose. Explicit environment and command-line destinations still take precedence; empty destinations remain invalid.
+- Keep reporting paused when its recipient changes until an administrator confirms the current destination and notice version 2. To retain an existing recipient across upgrades, configure its origin explicitly; an unchanged origin preserves its saved identity and consent.
+
 ### Required ongoing reporting (notice version 2)
 
 - Clearly disclose that reporting remains enabled with no off switch before first online activation. Reject disable requests with HTTP 403 and reject the former activation=false CLI/environment settings; keep true compatibility.

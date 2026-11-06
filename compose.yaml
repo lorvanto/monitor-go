@@ -29,7 +29,7 @@ services:
       - -public-url=${MONITOR_PUBLIC_URL:-}
       - -secure-cookie=${MONITOR_SECURE_COOKIE:-false}
       - -trusted-proxy=${MONITOR_TRUSTED_PROXY:-}
-      - -console-url=${MONITOR_CONSOLE_URL-https://feiniu.i7f.cn:5090}
+      - -console-url=${MONITOR_CONSOLE_URL-https://console.i7f.cn}
       - -require-activation=${MONITOR_REQUIRE_ACTIVATION:-true}
       - -deployment=docker
 volumes:

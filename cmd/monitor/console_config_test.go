@@ -18,7 +18,7 @@ func TestConsoleDestinationDefaultsAndOverrides(t *testing.T) {
 		args     []string
 		expected string
 	}{
-		{name: "built-in destination", expected: "https://feiniu.i7f.cn:5090"},
+		{name: "built-in destination", expected: "https://console.i7f.cn"},
 		{name: "explicit empty environment", envSet: true, expected: ""},
 		{name: "custom environment", envSet: true, env: "https://console.example.com", expected: "https://console.example.com"},
 		{name: "empty flag overrides default", args: []string{"-console-url="}, expected: ""},

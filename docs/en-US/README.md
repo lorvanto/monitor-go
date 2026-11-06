@@ -33,7 +33,7 @@ docker compose up -d --build
 docker compose exec monitor cat /data/setup-token
 ```
 
-First setup shows the Console destination, fields and mandatory ongoing reporting rule, and requires explicit confirmation before online registration and local administrator creation. Reporting then remains enabled with no off switch. Already enabled installations keep their identity and historical consent; legacy installations with reporting off wait for administrator confirmation without interrupting local monitoring. Console outages do not block login, monitoring or alerts. Account linking remains voluntary. The old activation=false settings are no longer supported. [First activation and usage reporting](USAGE_REPORTING.md)
+First setup shows the Console destination, fields and mandatory ongoing reporting rule, and requires explicit confirmation before online registration and local administrator creation. Reporting then remains enabled with no off switch. With an unchanged destination, already enabled installations keep their identity and historical consent; legacy installations with reporting off wait for administrator confirmation without interrupting local monitoring. Console outages do not block login, monitoring or alerts. Account linking remains voluntary. The old activation=false settings are no longer supported. [First activation and usage reporting](USAGE_REPORTING.md)
 
 Open port 5080 and create the administrator with that token. The named volume persists the complete data directory. Container-local host collection is disabled by default; use a native Agent on real hosts. See [Docker deployment](DOCKER.md) for port overrides, HTTPS, backup, restore and upgrades.
 
@@ -268,6 +268,8 @@ Known system-generated incident titles, timeline events, engine labels and check
 
 ## First activation and usage reporting
 
-First setup shows the Console destination, fields and mandatory ongoing reporting rule, and requires explicit confirmation before online registration and local administrator creation. Reporting then remains enabled with no off switch. Already enabled installations keep their identity and historical consent; legacy installations with reporting off wait for administrator confirmation without interrupting local monitoring. Console outages do not block login, monitoring or alerts. Account linking remains voluntary. The old activation=false settings are no longer supported.
+First setup shows the Console destination, fields and mandatory ongoing reporting rule, and requires explicit confirmation before online registration and local administrator creation. Reporting then remains enabled with no off switch. With an unchanged destination, already enabled installations keep their identity and historical consent; legacy installations with reporting off wait for administrator confirmation without interrupting local monitoring. Console outages do not block login, monitoring or alerts. Account linking remains voluntary. The old activation=false settings are no longer supported.
+
+Upgrade note: this version updates the built-in preset HTTPS Console origin. Check the setup or confirmation page for the actual destination. Explicit `MONITOR_CONSOLE_URL` or `-console-url` settings still override the preset; the CLI flag takes precedence when both are supplied. To keep the original backend, explicitly configure its original HTTPS origin before upgrading. With an unchanged destination, enabled installations retain their identity, account link and historical consent. A changed destination requires fresh confirmation before sending to the new backend; local login, monitoring and alerts continue while confirmation is pending.
 
 [First activation and usage reporting](USAGE_REPORTING.md)
