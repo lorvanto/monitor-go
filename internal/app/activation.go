@@ -27,7 +27,6 @@ type activationStatus struct {
 type setupActivation struct {
 	instanceID string
 	origin     string
-	account    string
 }
 
 func (s *Server) validateActivationConsent(consent bool, noticeVersion, consoleURL string) error {
@@ -91,7 +90,7 @@ func (s *Server) activateInstallation(ctx context.Context) (*setupActivation, er
 	if result.InstanceID != st.InstanceID {
 		return nil, &apiError{502, activationRejected}
 	}
-	return &setupActivation{instanceID: st.InstanceID, origin: p.origin, account: accountLogin(result)}, nil
+	return &setupActivation{instanceID: st.InstanceID, origin: p.origin}, nil
 }
 
 // commit belongs to the same transaction as the administrator or settings audit.
@@ -99,7 +98,7 @@ func (s *Server) activateInstallation(ctx context.Context) (*setupActivation, er
 // partially confirmed local state or an enabled background reporter.
 func (a *setupActivation) commit(ctx context.Context, tx *sql.Tx) error {
 	at := time.Now().Unix()
-	result, err := tx.ExecContext(ctx, `UPDATE usage_settings SET enabled=1,registered=1,notice_version=?,consent_at=?,activated_at=?,next_report_at=?,last_error='',failures=0,account_login=? WHERE id=1 AND console_url=? AND instance_id=?`, activationNoticeVersion, at, at, at, a.account, a.origin, a.instanceID)
+	result, err := tx.ExecContext(ctx, `UPDATE usage_settings SET enabled=1,registered=1,notice_version=?,consent_at=?,activated_at=?,next_report_at=?,last_error='',failures=0 WHERE id=1 AND console_url=? AND instance_id=?`, activationNoticeVersion, at, at, at, a.origin, a.instanceID)
 	if err != nil {
 		return err
 	}

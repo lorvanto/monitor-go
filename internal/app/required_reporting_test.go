@@ -50,7 +50,7 @@ func TestUsageLegacyConfirmationFailureRemainsOffAndRetriesSameIdentity(t *testi
 			w.WriteHeader(400)
 			return
 		}
-		if len(in) != 6 || r.URL.Path != "/api/v1/instances/register" {
+		if len(in) != 4 || r.URL.Path != "/api/v2/instances/register" {
 			t.Error("confirmation transmitted unexpected fields or path")
 		}
 		mu.Lock()
@@ -97,11 +97,10 @@ func TestUsageLegacyConfirmationFailureRemainsOffAndRetriesSameIdentity(t *testi
 	}
 }
 
-func TestUsageEnabledUpgradePreservesHistoricalConsentAndBinding(t *testing.T) {
+func TestUsageEnabledUpgradePreservesHistoricalConsentAndIdentity(t *testing.T) {
 	central, registered, _, _ := fakeUsageConsole(t)
 	s, c, _ := usageFixture(t, central.URL)
 	enableUsage(t, c)
-	c.call("POST", "/usage/bind", map[string]string{"code": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}, 200)
 	// Simulate the on-disk state of an installation activated under notice v1.
 	if _, err := s.Store.DB.Exec("UPDATE usage_settings SET notice_version='1',consent_at=41,activated_at=42,last_report_at=43 WHERE id=1"); err != nil {
 		t.Fatal(err)
@@ -118,8 +117,8 @@ func TestUsageEnabledUpgradePreservesHistoricalConsentAndBinding(t *testing.T) {
 	nc := client(t, local.URL)
 	nc.login("admin", "Example-password-123!")
 	status := decodeValue[usageStatus](t, nc.call("GET", "/usage", nil, 200))
-	if !status.Enabled || !status.Required || status.ConfirmationRequired || status.NoticeVersion != "2" || status.Account == nil || status.Account.Login != "octocat" {
-		t.Fatal("enabled upgrade lost reporting/account state")
+	if !status.Enabled || !status.Required || status.ConfirmationRequired || status.NoticeVersion != "2" {
+		t.Fatal("enabled upgrade lost anonymous reporting state")
 	}
 	// An idempotent request is not a new v2 confirmation, even with stale fields.
 	nc.call("PATCH", "/usage", map[string]any{"enabled": true, "usageConsent": false, "usageNoticeVersion": "1", "usageConsoleUrl": "https://stale.example.com"}, 200)

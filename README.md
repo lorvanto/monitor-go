@@ -4,7 +4,7 @@
 
 **简体中文** · [English](docs/en-US/README.md) · [日本語](docs/ja-JP/README.md) · [한국어](docs/ko-KR/README.md) · [繁體中文](docs/zh-TW/README.md)
 
-**当前状态：**预发布开发基线 `0.4.0-dev`，SQLite 结构版本 `10`。公开发布包和目标平台验证仍在准备中；当前版本号不代表已发布 GitHub Release。详见[完整使用指南](docs/zh-CN/README.md)和[路线图](ROADMAP.md)。
+**当前状态：**预发布开发基线 `0.4.0-dev`，SQLite 结构版本 `11`。公开发布包和目标平台验证仍在准备中；当前版本号不代表已发布 GitHub Release。详见[完整使用指南](docs/zh-CN/README.md)和[路线图](ROADMAP.md)。
 
 ## 功能
 
@@ -67,7 +67,7 @@ docker compose up -d --build
 docker compose exec monitor cat /data/setup-token
 ```
 
-首次安装展示 Console 目的地、字段和持续上报规则，明确确认、在线登记成功后才创建本地管理员。之后上报持续开启，没有关闭开关。目的地不变时，已有开启实例保留身份和历史同意；旧版关闭实例等待管理员确认，不中断本地监控。Console 故障不阻断登录、监控或告警，账号绑定仍自愿。旧的 activation=false 配置不再支持。 [完整说明](docs/zh-CN/USAGE_REPORTING.md)。
+首次安装展示 Console 目的地、字段和持续上报规则，明确确认、在线登记成功后才创建本地管理员。之后上报持续开启，没有关闭开关。目的地不变时，已有开启实例保留身份和历史同意；旧版关闭实例等待管理员确认，不中断本地监控。Console 故障不阻断登录、监控或告警；匿名安装统计不关联产品用户账号。旧的 activation=false 配置不再支持。 [完整说明](docs/zh-CN/USAGE_REPORTING.md)。
 
 打开[本地服务](http://127.0.0.1:5080/)，使用初始化令牌创建管理员。命名卷保存 SQLite、密钥和上传文件。若 5080 已被占用，可使用 `MONITOR_PORT=5081 docker compose up -d --build`。
 
@@ -131,12 +131,14 @@ npm --prefix web run format:check
 
 项目自有代码和文档采用 [Apache License 2.0](LICENSE)。第三方依赖、图标与字体保留各自许可，详见 [NOTICE](NOTICE) 和[第三方声明](THIRD_PARTY_NOTICES.md)。
 
-## 首次激活与使用情况上报
+## 首次激活与匿名安装统计
 
-标准新安装须先在线激活，再创建首个本地管理员。安装页明确展示目的地（默认使用预设的 Console 来源，实际地址以安装或确认页面展示为准）、统计用途、具体字段，以及上报持续开启且没有关闭开关的规则，要求手动确认告知版本 `2`。登记成功后创建本地管理员并启用持续后台上报；不会向 Console 发送本地用户名、显示名称或密码。登记失败不创建管理员，恢复网络后以同一实例身份重试。激活不要求 Console 账号或 GitHub 登录，也不会自动绑定开发者账号。
+匿名统计仅发送随机实例编号、产品版本、系统类型及 UTC 活跃日期，独立凭据只用于认证；不收集产品用户账号、架构或部署方式。首次在线登记前须明确确认确切目的地及持续上报规则，告知版本仍为 `2`；之后无关闭开关。Console 不可用或旧安装等待确认，不中断本地登录、监控和告警。
 
-升级说明：本版本已更新内置预设的 HTTPS Console 来源；实际目的地仍以安装或确认页面展示为准。显式 `MONITOR_CONSOLE_URL` 或 `-console-url` 仍覆盖内置预设，两者同时提供时命令行参数优先。若要继续使用原后台，请在升级前显式配置其原 HTTPS 来源。目的地不变时，已开启上报的实例保留身份、账号关联和历史确认；更换目的地须重新确认，才会向新后台发送。等待确认期间，本地登录、监控和告警继续运行。
+先升级 Monitor Console 到结构版本 `3`，再升级 Monitor Go 到结构版本 `11`。新版客户端使用 `/api/v2/instances/register` 与 `/api/v2/instances/report`；Console v1 登记/上报继续兼容旧客户端，保留版本与系统类型，接收架构和部署方式后丢弃，不持久化或回传。绑定接口已退役。Monitor Go v11 物理删除 `usage_settings.account_login` 旧账号快照；Console v3 移除架构、部署方式、账号关联和绑定码，保留版本/系统分布及匿名计数。
 
-目的地不变时，已有开启上报的实例升级时保留身份、凭据、账号绑定和历史同意记录，不补造新的确认。旧版关闭上报的实例不会被静默开启；具有 `system:settings` 权限的管理员需要查看当前目的地、字段和不可关闭规则，进行一次确认，登记成功后才启用上报。登记或本地事务失败仍保持关闭。等待确认期间，本地登录、监控和告警继续运行。更换接收方会清除原本地上报身份，并要求确认新目的地后才向其发送。
+升级前正常停服并分别完整备份两个服务的数据目录；回退时恢复各自的旧镜像/二进制和整套升级前备份，不能将两者的数据库混用。保留的旧备份可能仍含旧元数据，应按私密备份管理。无需清空 Monitor Go 数据重新激活已确认的同目的地安装。
 
-标准 CLI 与 Compose 必须激活并上报。旧的 `-require-activation=false` 和 `MONITOR_REQUIRE_ACTIVATION=false` 配置会明确报错，不再支持；`true` 保留兼容。没有受支持的离线安装或关闭上报参数。应配置可达的 HTTPS Console 地址，空或纯空白目的地属于无效启动配置，不能用于关闭上报或绕过激活。Console URL 参数优先于对应环境变量；已有 activation=false 配置不能通过另加 true 参数变为有效。 [配置、字段及隐私边界](docs/zh-CN/USAGE_REPORTING.md)。
+`MONITOR_CONSOLE_URL` 未设置时使用内置预设 HTTPS 来源，实际地址以安装或确认页面为准；显式环境变量覆盖预设，`-console-url` 优先于环境变量。继续使用原后台时，请在升级前显式配置其 HTTPS 来源。空或纯空白目的地无效。旧的 `-require-activation=false` / `MONITOR_REQUIRE_ACTIVATION=false` 被拒绝，`true` 保持兼容；版本查询和备份命令不依赖激活配置。
+
+[完整说明](docs/zh-CN/USAGE_REPORTING.md)。

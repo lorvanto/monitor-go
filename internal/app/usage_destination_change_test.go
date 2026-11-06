@@ -17,10 +17,6 @@ func TestUsageDestinationChangeRequiresConfirmationBeforeNetwork(t *testing.T) {
 	previousConsole, _, _, previousValues := fakeUsageConsole(t)
 	previous, previousClient, _ := usageFixture(t, previousConsole.URL)
 	previousStatus := enableUsage(t, previousClient)
-	bound := decodeValue[usageStatus](t, previousClient.call("POST", "/usage/bind", map[string]string{"code": strings.Repeat("a", 64)}, 200))
-	if bound.Account == nil {
-		t.Fatal("test installation was not bound to the previous Console account")
-	}
 	stored, _ := previousValues.Load("credential")
 	previousCredential := stored.(string)
 	dir := previous.Store.Dir
@@ -50,18 +46,18 @@ func TestUsageDestinationChangeRequiresConfirmationBeforeNetwork(t *testing.T) {
 			return
 		}
 		id, _ := in["instanceId"].(string)
-		if len(id) != 32 || len(in) != 6 {
+		if len(id) != 32 || len(in) != 4 {
 			t.Error("unexpected registration/report fields")
 		}
 		switch r.URL.Path {
-		case "/api/v1/instances/register":
+		case "/api/v2/instances/register":
 			registrations.Add(1)
 			credential, _ := in["credential"].(string)
 			if len(credential) != 64 || r.Header.Get("Authorization") != "" {
 				t.Error("new registration did not use a separate credential")
 			}
 			currentCredential.Store(credential)
-		case "/api/v1/instances/report":
+		case "/api/v2/instances/report":
 			reports.Add(1)
 			credential, _ := currentCredential.Load().(string)
 			if credential == "" || r.Header.Get("Authorization") != "Bearer "+credential {
@@ -87,7 +83,7 @@ func TestUsageDestinationChangeRequiresConfirmationBeforeNetwork(t *testing.T) {
 	c := client(t, local.URL)
 	c.login("admin", "Example-password-123!")
 	status := decodeValue[usageStatus](t, c.call("GET", "/usage", nil, 200))
-	if status.Enabled || !status.ConfirmationRequired || status.ConsoleURL != nextConsole.URL || status.InstanceID != "" || status.Account != nil {
+	if status.Enabled || !status.ConfirmationRequired || status.ConsoleURL != nextConsole.URL || status.InstanceID != "" {
 		t.Fatal("destination change reused the previous confirmation, identity or account binding")
 	}
 	for _, stale := range []struct{ field, value string }{
@@ -105,15 +101,16 @@ func TestUsageDestinationChangeRequiresConfirmationBeforeNetwork(t *testing.T) {
 	}
 	confirmed.Store(true)
 	status = enableUsage(t, c)
-	if !status.Enabled || status.ConfirmationRequired || status.InstanceID == previousStatus.InstanceID || len(status.InstanceID) != 32 || status.Account != nil {
-		t.Fatal("new destination was not activated as a separate unbound installation")
+	if !status.Enabled || status.ConfirmationRequired || status.InstanceID == previousStatus.InstanceID || len(status.InstanceID) != 32 {
+		t.Fatal("new destination was not activated as a separate anonymous installation")
 	}
 	waitUsage(t, func() bool { return reports.Load() == 1 })
 	if registrations.Load() != 1 {
 		t.Fatal("new destination did not receive exactly one confirmed registration")
 	}
 	status = decodeValue[usageStatus](t, c.call("GET", "/usage", nil, 200))
-	if status.Account != nil {
-		t.Fatal("previous Console account was automatically bound at the new destination")
+	raw := decodeValue[map[string]any](t, c.call("GET", "/usage", nil, 200))
+	if _, exists := raw["account"]; exists {
+		t.Fatal("account linking remains available")
 	}
 }

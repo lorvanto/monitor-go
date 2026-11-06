@@ -18,7 +18,7 @@ docker compose up -d --build
 docker compose exec monitor cat /data/setup-token
 ```
 
-首次安裝顯示 Console 目的地、欄位及持續回報規則，明確確認、線上登記成功後才建立本機管理員。之後回報持續啟用，沒有關閉開關。目的地不變時，既有啟用的執行個體保留身分及歷史同意；舊版關閉的執行個體等待管理員確認，不中斷本機監控。Console 故障不阻斷登入、監控或告警，帳號綁定仍自願。舊的 activation=false 設定不再支援。 [首次啟用與使用情況回報](USAGE_REPORTING.md)
+首次安裝明確確認目的地、匿名欄位及持續回報規則後線上登記，再建立本機管理員。統計獨立安裝量與活躍安裝量，不代表實際使用人數；不提供產品使用者帳號綁定。Console 故障或等待確認不阻斷本機監控。舊 activation=false 設定仍不支援。 [首次啟用與使用情況回報](USAGE_REPORTING.md)
 
 開啟 [本機服務](http://127.0.0.1:5080/)，使用讀取到的初始化碼建立首個管理員。首次介面預設英文，初始化後刪除碼檔案。Compose 預設只綁定 `127.0.0.1`。若 5080 已被佔用，可改用其他宿主機連接埠：
 
@@ -133,16 +133,12 @@ docker compose exec -T monitor tar -C /data/backups/snapshot-001 -czf - . > back
 
 ## 首次啟用與使用情況回報
 
-首次安裝顯示 Console 目的地、欄位及持續回報規則，明確確認、線上登記成功後才建立本機管理員。之後回報持續啟用，沒有關閉開關。目的地不變時，既有啟用的執行個體保留身分及歷史同意；舊版關閉的執行個體等待管理員確認，不中斷本機監控。Console 故障不阻斷登入、監控或告警，帳號綁定仍自願。舊的 activation=false 設定不再支援。
+匿名統計僅傳送隨機執行個體編號、產品版本、系統類型及 UTC 活躍日期，獨立憑證只供認證；不蒐集產品使用者帳號、架構或部署方式。首次線上登記前須明確確認確切目的地和持續回報規則，告知版本仍為 `2`，之後沒有關閉開關。Console 故障或舊安裝等待確認時，本機登入、監控及告警持續運作。
 
-升級說明：此版本已更新內建預設的 HTTPS Console 來源；實際目的地仍以安裝或確認頁面顯示為準。明確指定的 `MONITOR_CONSOLE_URL` 或 `-console-url` 仍優先於內建預設，兩者皆有提供時以命令列參數為準。若要繼續使用原後台，請於升級前明確設定原本的 HTTPS 來源。目的地不變時，既有啟用回報的執行個體保留身分、帳號關聯及歷史確認；更換目的地須重新確認後，才會向新後台傳送。等待確認期間，本機登入、監控及告警繼續運作。
+先升級 Monitor Console 至結構版本 `3`，再升級 Monitor Go 至結構版本 `11`。新版用戶端使用 `/api/v2/instances/register`、`/api/v2/instances/report`；Console 的 v1 登記/回報相容舊用戶端，保留版本與系統類型，收到架構和部署方式後丟棄，不保存或回傳。綁定介面已退役。Monitor Go v11 實體移除 `usage_settings.account_login` 舊快照；Console v3 移除架構、部署方式、帳號關聯及綁定碼，保留版本/系統分布及匿名計數。
 
-`MONITOR_CONSOLE_URL` 未設定時，原生程式及 Compose 使用更新後預設的 HTTPS Console 來源，實際位址以安裝或確認頁面顯示為準；可設為其他 HTTPS 來源以更換目的地，原生 `-console-url` 參數優先。空值或只有空白的目的地（包括環境變數提供的值）屬於無效設定，標準 CLI 會拒絕啟動，不能用於關閉回報或略過啟用。版本查詢與備份命令不依賴啟用設定。
+升級前正常停止服務並分別完整備份兩套資料目錄；回復時還原各自舊映像/執行檔及整套升級前備份，不能共用資料庫。舊備份可能仍含已退役資料，應私密管理。目的地未變且已確認的安裝，不必清空 Monitor Go 資料重新啟用。
 
-標準 CLI 與 Compose 必須啟用並回報。舊的 `-require-activation=false` 及 `MONITOR_REQUIRE_ACTIVATION=false` 設定會明確報錯，不再支援；`true` 保留相容。沒有受支援的離線安裝或關閉回報參數。應設定可達的 HTTPS Console 網址，空值或只有空白的目的地屬於無效啟動設定，不能用於關閉回報或略過啟用要求。Console URL 參數優先於對應環境變數；既有 activation=false 設定不能透過另加 true 參數變為有效。
+未設定 `MONITOR_CONSOLE_URL` 時使用內建預設 HTTPS 來源，實際位址以安裝或確認頁面為準；明確的環境值覆寫預設，`-console-url` 優先於環境變數。繼續使用原後台時，請在升級前明確設定其 HTTPS 來源。空值或只有空白的目的地無效。舊 `-require-activation=false` / `MONITOR_REQUIRE_ACTIVATION=false` 會被拒絕，`true` 保持相容；版本查詢與備份命令不依賴啟用設定。
 
-原生程式預設使用 `native`；Docker 映像和 Compose 自動設定為 `docker`。
-
-僅支援 HTTPS；數字迴環位址的 HTTP 僅供本機整合測試。容器中的迴環位址指向容器本身，分開部署的容器應連線真實 HTTPS 網址。不要將憑據、資料目錄或備份提交 Git；反向代理記錄應避免儲存 OAuth 查詢參數、完整來源 IP 及憑據。
-
-[首次啟用與使用情況回報](USAGE_REPORTING.md)
+[首次啟用與匿名安裝統計](USAGE_REPORTING.md)

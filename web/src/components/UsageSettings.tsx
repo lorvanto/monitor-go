@@ -16,14 +16,11 @@ export interface UsageStatus {
   lastReportAt: number;
   nextReportAt: number;
   lastError: string;
-  account: { login: string } | null;
   pendingActiveDays: string[];
   preview: {
     instanceId: string;
     version: string;
     os: string;
-    arch: string;
-    deployment: "native" | "docker";
     activeDays: string[];
   };
 }
@@ -51,7 +48,6 @@ export default function UsageSettings() {
   const [status, setStatus] = useState<UsageStatus>();
   const [consentFor, setConsentFor] = useState("");
   const [noticeStale, setNoticeStale] = useState(false);
-  const [code, setCode] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<DisplayMessage>("");
   const writable = can("system:settings");
@@ -81,7 +77,6 @@ export default function UsageSettings() {
     setBusy(true);
     try {
       accept(await api<UsageStatus>(path, method, body));
-      if (path === "/usage/bind") setCode("");
       if (path === "/usage") setConsentFor("");
       setError("");
     } catch (e) {
@@ -124,7 +119,7 @@ export default function UsageSettings() {
       <header className="panel-head ruled">
         <div>
           <h2 id="usage-title" ref={heading} tabIndex={-1}>
-            {t("使用情况统计与账号绑定")}
+            {t("匿名安装统计")}
           </h2>
           <p>{t("标准客户端确认规则后持续上报，程序内不提供关闭开关。")}</p>
         </div>
@@ -137,13 +132,16 @@ export default function UsageSettings() {
         <p className="note">
           <Icon name="Info" size={16} />
           {t(
-            "仅分享随机实例编号、版本、系统、架构、部署方式和按天汇总的界面活跃标记。不会上传监控内容、文件、账号列表、监控密钥或应用密钥。",
+            "仅分享随机实例编号、产品版本、系统类型和按 UTC 日期汇总的界面活跃标记。不会上传账号身份、架构、部署方式、监控内容、文件、监控密钥或应用密钥。",
           )}
         </p>
         <p className="note">
           {t(
-            "确认后生成独立实例凭据，用于验证登记、上报及账号绑定请求；预览不会显示该凭据。",
+            "确认后生成独立实例凭据，仅用于验证匿名登记和后续上报；预览不会显示该凭据。",
           )}
+        </p>
+        <p className="note">
+          {t("统计按独立安装和活跃安装计算，不代表自然人数。")}
         </p>
         <p className="note">
           {t(
@@ -199,8 +197,8 @@ export default function UsageSettings() {
                 </div>
               ) : null}
               <div>
-                <dt>{t("绑定的 Console 账号")}</dt>
-                <dd>{status.account?.login || t("尚未绑定账号")}</dd>
+                <dt>{t("随机实例编号")}</dt>
+                <dd className="mono">{status.instanceId || t("确认后生成")}</dd>
               </div>
             </dl>
             {status.lastError && status.enabled ? (
@@ -274,24 +272,12 @@ export default function UsageSettings() {
                   </dd>
                 </div>
                 <div>
-                  <dt>{t("应用版本")}</dt>
+                  <dt>{t("产品版本")}</dt>
                   <dd>{status.preview.version}</dd>
                 </div>
                 <div>
-                  <dt>{t("操作系统")}</dt>
+                  <dt>{t("系统类型")}</dt>
                   <dd>{status.preview.os}</dd>
-                </div>
-                <div>
-                  <dt>{t("处理器架构")}</dt>
-                  <dd>{status.preview.arch}</dd>
-                </div>
-                <div>
-                  <dt>{t("部署方式")}</dt>
-                  <dd>
-                    {status.preview.deployment === "docker"
-                      ? t("Docker 容器")
-                      : t("原生进程")}
-                  </dd>
                 </div>
                 <div>
                   <dt>{t("待发送的活跃日期（UTC）")}</dt>
@@ -303,82 +289,6 @@ export default function UsageSettings() {
                 </div>
               </dl>
             </details>
-            <div className="usage-binding">
-              <h3>{t("自愿绑定 Console 账号")}</h3>
-              <p>
-                {t(
-                  "登录 Monitor Console 后生成一次性绑定码，再粘贴到这里。本地账号和可选的 GitHub 登录均可使用，不会读取实例内其他成员的身份。",
-                )}
-              </p>
-              {destination ? (
-                <a
-                  className="btn"
-                  href={destination}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  <Icon name="ExternalLink" />
-                  {t("打开管理后台")}
-                </a>
-              ) : null}
-              {writable ? (
-                status.account ? (
-                  <button
-                    className="btn"
-                    type="button"
-                    disabled={busy || !status.enabled}
-                    onClick={() => void update("/usage/unbind", "POST", {})}
-                  >
-                    {t("解除 Console 账号绑定")}
-                  </button>
-                ) : (
-                  <Form
-                    className="usage-bind-form"
-                    onSubmit={(event) => {
-                      event.preventDefault();
-                      if (status.enabled)
-                        void update("/usage/bind", "POST", {
-                          code: code.trim(),
-                        });
-                    }}
-                  >
-                    <label className="field">
-                      {t("一次性绑定码")}
-                      <input
-                        aria-label={t("一次性绑定码")}
-                        aria-describedby="usage-code-help"
-                        type="password"
-                        autoComplete="off"
-                        spellCheck={false}
-                        required
-                        minLength={64}
-                        maxLength={64}
-                        pattern="[a-f0-9]{64}"
-                        value={code}
-                        disabled={busy}
-                        onChange={(event) => setCode(event.currentTarget.value)}
-                      />
-                      <small id="usage-code-help">
-                        {t("绑定码有效期为 10 分钟，只能使用一次。")}
-                      </small>
-                    </label>
-                    <button
-                      className="btn"
-                      disabled={busy || !status.enabled || !code.trim()}
-                    >
-                      {t("绑定 Console 账号")}
-                    </button>
-                  </Form>
-                )
-              ) : null}
-              {!status.enabled ? (
-                <p className="note">
-                  {t(
-                    "确认持续上报规则后可在此自愿绑定账号。账号绑定不会识别实例内的其他成员。",
-                  )}
-                </p>
-              ) : null}
-            </div>
           </>
         )}
       </div>

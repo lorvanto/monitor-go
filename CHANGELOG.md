@@ -1,8 +1,15 @@
 # Changelog
 
-User-visible changes belong here. Entries under **Unreleased** describe the current development tree; they are not published releases. Application version `0.4.0-dev` and schema version `10` currently identify the implementation baseline. A maintainer will create a dated release entry only when an actual tag and release are published.
+User-visible changes belong here. Entries under **Unreleased** describe the current development tree; they are not published releases. Application version `0.4.0-dev` and schema version `11` currently identify the implementation baseline. A maintainer will create a dated release entry only when an actual tag and release are published.
 
 ## Unreleased
+
+### Anonymous installation statistics
+
+- Collect distinct/active installation counts and product-version/OS distributions without product-user accounts. The v2 registration payload contains instance ID, credential, version and OS; reports contain instance ID, version, OS and active dates. Architecture and deployment type are excluded, and the statistics User-Agent carries no build version.
+- Retire product-user account binding, binding codes, account lists and linked-installation screens. Console administrator authentication remains separate and is not a product-user count; statistics count installations, not individual people.
+- Upgrade Console to schema 3 before Monitor Go to schema 11. Console retains transitional v1 ingestion while discarding architecture and deployment fields and keeping version/OS distributions. Monitor Go schema 11 physically removes the old account snapshot while preserving identity, credentials, reporting state, historical notice-2 confirmation and active dates.
+- Keep explicit recipient disclosure and mandatory ongoing reporting. Existing confirmed installations with an unchanged recipient do not need their data cleared or a new fabricated consent. Back up both data directories separately before migrating; rollback requires their complete prior backups and matching binaries.
 
 ### Default Console destination
 
@@ -10,6 +17,8 @@ User-visible changes belong here. Entries under **Unreleased** describe the curr
 - Keep reporting paused when its recipient changes until an administrator confirms the current destination and notice version 2. To retain an existing recipient across upgrades, configure its origin explicitly; an unchanged origin preserves its saved identity and consent.
 
 ### Required ongoing reporting (notice version 2)
+
+The following records the earlier notice-version-2 implementation. Its account-linking behavior and schema-10 account snapshot are superseded by the anonymous statistics above; explicit disclosure and mandatory ongoing reporting remain in effect.
 
 - Clearly disclose that reporting remains enabled with no off switch before first online activation. Reject disable requests with HTTP 403 and reject the former activation=false CLI/environment settings; keep true compatibility.
 - Keep already enabled identities, account links and historical consent unchanged. Legacy off installations require one administrator confirmation of the current fields, recipient and rule; only successful registration enables reporting, while local monitoring continues during pending confirmation or network failures.

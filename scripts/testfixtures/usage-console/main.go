@@ -15,14 +15,12 @@ func main() {
 	credentials := map[string]string{}
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /health", func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(http.StatusOK) })
-	mux.HandleFunc("POST /api/v1/instances/{action}", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("POST /api/v2/instances/{action}", func(w http.ResponseWriter, r *http.Request) {
 		var in struct {
 			InstanceID string   `json:"instanceId"`
 			Credential string   `json:"credential"`
 			Version    string   `json:"version"`
 			OS         string   `json:"os"`
-			Arch       string   `json:"arch"`
-			Deployment string   `json:"deployment"`
 			ActiveDays []string `json:"activeDays"`
 		}
 		decoder := json.NewDecoder(http.MaxBytesReader(w, r.Body, 16384))
@@ -55,7 +53,7 @@ func main() {
 			return
 		}
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]any{"instanceId": in.InstanceID, "firstSeen": time.Now().Unix(), "lastSeen": time.Now().Unix(), "account": nil})
+		json.NewEncoder(w).Encode(map[string]any{"instanceId": in.InstanceID, "firstSeen": time.Now().Unix(), "lastSeen": time.Now().Unix()})
 	})
 	server := &http.Server{Addr: "127.0.0.1:5099", Handler: mux, ReadHeaderTimeout: 5 * time.Second}
 	log.Fatal(server.ListenAndServe())

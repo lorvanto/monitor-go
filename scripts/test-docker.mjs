@@ -246,7 +246,7 @@ try {
   compose(["exec", "-T", "monitor", "sh", "-c", "test ! -e /data/setup-token"]);
   const system = await request("/system");
   assert.equal(system.database, "SQLite");
-  assert.equal(system.schema, 10);
+  assert.equal(system.schema, 11);
   const usage = await request("/usage");
   assert.equal(usage.enabled, true);
   assert.equal(usage.required, true);
@@ -270,7 +270,15 @@ try {
     "Usage reporting is required and cannot be disabled",
   );
   assert.equal((await request("/usage")).enabled, true);
-  assert.equal(usage.preview.deployment, "docker");
+  assert.deepEqual(Object.keys(usage.preview).sort(), [
+    "activeDays",
+    "instanceId",
+    "os",
+    "version",
+  ]);
+  assert.equal(usage.preview.version, env.MONITOR_VERSION);
+  assert.equal(usage.preview.os, "linux");
+  assert.equal(Object.hasOwn(usage, "account"), false);
   assert.equal(system.version, env.MONITOR_VERSION);
   if (platform) assert.equal(system.platform, platform.replace("/", " / "));
   assert.deepEqual(await request("/hosts"), []);

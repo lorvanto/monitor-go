@@ -1379,5 +1379,18 @@
   "当前密码不正确": "Current password is incorrect",
   "请填写当前密码": "Enter your current password",
   "当前密码": "Current password",
-  "账号设置": "Account settings"
+  "账号设置": "Account settings",
+  "匿名安装统计": "Anonymous installation statistics",
+  "仅分享随机实例编号和按 UTC 日期汇总的界面活跃标记。不会上传账号身份、版本、系统、架构、部署方式、监控内容、文件、监控密钥或应用密钥。": "Shares only a random instance ID and interface activity flags grouped by UTC date. Account identities, versions, systems, architectures, deployment types, monitoring content, files, monitoring keys and application keys are never uploaded.",
+  "确认后生成独立实例凭据，仅用于验证匿名登记和后续上报；预览不会显示该凭据。": "A separate instance credential is generated after confirmation, solely to authenticate anonymous registration and subsequent reports. It is omitted from this preview.",
+  "首次安装需要连接下方管理后台，匿名登记此安装并统计活跃情况。": "First setup requires a connection to the console below to anonymously register this installation and measure activity.",
+  "随机实例 ID 和按 UTC 日期汇总的界面活跃标记。": "Reported fields: a random instance ID and interface activity flags grouped by UTC date.",
+  "不会发送账号身份、版本、系统、架构、部署方式、监控目标或指标、文件、密码、监控密钥、应用密钥或本地成员列表。": "Account identities, versions, systems, architectures, deployment types, monitoring targets or metrics, files, passwords, monitoring keys, application keys and local member lists are never sent.",
+  "统计按独立安装和活跃安装计算，不代表自然人数。": "Statistics count distinct installations and active installations, not individual people.",
+  "Account binding is no longer supported": "Account binding is no longer supported",
+  "产品版本": "Product version",
+  "系统类型": "OS family",
+  "仅分享随机实例编号、产品版本、系统类型和按 UTC 日期汇总的界面活跃标记。不会上传账号身份、架构、部署方式、监控内容、文件、监控密钥或应用密钥。": "Shares only a random instance ID, product version, OS family and interface activity flags grouped by UTC date. Account identities, architectures, deployment types, monitoring content, files, monitoring keys and application keys are never uploaded.",
+  "随机实例 ID、产品版本、系统类型和按 UTC 日期汇总的界面活跃标记。": "Reported fields: a random instance ID, product version, OS family and interface activity flags grouped by UTC date.",
+  "不会发送账号身份、架构、部署方式、监控目标或指标、文件、密码、监控密钥、应用密钥或本地成员列表。": "Account identities, architectures, deployment types, monitoring targets or metrics, files, passwords, monitoring keys, application keys and local member lists are never sent."
 }

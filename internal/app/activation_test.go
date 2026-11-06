@@ -128,7 +128,7 @@ func TestActivationRetryAfterRemoteFailureUsesSameIdentityAndNoSecrets(t *testin
 		requests.Add(1)
 		var in map[string]any
 		json.NewDecoder(r.Body).Decode(&in)
-		if r.URL.Path != "/api/v1/instances/register" || len(in) != 6 {
+		if r.URL.Path != "/api/v2/instances/register" || len(in) != 4 {
 			t.Error("activation sent unexpected fields or endpoint")
 		}
 		for _, key := range []string{"token", "username", "name", "password", "activeDays"} {
@@ -432,7 +432,7 @@ func TestActivationMigrationPreservesUsageAndRollsBackOnFailure(t *testing.T) {
 				}
 				defer store.Close()
 				st, err := readUsageState(context.Background(), store.DB)
-				if err != nil || !st.Enabled || !st.Registered || st.InstanceID != strings.Repeat("a", 32) || st.LastReportAt != 42 || st.AccountLogin != "owner" {
+				if err != nil || !st.Enabled || !st.Registered || st.InstanceID != strings.Repeat("a", 32) || st.LastReportAt != 42 {
 					t.Fatal("migration changed prior reporting choice or registration")
 				}
 				var notice string

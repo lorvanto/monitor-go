@@ -109,47 +109,38 @@ func fakeUsageConsole(t *testing.T) (*httptest.Server, *atomic.Int64, *atomic.In
 			return
 		}
 		id, _ := in["instanceId"].(string)
-		if len(id) != 32 {
-			t.Errorf("unexpected instance ID %q", id)
+		if len(id) != 32 || len(in) != 4 {
+			t.Errorf("unexpected anonymous fields: %#v", in)
 		}
-		if r.URL.Path == "/api/v1/instances/register" {
+		if r.Header.Get("User-Agent") != "Monitor-Go" {
+			t.Error("usage User-Agent disclosed a build version")
+		}
+		switch r.URL.Path {
+		case "/api/v2/instances/register":
 			registered.Add(1)
 			secret, _ := in["credential"].(string)
 			if len(secret) != 64 {
-				t.Error("missing credential")
+				t.Error("missing independent installation credential")
 			}
 			values.Store("credential", secret)
 			if _, ok := in["activeDays"]; ok {
 				t.Error("registration included activity")
 			}
-		} else {
+		case "/api/v2/instances/report":
 			stored, ok := values.Load("credential")
 			if !ok || r.Header.Get("Authorization") != "Bearer "+stored.(string) {
 				w.WriteHeader(401)
 				return
 			}
-		}
-		var account *usageAccount
-		if stored, ok := values.Load("account"); ok {
-			account = stored.(*usageAccount)
-		}
-		switch r.URL.Path {
-		case "/api/v1/instances/report":
 			reports.Add(1)
 			values.Store("report", in)
-		case "/api/v1/instances/bind":
-			if in["code"] != strings.Repeat("a", 64) {
-				w.WriteHeader(422)
-				return
-			}
-			account = &usageAccount{Login: "octocat"}
-			values.Store("account", account)
-		case "/api/v1/instances/unbind":
-			values.Delete("account")
-			account = nil
+		default:
+			t.Error("anonymous client attempted an unsupported endpoint")
+			w.WriteHeader(404)
+			return
 		}
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(usageResult{InstanceID: id, FirstSeen: time.Now().Unix(), LastSeen: time.Now().Unix(), Account: account})
+		json.NewEncoder(w).Encode(usageResult{InstanceID: id, FirstSeen: time.Now().Unix(), LastSeen: time.Now().Unix()})
 	}))
 	t.Cleanup(server.Close)
 	return server, registered, reports, values
@@ -191,7 +182,7 @@ func TestUsageLegacyOffPreservesChoiceAndPermissions(t *testing.T) {
 	}
 	reader.call("POST", "/usage/activity", map[string]any{}, 200)
 }
-func TestUsageRegistrationBindingActivityAndRestart(t *testing.T) {
+func TestUsageAnonymousRegistrationActivityAndRestart(t *testing.T) {
 	central, registered, reports, values := fakeUsageConsole(t)
 	s, c, _ := usageFixture(t, central.URL)
 	on := enableUsage(t, c)
@@ -207,7 +198,7 @@ func TestUsageRegistrationBindingActivityAndRestart(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err = s.usage.perform(context.Background(), "report", "", nil, nil); err != nil {
+	if err = s.usage.report(context.Background()); err != nil {
 		t.Fatal(err)
 	}
 	if registered.Load() != 1 || reports.Load() != 1 {
@@ -215,10 +206,10 @@ func TestUsageRegistrationBindingActivityAndRestart(t *testing.T) {
 	}
 	in, _ := values.Load("report")
 	payload := in.(map[string]any)
-	if len(payload) != 6 || len(payload["activeDays"].([]any)) != 1 {
+	if len(payload) != 4 || len(payload["activeDays"].([]any)) != 1 {
 		t.Fatalf("unexpected payload %#v", payload)
 	}
-	for _, forbidden := range []string{"hostname", "email", "username", "ip", "hostName", "targets", "files"} {
+	for _, forbidden := range []string{"hostname", "email", "username", "ip", "hostName", "targets", "files", "account", "arch", "deployment"} {
 		if _, ok := payload[forbidden]; ok {
 			t.Fatalf("private field %s uploaded", forbidden)
 		}
@@ -231,11 +222,8 @@ func TestUsageRegistrationBindingActivityAndRestart(t *testing.T) {
 	if st.LastReportAt == 0 || st.NextReportAt-st.LastReportAt < 19440 || st.NextReportAt-st.LastReportAt > 23760 {
 		t.Fatal("invalid report interval")
 	}
-	bound := decodeValue[usageStatus](t, c.call("POST", "/usage/bind", map[string]string{"code": strings.Repeat("a", 64)}, 200))
-	if bound.Account == nil || bound.Account.Login != "octocat" {
-		t.Fatal("account binding not reflected")
-	}
-	c.call("POST", "/usage/bind", map[string]string{"code": "invalid"}, 422)
+	c.call("POST", "/usage/bind", map[string]string{"code": strings.Repeat("a", 64)}, 410)
+	c.call("POST", "/usage/unbind", map[string]any{}, 410)
 	raw := c.call("GET", "/usage", nil, 200)
 	if strings.Contains(string(raw), secret.(string)) || strings.Contains(string(raw), "credential") {
 		t.Fatal("secret leaked to status")
@@ -244,10 +232,6 @@ func TestUsageRegistrationBindingActivityAndRestart(t *testing.T) {
 	s.Store.DB.QueryRow("SELECT coalesce(group_concat(action||resource),'') FROM audit_logs").Scan(&audits)
 	if strings.Contains(audits, secret.(string)) || strings.Contains(audits, strings.Repeat("a", 64)) {
 		t.Fatal("secret leaked to audit")
-	}
-	unbound := decodeValue[usageStatus](t, c.call("POST", "/usage/unbind", map[string]any{}, 200))
-	if unbound.Account != nil {
-		t.Fatal("unbind failed")
 	}
 	rejectUsageDisable(t, c)
 	if !usageStateForTest(t, s).Enabled {
@@ -400,7 +384,7 @@ func TestUsageTransportRejectsRedirectAndBacksOff(t *testing.T) {
 	defer redirect.Close()
 	s, c, _ := usageFixture(t, redirect.URL)
 	enableUsage(t, c)
-	if err := s.usage.perform(context.Background(), "report", "", nil, nil); err == nil {
+	if err := s.usage.report(context.Background()); err == nil {
 		t.Fatal("redirect accepted")
 	}
 	if destinationHits.Load() != 0 {
@@ -511,7 +495,7 @@ func TestUsageEnabledRestartAndExpiredRegistrationRecovery(t *testing.T) {
 	defer central.Close()
 	s, c, _ := usageFixture(t, central.URL)
 	enabled := enableUsage(t, c)
-	if err := s.usage.perform(context.Background(), "report", "", nil, nil); err != nil {
+	if err := s.usage.report(context.Background()); err != nil {
 		t.Fatal(err)
 	}
 	dir := s.Store.Dir
@@ -525,21 +509,21 @@ func TestUsageEnabledRestartAndExpiredRegistrationRecovery(t *testing.T) {
 	if !state.Enabled || !state.Registered || state.InstanceID != enabled.InstanceID {
 		t.Fatalf("restart lost identity/consent %+v", state)
 	}
-	if err = next.usage.perform(context.Background(), "report", "", nil, nil); err != nil {
+	if err = next.usage.report(context.Background()); err != nil {
 		t.Fatal(err)
 	}
 	if registrations.Load() != 1 {
 		t.Fatal("restart registered a duplicate instance")
 	}
 	reject.Store(404)
-	if err = next.usage.perform(context.Background(), "report", "", nil, nil); err != nil {
+	if err = next.usage.report(context.Background()); err != nil {
 		t.Fatal(err)
 	}
 	if registrations.Load() != 2 || !usageStateForTest(t, next).Registered {
 		t.Fatal("expired registration was not recovered")
 	}
 	reject.Store(401)
-	if err = next.usage.perform(context.Background(), "report", "", nil, nil); err == nil {
+	if err = next.usage.report(context.Background()); err == nil {
 		t.Fatal("wrong credential was accepted")
 	}
 	if registrations.Load() != 2 {
@@ -590,6 +574,23 @@ func TestUsageActivityIsCoarseAndDoesNotWakeMonitoring(t *testing.T) {
 	s.Store.DB.QueryRow("SELECT count(*) FROM usage_activity").Scan(&count)
 	if count != 1 {
 		t.Fatal("rejected disable deleted pending activity")
+	}
+}
+
+func TestUsageStatusOnlyIncludesAllowedStatistics(t *testing.T) {
+	central, _, _, _ := fakeUsageConsole(t)
+	_, c, _ := usageFixture(t, central.URL)
+	enableUsage(t, c)
+	status := decodeValue[map[string]any](t, c.call("GET", "/usage", nil, 200))
+	if _, ok := status["account"]; ok {
+		t.Fatal("account information remains in status")
+	}
+	preview := status["preview"].(map[string]any)
+	if len(preview) != 4 || preview["instanceId"] == nil || preview["version"] == nil || preview["os"] == nil {
+		t.Fatalf("extra anonymous preview fields: %#v", preview)
+	}
+	if _, ok := preview["activeDays"]; !ok {
+		t.Fatal("missing UTC active-day preview")
 	}
 }
 

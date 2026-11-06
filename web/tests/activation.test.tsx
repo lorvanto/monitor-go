@@ -137,15 +137,13 @@ it("discloses the destination and fields in every language, retains drafts and n
     expect(screen.getByText(destination)).toBeTruthy();
     expect(
       screen.getByText(
-        t(
-          "随机实例 ID、程序版本、操作系统与架构、部署方式、UTC 日期及当日活跃标记。",
-        ),
+        t("随机实例 ID、产品版本、系统类型和按 UTC 日期汇总的界面活跃标记。"),
       ),
     ).toBeTruthy();
     expect(
       screen.getByText(
         t(
-          "不会发送监控目标或指标、文件、密码、监控密钥、应用密钥或本地成员列表。",
+          "不会发送账号身份、架构、部署方式、监控目标或指标、文件、密码、监控密钥、应用密钥或本地成员列表。",
         ),
       ),
     ).toBeTruthy();
@@ -155,6 +153,9 @@ it("discloses the destination and fields in every language, retains drafts and n
           "激活后持续上报，程序内不提供关闭选项。管理后台不可用时会稍后重试，不影响本地登录、监控和告警。",
         ),
       ),
+    ).toBeTruthy();
+    expect(
+      screen.getByText(t("统计按独立安装和活跃安装计算，不代表自然人数。")),
     ).toBeTruthy();
     expect(consent().checked).toBe(false);
     expect(

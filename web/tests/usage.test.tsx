@@ -29,14 +29,11 @@ const initial: UsageStatus = {
   lastReportAt: 0,
   nextReportAt: 0,
   lastError: "",
-  account: null,
   pendingActiveDays: [],
   preview: {
     instanceId: "",
     version: "test-version",
     os: "linux",
-    arch: "amd64",
-    deployment: "native",
     activeDays: [],
   },
 };
@@ -65,25 +62,27 @@ beforeEach(async () => {
         }
         return response(structuredClone(status));
       }
-      if (input === "/api/v1/usage/bind") {
-        status.account = { login: "demo-owner" };
-        return response(structuredClone(status));
-      }
-      if (input === "/api/v1/usage/unbind") {
-        status.account = null;
-        return response(structuredClone(status));
-      }
       throw new Error(`Unexpected usage request: ${input}`);
     }),
   );
 });
 
 it.each(locales)(
-  "requires explicit confirmation and offers no reporting switch in $label",
+  "requires explicit confirmation for anonymous reporting and offers no account binding in $label",
   async ({ code }) => {
     await setLocale(code);
     render(<UsageSettings />);
     await screen.findByText(t("待管理员确认持续上报规则"));
+    expect(
+      screen.getByRole("heading", { name: t("匿名安装统计") }),
+    ).toBeTruthy();
+    expect(
+      screen.getByText(t("统计按独立安装和活跃安装计算，不代表自然人数。")),
+    ).toBeTruthy();
+    expect(screen.queryByLabelText(t("一次性绑定码"))).toBeNull();
+    expect(
+      screen.queryByRole("button", { name: t("绑定 Console 账号") }),
+    ).toBeNull();
     const enable = screen.getByRole("button", {
       name: t("确认规则并激活上报"),
     }) as HTMLButtonElement;
@@ -116,48 +115,48 @@ it.each(locales)(
   },
 );
 
-it("keeps consent and an unsent binding code across all five languages", async () => {
+it("keeps unsent consent and the anonymous field disclosure open across all five languages", async () => {
   const view = render(<UsageSettings />);
   await screen.findByRole("checkbox");
   fireEvent.click(screen.getByRole("checkbox"));
-  await act(async () => {
-    await setLocale("ja-JP");
-  });
-  expect((screen.getByRole("checkbox") as HTMLInputElement).checked).toBe(true);
-  fireEvent.click(
-    screen.getByRole("button", { name: t("确认规则并激活上报") }),
-  );
-  await screen.findByLabelText(t("一次性绑定码"));
-  const secret = "ab".repeat(32);
-  fireEvent.change(screen.getByLabelText(t("一次性绑定码")), {
-    target: { value: secret },
-  });
-  const before = vi.mocked(fetch).mock.calls.length;
+  const disclosure = view.container.querySelector("details")!;
+  disclosure.open = true;
   for (const locale of locales) {
-    await act(async () => {
-      await setLocale(locale.code);
-    });
-    expect(
-      (screen.getByLabelText(t("一次性绑定码")) as HTMLInputElement).value,
-    ).toBe(secret);
-    expect(view.container.textContent).not.toContain(secret);
+    await act(() => setLocale(locale.code));
+    expect((screen.getByRole("checkbox") as HTMLInputElement).checked).toBe(
+      true,
+    );
+    expect(disclosure.open).toBe(true);
+    expect(screen.getByText(t("待发送的活跃日期（UTC）"))).toBeTruthy();
   }
-  expect(vi.mocked(fetch).mock.calls).toHaveLength(before);
-  fireEvent.click(screen.getByRole("button", { name: t("绑定 Console 账号") }));
-  await screen.findByText("demo-owner");
-  expect(
-    vi
-      .mocked(fetch)
-      .mock.calls.filter(([path]) => path === "/api/v1/usage/bind")
-      .map(([, init]) => JSON.parse(String(init?.body))),
-  ).toEqual([{ code: secret }]);
-  fireEvent.click(
-    screen.getByRole("button", { name: t("解除 Console 账号绑定") }),
-  );
-  await screen.findByLabelText(t("一次性绑定码"));
-  expect(
-    (screen.getByLabelText(t("一次性绑定码")) as HTMLInputElement).value,
-  ).toBe("");
+  expect(vi.mocked(fetch).mock.calls).toHaveLength(1);
+});
+
+it("shows disclosed product version and OS but never legacy account, architecture or deployment metadata", async () => {
+  const privateValues = ["legacy-owner", "legacy-arch", "legacy-deployment"];
+  Object.assign(status, { account: { login: privateValues[0] } });
+  Object.assign(status.preview, {
+    arch: privateValues[1],
+    deployment: privateValues[2],
+  });
+  status.instanceId = "ab".repeat(16);
+  status.preview.instanceId = status.instanceId;
+  status.preview.activeDays = ["2026-11-06"];
+  const view = render(<UsageSettings />);
+  await screen.findByRole("checkbox");
+  for (const locale of locales) {
+    await act(() => setLocale(locale.code));
+    expect(view.container.textContent).toContain(status.instanceId);
+    expect(view.container.textContent).toContain("2026-11-06");
+    for (const value of privateValues)
+      expect(view.container.textContent).not.toContain(value);
+    expect(screen.queryByText(t("绑定的 Console 账号"))).toBeNull();
+    expect(screen.getByText(status.preview.version)).toBeTruthy();
+    expect(screen.getByText(status.preview.os)).toBeTruthy();
+    for (const label of ["处理器架构", "部署方式"] as const)
+      expect(screen.queryByText(t(label))).toBeNull();
+  }
+  expect(vi.mocked(fetch).mock.calls).toHaveLength(1);
 });
 
 it("does not offer enabling without a configured console or without permission", async () => {
@@ -181,44 +180,9 @@ it("does not offer enabling without a configured console or without permission",
   view.unmount();
 });
 
-it("translates service errors when language changes and preserves the entered code", async () => {
-  status.enabled = true;
-  status.confirmationRequired = false;
-  render(<UsageSettings />);
-  await screen.findByLabelText(t("一次性绑定码"));
-  fireEvent.change(screen.getByLabelText(t("一次性绑定码")), {
-    target: { value: "ab".repeat(32) },
-  });
-  vi.mocked(fetch).mockResolvedValueOnce(
-    new Response(
-      JSON.stringify({
-        error: { key: "Invalid binding code", message: "fallback" },
-      }),
-      { status: 422 },
-    ),
-  );
-  fireEvent.click(screen.getByRole("button", { name: t("绑定 Console 账号") }));
-  await screen.findByRole("alert");
-  for (const locale of locales) {
-    await act(async () => {
-      await setLocale(locale.code);
-    });
-    expect(screen.getByRole("alert").textContent).toBe(
-      t("Invalid binding code"),
-    );
-    expect(
-      (screen.getByLabelText(t("一次性绑定码")) as HTMLInputElement).value,
-    ).toBe("ab".repeat(32));
-  }
-});
-
-it("keeps confirmation and the binding draft after a failed registration, without background resubmission", async () => {
+it("keeps confirmation after a failed registration without background resubmission", async () => {
   render(<UsageSettings />);
   await screen.findByRole("checkbox");
-  const secret = "cd".repeat(32);
-  fireEvent.change(screen.getByLabelText(t("一次性绑定码")), {
-    target: { value: secret },
-  });
   fireEvent.click(screen.getByRole("checkbox"));
   vi.mocked(fetch).mockResolvedValueOnce(
     new Response(
@@ -244,9 +208,6 @@ it("keeps confirmation and the binding draft after a failed registration, withou
     expect((screen.getByRole("checkbox") as HTMLInputElement).checked).toBe(
       true,
     );
-    expect(
-      (screen.getByLabelText(t("一次性绑定码")) as HTMLInputElement).value,
-    ).toBe(secret);
   }
   expect(vi.mocked(fetch).mock.calls).toHaveLength(requests);
   expect(appStore.getState().usageEnabled).toBe(false);
@@ -257,14 +218,10 @@ it.each([
   "Activation destination has changed; review it again",
   "Activation notice has changed; review it again",
 ] as const)(
-  "requires a refreshed notice and new consent after %s, preserving the binding draft",
+  "requires refreshed disclosure and new consent after %s",
   async (key) => {
     render(<UsageSettings />);
     await screen.findByRole("checkbox");
-    const secret = "ef".repeat(32);
-    fireEvent.change(screen.getByLabelText(t("一次性绑定码")), {
-      target: { value: secret },
-    });
     fireEvent.click(screen.getByRole("checkbox"));
     vi.mocked(fetch).mockResolvedValueOnce(
       new Response(JSON.stringify({ error: { key, message: key } }), {
@@ -287,9 +244,6 @@ it.each([
     expect((screen.getByRole("checkbox") as HTMLInputElement).checked).toBe(
       false,
     );
-    expect(
-      (screen.getByLabelText(t("一次性绑定码")) as HTMLInputElement).value,
-    ).toBe(secret);
     expect(
       vi
         .mocked(fetch)
@@ -319,9 +273,6 @@ it.each([
         usageConsoleUrl: status.consoleUrl,
       },
     ]);
-    expect(
-      (screen.getByLabelText(t("一次性绑定码")) as HTMLInputElement).value,
-    ).toBe(secret);
   },
 );
 
@@ -411,7 +362,7 @@ it("consumes the policy navigation intent after the settings card loads and focu
   const scroll = vi.spyOn(HTMLElement.prototype, "scrollIntoView");
   render(<UsageSettings />);
   const title = screen.getByRole("heading", {
-    name: t("使用情况统计与账号绑定"),
+    name: t("匿名安装统计"),
   });
   await waitFor(() => expect(document.activeElement).toBe(title));
   expect(appStore.getState().usageSettingsRequested).toBe(false);
@@ -441,7 +392,7 @@ it("updates the global confirmation notice from authenticated polling", async ()
   expect(appStore.getState().usageConfirmationRequired).toBe(false);
 });
 
-it("never records disabled, anonymous, hidden, automatic or untrusted activity", () => {
+it("never records disabled, unauthenticated, hidden, automatic or untrusted activity", () => {
   const send = vi.fn(async () => {});
   const storage = { getItem: vi.fn(), setItem: vi.fn() };
   const current = { enabled: false, csrf: undefined as string | undefined };

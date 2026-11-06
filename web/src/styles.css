@@ -3400,38 +3400,6 @@
     padding: 8px 0;
     font-weight: 600;
   }
-  .usage-binding {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 12px;
-    border-top: 1px solid var(--rule);
-    padding-top: 16px;
-    min-width: 0;
-  }
-  .usage-binding h3,
-  .usage-binding > p {
-    flex-basis: 100%;
-  }
-  .usage-binding > p {
-    color: var(--ink-3);
-    line-height: 1.6;
-  }
-  .usage-bind-form {
-    display: flex;
-    align-items: start;
-    flex-wrap: wrap;
-    gap: 12px;
-    flex-basis: 100%;
-    min-width: 0;
-  }
-  .usage-bind-form .field {
-    flex: 1 1 260px;
-    min-width: 0;
-  }
-  .usage-bind-form .btn {
-    align-self: center;
-  }
   .usage-settings .btn {
     white-space: normal;
     overflow-wrap: anywhere;

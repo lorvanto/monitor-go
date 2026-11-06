@@ -2,9 +2,9 @@
 
 **English** · [简体中文](../zh-CN/README.md) · [日本語](../ja-JP/README.md) · [한국어](../ko-KR/README.md) · [繁體中文](../zh-TW/README.md) · [Documentation](../README.md)
 
-> Status: pre-release development baseline `0.4.0-dev`, SQLite schema `10`; no published release is implied. Examples use a POSIX shell; Windows developers can use WSL.
+> Status: pre-release development baseline `0.4.0-dev`, SQLite schema `11`; no published release is implied. Examples use a POSIX shell; Windows developers can use WSL.
 
-Schema 5 adds a partial index for queued scheduler jobs, avoiding scans of completed-job history. Job retention remains seven days. Stop the service and back up the complete data directory before upgrading; binaries without schema 10 support cannot read the upgraded database, and rollback requires that backup.
+Schema 5 adds a partial index for queued scheduler jobs, avoiding scans of completed-job history. Job retention remains seven days. Stop the service and back up the complete data directory before upgrading; binaries without schema 11 support cannot read the upgraded database, and rollback requires that backup.
 
 See the [English screenshot gallery](SCREENSHOTS.md) for a feature tour with synthetic demonstration data. GitHub’s default README and About use Simplified Chinese; the application still starts in English on first use.
 
@@ -33,7 +33,7 @@ docker compose up -d --build
 docker compose exec monitor cat /data/setup-token
 ```
 
-First setup shows the Console destination, fields and mandatory ongoing reporting rule, and requires explicit confirmation before online registration and local administrator creation. Reporting then remains enabled with no off switch. With an unchanged destination, already enabled installations keep their identity and historical consent; legacy installations with reporting off wait for administrator confirmation without interrupting local monitoring. Console outages do not block login, monitoring or alerts. Account linking remains voluntary. The old activation=false settings are no longer supported. [First activation and usage reporting](USAGE_REPORTING.md)
+First setup explicitly confirms the recipient, anonymous fields and ongoing reporting rule before online registration and local administrator creation. Statistics count distinct and active installations, not people; product-user account binding is unavailable. Console outages or pending confirmation do not interrupt local monitoring. Former activation=false settings remain unsupported. [First activation and usage reporting](USAGE_REPORTING.md)
 
 Open port 5080 and create the administrator with that token. The named volume persists the complete data directory. Container-local host collection is disabled by default; use a native Agent on real hosts. See [Docker deployment](DOCKER.md) for port overrides, HTTPS, backup, restore and upgrades.
 
@@ -141,7 +141,7 @@ npm --prefix web run format:check
 
 Stop the service cleanly, then back up the entire data directory: SQLite and any companion files, `master.key`, and original `uploads/` files. Copying only a live `monitor.db` is not a complete backup. Restore the whole directory with a compatible server version.
 
-Database versions 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 → 9 → 10 migrate transactionally. Binaries without schema 10 support cannot read the upgraded database; rollback requires the entire pre-upgrade backup. New permissions are not silently assigned to custom roles. Schema 9 introduced reporting settings and coarse activity dates; schema 10 adds disclosure version, consent time and activation time. Enabled installations preserve their identity and historical consent; legacy off installations require administrator confirmation before reporting can start. Schema 10 is unchanged by notice version 2.
+Database versions 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 → 9 → 10 → 11 migrate transactionally. Binaries without schema 11 support cannot read the upgraded database; rollback requires the entire pre-upgrade backup. New permissions are not silently assigned to custom roles. Schema 9 introduced reporting settings and coarse activity dates; schema 10 adds disclosure version, consent time and activation time. Enabled installations preserve their identity and historical consent; legacy off installations require administrator confirmation before reporting can start. Schema 11 removes the former account snapshot while preserving installation identity, credentials, historical consent and active dates; notice version remains 2.
 
 ## Current limits
 
@@ -171,7 +171,7 @@ Generic keeps its existing JSON and signature-header contract. Chat formats requ
 
 ## Host alert thresholds
 
-System settings provides installation-wide CPU, memory and disk thresholds (defaults: 90%, 90%, 85%) and a sustained duration of 1–60 minutes (default: 5). Set an individual threshold to 0 to disable that metric alert. Schema 6 adds these validated settings; stop the service and back up the whole data directory before upgrading. Binaries without schema 10 support cannot read the upgraded database.
+System settings provides installation-wide CPU, memory and disk thresholds (defaults: 90%, 90%, 85%) and a sustained duration of 1–60 minutes (default: 5). Set an individual threshold to 0 to disable that metric alert. Schema 6 adds these validated settings; stop the service and back up the whole data directory before upgrading. Binaries without schema 11 support cannot read the upgraded database.
 
 Local and remote hosts use the same rules. CPU/memory must stay at or above the threshold throughout the duration: samples must cover the whole window, including a sample at or before its start, with no missing values or gaps over 45 seconds. Insufficient data does not open an alert or resolve an existing one. The latest valid reading below the threshold resolves it. Disk alerts use the latest available disk readings immediately. Disabling a threshold resolves that metric's incident on the next report; settings changes also take effect on the next report. The 90-second remote-host offline rule is unchanged. Per-host overrides are not implemented.
 
@@ -185,7 +185,7 @@ The server prepares strong ETags and gzip representations at startup using the G
 
 ## Build versions and CI
 
-Server, Agent reports and outbound User-Agent headers share `internal/buildinfo.Version`. Direct `go build` uses `0.4.0-dev`; `make build` injects `git describe --tags --always --dirty`, falling back to that default without Git metadata. Use `make build VERSION=0.4.0-dev` to select a value explicitly. Both binaries support `-version`. The frontend package uses the development baseline; the System settings page reports the actual server build. GitHub CI is configured for push and pull requests, using Go from `go.mod`, Node 22, pinned Action commits, race tests, type checks, build and formatting checks. A workflow file does not establish a passing remote run or a published release.
+Server and Agent reports and check/notification User-Agent headers use `internal/buildinfo.Version`; anonymous reports include the product version in the disclosed `version` field and use a fixed User-Agent without a version. Direct `go build` uses `0.4.0-dev`; `make build` injects `git describe --tags --always --dirty`, falling back to that default without Git metadata. Use `make build VERSION=0.4.0-dev` to select a value explicitly. Both binaries support `-version`. The frontend package uses the development baseline; the System settings page reports the actual server build. GitHub CI is configured for push and pull requests, using Go from `go.mod`, Node 22, pinned Action commits, race tests, type checks, build and formatting checks. A workflow file does not establish a passing remote run or a published release.
 
 `make docker-build` injects the Git-derived version. With plain Compose, supply `MONITOR_VERSION` explicitly; without it, the image reports `0.4.0-dev`. For direct builds use `docker build --build-arg VERSION="$(git describe --tags --always --dirty 2>/dev/null || printf 0.4.0-dev)" -t monitor-go:local .`. Git history stays outside the Docker build context.
 
@@ -220,7 +220,7 @@ Network/server failures use a linear delay of 5 seconds per consecutive failure,
 
 ## Long-term availability and retention
 
-Schema 8 adds hourly check summaries (total/good counts and average/maximum latency), transactional consumed-row markers and an index for pending rows. At startup and each hourly maintenance run, closed hours are accumulated before raw data is removed. Repeated runs and late results do not double-count; a failed rollup preserves raw rows. Settings default to 7 days of raw host/check metrics (1–30 configurable) and 90 days of check summaries (90–730 configurable). Cleanup is batched and aligned to UTC hours, so raw retention can exceed the requested duration by an hour plus the maintenance backlog. There is no host summary table. Stop and back up before upgrading; binaries without schema 10 support cannot read the upgraded database.
+Schema 8 adds hourly check summaries (total/good counts and average/maximum latency), transactional consumed-row markers and an index for pending rows. At startup and each hourly maintenance run, closed hours are accumulated before raw data is removed. Repeated runs and late results do not double-count; a failed rollup preserves raw rows. Settings default to 7 days of raw host/check metrics (1–30 configurable) and 90 days of check summaries (90–730 configurable). Cleanup is batched and aligned to UTC hours, so raw retention can exceed the requested duration by an hour plus the maintenance backlog. There is no host summary table. Stop and back up before upgrading; binaries without schema 11 support cannot read the upgraded database.
 
 Overview and Service checks offer 30/90-day availability. GET /api/v1/monitors/availability?hours=720 or 2160 requires monitor:read. Overview accepts the same ranges. Results combine hourly summaries and unconsumed raw rows in one SQLite snapshot, weighted by actual check count. Healthy and warning checks count as available, matching the existing 24-hour definition. Windows start at a UTC hour boundary; the current partial hour is included. Missing samples are not inferred as successes, so no history yields null/“—”. Previously deleted history cannot be reconstructed.
 
@@ -268,8 +268,12 @@ Known system-generated incident titles, timeline events, engine labels and check
 
 ## First activation and usage reporting
 
-First setup shows the Console destination, fields and mandatory ongoing reporting rule, and requires explicit confirmation before online registration and local administrator creation. Reporting then remains enabled with no off switch. With an unchanged destination, already enabled installations keep their identity and historical consent; legacy installations with reporting off wait for administrator confirmation without interrupting local monitoring. Console outages do not block login, monitoring or alerts. Account linking remains voluntary. The old activation=false settings are no longer supported.
+Anonymous statistics send a random installation ID, product version, OS family and UTC active dates; a separate credential authenticates requests. Product-user accounts, architectures and deployment types are not collected. Explicit confirmation of the exact destination and ongoing reporting rule is required before first online registration; notice version remains `2`, and reporting then has no off switch. Local login, monitoring and alerts continue during pending confirmation or Console outages.
 
-Upgrade note: this version updates the built-in preset HTTPS Console origin. Check the setup or confirmation page for the actual destination. Explicit `MONITOR_CONSOLE_URL` or `-console-url` settings still override the preset; the CLI flag takes precedence when both are supplied. To keep the original backend, explicitly configure its original HTTPS origin before upgrading. With an unchanged destination, enabled installations retain their identity, account link and historical consent. A changed destination requires fresh confirmation before sending to the new backend; local login, monitoring and alerts continue while confirmation is pending.
+Upgrade Monitor Console to schema `3` before Monitor Go to schema `11`. New clients use `/api/v2/instances/register` and `/api/v2/instances/report`. Console v1 registration/reporting remains compatible with old clients: version and OS family are retained, while architecture and deployment fields are discarded without storing or returning them. Binding endpoints are retired. Monitor Go v11 physically removes the former `usage_settings.account_login` snapshot; Console v3 removes architectures, deployment types, account associations and binding codes while retaining version/OS distributions and anonymous counts.
 
-[First activation and usage reporting](USAGE_REPORTING.md)
+Stop services normally and make separate complete backups of both data directories before upgrading. Rollback requires each prior image/binary and its complete pre-upgrade backup; never share the databases. Older backups may still contain retired metadata and must remain private. Existing confirmed installations with an unchanged recipient do not require clearing data and activating again.
+
+Without `MONITOR_CONSOLE_URL`, the built-in preset HTTPS origin is used; inspect the setup or confirmation page for the actual address. An explicit environment value overrides the preset and `-console-url` overrides the environment. To retain a previous backend, explicitly configure its HTTPS origin before upgrading. Empty or whitespace-only destinations are invalid. Former `-require-activation=false` / `MONITOR_REQUIRE_ACTIVATION=false` settings are rejected; `true` remains compatible. Version and backup commands do not depend on activation settings.
+
+[First activation and anonymous installation statistics](USAGE_REPORTING.md)

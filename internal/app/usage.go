@@ -16,7 +16,6 @@ import (
 	"net/url"
 	"regexp"
 	"runtime"
-	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -25,51 +24,41 @@ import (
 )
 
 const (
-	usageNotConfigured = "Usage reporting is not configured"
-	usageNotEnabled    = "Enable usage reporting before binding an account"
-	usageInvalidCode   = "Invalid binding code"
-	usageUnavailable   = "Usage service is unavailable"
-	usageRejected      = "Usage request was rejected"
-	usageChanged       = "Usage reporting settings changed"
-	usageRequired      = "Usage reporting is required and cannot be disabled"
+	usageUnavailable    = "Usage service is unavailable"
+	usageRejected       = "Usage request was rejected"
+	usageChanged        = "Usage reporting settings changed"
+	usageRequired       = "Usage reporting is required and cannot be disabled"
+	usageBindingRemoved = "Account binding is no longer supported"
 )
 
-var usageCodePattern = regexp.MustCompile(`^[0-9a-f]{64}$`)
-var usageLoginPattern = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9-]{0,38}$`)
 var usageVersionPattern = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._+\-]{0,99}$`)
 
-type usageAccount struct {
-	Login string `json:"login"`
-}
 type usagePayload struct {
-	InstanceID string   `json:"instanceId"`
 	Version    string   `json:"version"`
 	OS         string   `json:"os"`
-	Arch       string   `json:"arch"`
-	Deployment string   `json:"deployment"`
+	InstanceID string   `json:"instanceId"`
 	ActiveDays []string `json:"activeDays"`
 }
 type usageStatus struct {
-	Enabled              bool          `json:"enabled"`
-	Required             bool          `json:"required"`
-	NoticeVersion        string        `json:"noticeVersion"`
-	ConfirmationRequired bool          `json:"confirmationRequired"`
-	Configured           bool          `json:"configured"`
-	ConsoleURL           string        `json:"consoleUrl"`
-	InstanceID           string        `json:"instanceId"`
-	LastReportAt         int64         `json:"lastReportAt"`
-	NextReportAt         int64         `json:"nextReportAt"`
-	LastError            string        `json:"lastError"`
-	Account              *usageAccount `json:"account"`
-	PendingActiveDays    []string      `json:"pendingActiveDays"`
-	Preview              usagePayload  `json:"preview"`
+	Enabled              bool         `json:"enabled"`
+	Required             bool         `json:"required"`
+	NoticeVersion        string       `json:"noticeVersion"`
+	ConfirmationRequired bool         `json:"confirmationRequired"`
+	Configured           bool         `json:"configured"`
+	ConsoleURL           string       `json:"consoleUrl"`
+	InstanceID           string       `json:"instanceId"`
+	LastReportAt         int64        `json:"lastReportAt"`
+	NextReportAt         int64        `json:"nextReportAt"`
+	LastError            string       `json:"lastError"`
+	PendingActiveDays    []string     `json:"pendingActiveDays"`
+	Preview              usagePayload `json:"preview"`
 }
 type usageState struct {
 	Enabled                            bool
 	ConsoleURL, InstanceID, Credential string
 	Registered                         bool
 	LastReportAt, NextReportAt         int64
-	LastError, AccountLogin            string
+	LastError                          string
 	Failures                           int
 }
 type usageRemoteError struct{ status int }
@@ -78,10 +67,9 @@ func (e *usageRemoteError) Error() string { return usageRejected }
 func (e *usageRemoteError) Unwrap() error { return &apiError{502, usageRejected} }
 
 type usageResult struct {
-	InstanceID string        `json:"instanceId"`
-	FirstSeen  int64         `json:"firstSeen"`
-	LastSeen   int64         `json:"lastSeen"`
-	Account    *usageAccount `json:"account"`
+	InstanceID string `json:"instanceId"`
+	FirstSeen  int64  `json:"firstSeen"`
+	LastSeen   int64  `json:"lastSeen"`
 }
 
 // Only this subsystem's goroutine performs scheduled network work. Its locks are
@@ -90,7 +78,6 @@ type usageReporter struct {
 	server      *Server
 	client      *http.Client
 	origin      string
-	deployment  string
 	wake        chan struct{}
 	enabled     atomic.Bool
 	changeMu    sync.Mutex
@@ -132,7 +119,7 @@ func newUsageReporter(s *Server) (*usageReporter, error) {
 	if deployment != "native" && deployment != "docker" {
 		return nil, errors.New("deployment must be native or docker")
 	}
-	p := &usageReporter{server: s, origin: origin, deployment: deployment, wake: make(chan struct{}, 1)}
+	p := &usageReporter{server: s, origin: origin, wake: make(chan struct{}, 1)}
 	p.client = &http.Client{Timeout: 5 * time.Second, CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }, Transport: &http.Transport{
 		Proxy: http.ProxyFromEnvironment, DialContext: (&net.Dialer{Timeout: 3 * time.Second, KeepAlive: 30 * time.Second}).DialContext,
 		TLSHandshakeTimeout: 3 * time.Second, ResponseHeaderTimeout: 4 * time.Second, IdleConnTimeout: 30 * time.Second, MaxIdleConns: 2, MaxIdleConnsPerHost: 1, MaxConnsPerHost: 1,
@@ -145,7 +132,7 @@ func newUsageReporter(s *Server) (*usageReporter, error) {
 	// origin always revokes local consent and never sends an old secret elsewhere.
 	if st.ConsoleURL != origin {
 		err = p.write(context.Background(), func(tx *sql.Tx) error {
-			if _, e := tx.Exec(`UPDATE usage_settings SET enabled=0,console_url=?,instance_id='',credential='',registered=0,last_report_at=0,next_report_at=0,last_error='',account_login='',failures=0,notice_version='',consent_at=0,activated_at=0 WHERE id=1`, origin); e != nil {
+			if _, e := tx.Exec(`UPDATE usage_settings SET enabled=0,console_url=?,instance_id='',credential='',registered=0,last_report_at=0,next_report_at=0,last_error='',failures=0,notice_version='',consent_at=0,activated_at=0 WHERE id=1`, origin); e != nil {
 				return e
 			}
 			_, e := tx.Exec("DELETE FROM usage_activity")
@@ -165,7 +152,7 @@ func newUsageReporter(s *Server) (*usageReporter, error) {
 }
 func readUsageState(ctx context.Context, q rowQueryContext) (usageState, error) {
 	var st usageState
-	err := q.QueryRowContext(ctx, `SELECT enabled,console_url,instance_id,credential,registered,last_report_at,next_report_at,last_error,account_login,failures FROM usage_settings WHERE id=1`).Scan(&st.Enabled, &st.ConsoleURL, &st.InstanceID, &st.Credential, &st.Registered, &st.LastReportAt, &st.NextReportAt, &st.LastError, &st.AccountLogin, &st.Failures)
+	err := q.QueryRowContext(ctx, `SELECT enabled,console_url,instance_id,credential,registered,last_report_at,next_report_at,last_error,failures FROM usage_settings WHERE id=1`).Scan(&st.Enabled, &st.ConsoleURL, &st.InstanceID, &st.Credential, &st.Registered, &st.LastReportAt, &st.NextReportAt, &st.LastError, &st.Failures)
 	return st, err
 }
 
@@ -192,20 +179,16 @@ func (p *usageReporter) signal() {
 	}
 }
 func (p *usageReporter) payload(id string, days []string) usagePayload {
-	osName, arch := runtime.GOOS, runtime.GOARCH
+	osName := runtime.GOOS
 	switch osName {
 	case "windows", "linux", "darwin", "freebsd", "openbsd", "netbsd":
 	default:
 		osName = "other"
 	}
-	switch arch {
-	case "amd64", "arm64", "386", "arm":
-	default:
-		arch = "other"
-	}
-	version := usageVersion(buildinfo.Version)
-	return usagePayload{InstanceID: id, Version: version, OS: osName, Arch: arch, Deployment: p.deployment, ActiveDays: days}
+	return usagePayload{InstanceID: id, Version: usageVersion(buildinfo.Version), OS: osName, ActiveDays: days}
 }
+
+// Build descriptions are bounded technical identifiers, never arbitrary text.
 func usageVersion(version string) string {
 	if usageVersionPattern.MatchString(version) {
 		return version
@@ -241,9 +224,6 @@ func (p *usageReporter) status(ctx context.Context) (usageStatus, error) {
 	}
 	enabled := p.enabled.Load()
 	status := usageStatus{Enabled: enabled, Required: true, NoticeVersion: activationNoticeVersion, ConfirmationRequired: !enabled, Configured: p.origin != "", ConsoleURL: p.origin, InstanceID: st.InstanceID, LastReportAt: st.LastReportAt, NextReportAt: st.NextReportAt, LastError: st.LastError, PendingActiveDays: days, Preview: p.payload(st.InstanceID, days)}
-	if st.AccountLogin != "" {
-		status.Account = &usageAccount{Login: st.AccountLogin}
-	}
 	return status, nil
 }
 func (s *Server) getUsage(_ http.ResponseWriter, r *http.Request, _ *User) (any, error) {
@@ -328,31 +308,11 @@ func (s *Server) usageActivity(_ http.ResponseWriter, r *http.Request, _ *User) 
 	}
 	return map[string]bool{"ok": err == nil}, err
 }
-func (s *Server) bindUsage(_ http.ResponseWriter, r *http.Request, u *User) (any, error) {
-	var in struct {
-		Code string `json:"code"`
-	}
-	if err := decode(r, &in); err != nil {
-		return nil, err
-	}
-	in.Code = strings.TrimSpace(in.Code)
-	if !usageCodePattern.MatchString(in.Code) {
-		return nil, bad(usageInvalidCode)
-	}
-	if err := s.usage.perform(r.Context(), "bind", in.Code, r, u); err != nil {
-		return nil, err
-	}
-	return s.usage.status(r.Context())
-}
-func (s *Server) unbindUsage(_ http.ResponseWriter, r *http.Request, u *User) (any, error) {
-	var in struct{}
-	if err := decode(r, &in); err != nil {
-		return nil, err
-	}
-	if err := s.usage.perform(r.Context(), "unbind", "", r, u); err != nil {
-		return nil, err
-	}
-	return s.usage.status(r.Context())
+
+// Retired routes keep the existing permission and CSRF guards but never
+// generate, consume or send an account-linking credential.
+func (s *Server) retiredUsageBinding(_ http.ResponseWriter, _ *http.Request, _ *User) (any, error) {
+	return nil, &apiError{http.StatusGone, usageBindingRemoved}
 }
 
 // begin serializes only outbound telemetry calls. The generation context makes
@@ -363,7 +323,7 @@ func (p *usageReporter) begin(parent context.Context) (context.Context, func(), 
 	if !p.enabled.Load() || p.stopped {
 		p.mu.Unlock()
 		p.outboundMu.Unlock()
-		return nil, nil, bad(usageNotEnabled)
+		return nil, nil, bad(usageChanged)
 	}
 	ctx, cancel := context.WithCancel(p.session)
 	stop := context.AfterFunc(parent, cancel)
@@ -380,12 +340,12 @@ func (p *usageReporter) post(ctx context.Context, path, credential string, body 
 	if err != nil {
 		return out, err
 	}
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, p.origin+"/api/v1/instances/"+path, bytes.NewReader(raw))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, p.origin+"/api/v2/instances/"+path, bytes.NewReader(raw))
 	if err != nil {
 		return out, bad(usageUnavailable)
 	}
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("User-Agent", "Monitor-Go/"+usageVersion(buildinfo.Version))
+	req.Header.Set("User-Agent", "Monitor-Go")
 	if credential != "" {
 		req.Header.Set("Authorization", "Bearer "+credential)
 	}
@@ -404,18 +364,12 @@ func (p *usageReporter) post(ctx context.Context, path, credential string, body 
 	if decoder.Decode(new(any)) != io.EOF {
 		return out, &apiError{502, usageUnavailable}
 	}
-	if out.Account != nil && !usageLoginPattern.MatchString(out.Account.Login) {
-		return out, &apiError{502, usageUnavailable}
-	}
 	return out, nil
 }
-func accountLogin(result usageResult) string {
-	if result.Account != nil {
-		return result.Account.Login
-	}
-	return ""
-}
-func (p *usageReporter) perform(parent context.Context, action, code string, r *http.Request, u *User) error {
+
+// report sends the permitted product version, OS family and anonymous
+// installation/activity fields. User accounts, architecture and deployment are excluded.
+func (p *usageReporter) report(parent context.Context) error {
 	ctx, done, err := p.begin(parent)
 	if err != nil {
 		return err
@@ -431,69 +385,48 @@ func (p *usageReporter) perform(parent context.Context, action, code string, r *
 	}
 	if !st.Registered {
 		if err = p.register(ctx, st, credential); err != nil {
-			return p.failed(ctx, action, st.Failures, err)
+			return p.failed(ctx, st.Failures, err)
 		}
 	}
-	var days []string
-	var payload any
-	if action == "report" {
-		days, err = p.days(ctx)
-		if err != nil {
-			return err
-		}
-		payload = p.payload(st.InstanceID, days)
-	} else {
-		fields := map[string]string{"instanceId": st.InstanceID}
-		if action == "bind" {
-			fields["code"] = code
-		}
-		payload = fields
+	days, err := p.days(ctx)
+	if err != nil {
+		return err
 	}
-	result, err := p.post(ctx, action, credential, payload)
+	payload := p.payload(st.InstanceID, days)
+	result, err := p.post(ctx, "report", credential, payload)
 	var remote *usageRemoteError
 	if errors.As(err, &remote) && remote.status == http.StatusNotFound {
-		// The console can expire a long-inactive registration. Recreate it with the
-		// same durable identity and credential, then retry exactly once. A wrong
-		// credential (401/403) is never silently replaced or retried as registration.
+		// Recreate an expired registration with its durable identity. Wrong
+		// credentials (401/403) are never replaced or retried as registration.
 		err = p.write(ctx, func(tx *sql.Tx) error {
-			_, e := tx.ExecContext(ctx, "UPDATE usage_settings SET registered=0,account_login='' WHERE id=1 AND enabled=1")
+			_, e := tx.ExecContext(ctx, "UPDATE usage_settings SET registered=0 WHERE id=1 AND enabled=1")
 			return e
 		})
 		if err == nil {
 			err = p.register(ctx, st, credential)
 		}
 		if err == nil {
-			result, err = p.post(ctx, action, credential, payload)
+			result, err = p.post(ctx, "report", credential, payload)
 		}
 	}
 	if err != nil {
-		return p.failed(ctx, action, st.Failures, err)
+		return p.failed(ctx, st.Failures, err)
 	}
 	if result.InstanceID != st.InstanceID {
-		return p.failed(ctx, action, st.Failures, &apiError{502, usageUnavailable})
+		return p.failed(ctx, st.Failures, &apiError{502, usageUnavailable})
 	}
 	return p.write(ctx, func(tx *sql.Tx) error {
-		if action == "report" {
-			when := time.Now().Unix()
-			if _, e := tx.ExecContext(ctx, `UPDATE usage_settings SET last_report_at=?,next_report_at=?,last_error='',failures=0,account_login=? WHERE id=1 AND enabled=1`, when, when+usageReportDelay(), accountLogin(result)); e != nil {
+		when := time.Now().Unix()
+		if _, e := tx.ExecContext(ctx, `UPDATE usage_settings SET last_report_at=?,next_report_at=?,last_error='',failures=0 WHERE id=1 AND enabled=1`, when, when+usageReportDelay()); e != nil {
+			return e
+		}
+		for _, day := range days {
+			if _, e := tx.ExecContext(ctx, "DELETE FROM usage_activity WHERE day=?", day); e != nil {
 				return e
 			}
-			for _, day := range days {
-				if _, e := tx.ExecContext(ctx, "DELETE FROM usage_activity WHERE day=?", day); e != nil {
-					return e
-				}
-			}
-			_, e := tx.ExecContext(ctx, "DELETE FROM usage_activity WHERE day<?", time.Now().UTC().AddDate(0, 0, -6).Format("2006-01-02"))
-			return e
 		}
-		if _, e := tx.ExecContext(ctx, "UPDATE usage_settings SET account_login=? WHERE id=1 AND enabled=1", accountLogin(result)); e != nil {
-			return e
-		}
-		audit := "Usage account bound"
-		if action == "unbind" {
-			audit = "Usage account unbound"
-		}
-		return auditRequest(tx, r, u.Name, audit, "usage")
+		_, e := tx.ExecContext(ctx, "DELETE FROM usage_activity WHERE day<?", time.Now().UTC().AddDate(0, 0, -6).Format("2006-01-02"))
+		return e
 	})
 }
 func (p *usageReporter) registration(instanceID, credential string) any {
@@ -503,27 +436,20 @@ func (p *usageReporter) registration(instanceID, credential string) any {
 		Credential string `json:"credential"`
 		Version    string `json:"version"`
 		OS         string `json:"os"`
-		Arch       string `json:"arch"`
-		Deployment string `json:"deployment"`
-	}{payload.InstanceID, credential, payload.Version, payload.OS, payload.Arch, payload.Deployment}
+	}{instanceID, credential, payload.Version, payload.OS}
 }
 func (p *usageReporter) register(ctx context.Context, st usageState, credential string) error {
-	result, e := p.post(ctx, "register", "", p.registration(st.InstanceID, credential))
-	if e != nil {
-		return e
+	result, err := p.post(ctx, "register", "", p.registration(st.InstanceID, credential))
+	if err != nil {
+		return err
 	}
 	if result.InstanceID != st.InstanceID {
 		return &apiError{502, usageUnavailable}
 	}
-	err := p.write(ctx, func(tx *sql.Tx) error {
-		_, e := tx.ExecContext(ctx, "UPDATE usage_settings SET registered=1,account_login=? WHERE id=1 AND enabled=1", accountLogin(result))
+	return p.write(ctx, func(tx *sql.Tx) error {
+		_, e := tx.ExecContext(ctx, "UPDATE usage_settings SET registered=1 WHERE id=1 AND enabled=1")
 		return e
 	})
-	if err != nil {
-		return err
-	}
-
-	return nil
 }
 
 func usageReportDelay() int64 {
@@ -547,12 +473,9 @@ func usageRetryDelay(failures int) int64 {
 	}
 	return delay
 }
-func (p *usageReporter) failed(ctx context.Context, action string, failures int, cause error) error {
+func (p *usageReporter) failed(ctx context.Context, failures int, cause error) error {
 	if ctx.Err() != nil {
 		return &apiError{409, usageChanged}
-	}
-	if action != "report" {
-		return cause
 	}
 	key := usageUnavailable
 	var api *apiError
@@ -617,7 +540,7 @@ func (p *usageReporter) loop(ctx context.Context) {
 		case <-timerC:
 			// All failures remain inside usage reporting; monitoring and alerts keep their
 			// own queues and deadlines. Error details and credentials are never logged.
-			if err := p.perform(ctx, "report", "", nil, nil); err != nil {
+			if err := p.report(ctx); err != nil {
 				retryNotBefore = time.Now().Add(time.Minute)
 			} else {
 				retryNotBefore = time.Time{}
