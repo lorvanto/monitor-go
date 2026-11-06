@@ -1,8 +1,14 @@
 # Changelog
 
-User-visible changes belong here. Entries under **Unreleased** describe the current development tree; they are not published releases. Application version `0.4.0-dev` and schema version `11` currently identify the implementation baseline. A maintainer will create a dated release entry only when an actual tag and release are published.
+User-visible changes belong here. Entries under **Unreleased** describe the current development tree; they are not published releases. Application version `0.4.0-dev` and schema version `12` currently identify the implementation baseline. A maintainer will create a dated release entry only when an actual tag and release are published.
 
 ## Unreleased
+
+### Service-check tabs, intervals and certificate expiry
+
+- Keep a single service-check entry with HTTP, TCP, SSL, MySQL and Redis tabs. New checks default to 60s, 60s, 24h, 180s and 60s respectively; preserve existing intervals. Offer presets and seconds/minutes/hours/days within the existing 15–86400-second range, plus atomic permission-checked bulk interval updates.
+- Show structured SSL expiry time, days remaining and last/next check times. Certificate warnings open an incident on the first warning result, with a default 14-day lead. SSL connection failures are confirmed after the initial failure and two 60-second rechecks; ordinary checks retain their default three-consecutive-failure threshold.
+- Schema 12 adds `certificate_expires_at` to monitors and check results while preserving existing configuration, history and alerts. Back up the entire data directory before upgrading; rollback requires its complete pre-upgrade backup. This entry does not imply a release, deployment or completed validation.
 
 ### Anonymous installation statistics
 

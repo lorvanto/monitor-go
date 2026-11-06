@@ -2,6 +2,17 @@ import { checkDiagnostic } from "../lib/incidentText";
 import { groupName, groupOption, matchesGroup } from "../lib/monitorGroups";
 import { notice, errorMessage, type DisplayMessage } from "../lib/messages";
 import Form from "../components/Form";
+import MonitorIntervalEditor from "../components/MonitorIntervalEditor";
+import {
+  defaultMonitorInterval,
+  monitorIntervalLabel,
+  monitorKind,
+  monitorKindIcon,
+  monitorKindLabel,
+  monitorKinds,
+  validMonitorInterval,
+  type MonitorKind,
+} from "../lib/monitorKinds";
 import { useEffect, useRef, useState } from "react";
 import { createStore, useStore } from "zustand";
 import Icon from "../components/Icon";
@@ -29,16 +40,28 @@ import {
   type CheckResult,
 } from "../stores/app";
 export default function MonitorsView() {
+  const initialKind = monitorKind(
+    appStore
+      .getState()
+      .data.monitors.find(
+        (item) => item.id === appStore.getState().activeMonitor,
+      )?.type ||
+      monitorKinds.find((kind) =>
+        appStore.getState().data.monitors.some((item) => item.type === kind),
+      ) ||
+      "HTTP",
+  );
   const initialState = {
     query: "",
     availabilityPeriod: "24h",
     availability: {} as Record<string, number | null>,
     availabilityError: "" as DisplayMessage,
-    type: "",
+    type: initialKind,
     group: "",
     tab: "all",
     selected: [] as string[],
     creating: appStore.getState().createMonitorRequested,
+    periodEditing: null as { ids: string[]; interval: number } | null,
     detailID: appStore.getState().activeMonitor,
     detailHistory: [] as CheckResult[],
     historyFor: "",
@@ -51,9 +74,9 @@ export default function MonitorsView() {
     form: {
       name: "",
       target: "",
-      type: "HTTP",
+      type: initialKind,
       group: "",
-      interval: 60,
+      interval: defaultMonitorInterval[initialKind],
       timeout: 10,
       expected: 200,
       keyword: "",
@@ -72,10 +95,27 @@ export default function MonitorsView() {
   const appState = useApp();
   useI18n();
   const availabilitySequence = useRef(0);
+  const initialCategoryChosen = useRef(
+    Boolean(appState.activeMonitor || appState.data.monitors.length),
+  );
+  useEffect(() => {
+    if (initialCategoryChosen.current || !appState.data.monitors.length) return;
+    initialCategoryChosen.current = true;
+    store.setState({
+      type:
+        monitorKinds.find((kind) =>
+          appState.data.monitors.some((item) => item.type === kind),
+        ) || "HTTP",
+    });
+  }, [appState.data.monitors]);
   useEffect(() => {
     const request = ++availabilitySequence.current;
     let active = true;
-    if (viewState.availabilityPeriod !== "24h" && can("monitor:read")) {
+    if (
+      viewState.type !== "SSL" &&
+      viewState.availabilityPeriod !== "24h" &&
+      can("monitor:read")
+    ) {
       const selectedHours = viewState.availabilityPeriod === "30d" ? 720 : 2160;
       void api<{ items: { monitorId: string; uptime: number | null }[] }>(
         `/monitors/availability?hours=${selectedHours}`,
@@ -100,7 +140,12 @@ export default function MonitorsView() {
     return () => {
       active = false;
     };
-  }, [viewState.availabilityPeriod, appState.updatedAt, appState.user]);
+  }, [
+    viewState.type,
+    viewState.availabilityPeriod,
+    appState.updatedAt,
+    appState.user,
+  ]);
   function uptime(m: Monitor) {
     return viewState.availabilityPeriod === "24h"
       ? m.uptime
@@ -114,8 +159,31 @@ export default function MonitorsView() {
         });
 
   useEffect(() => {
-    appStore.setState({ createMonitorRequested: false, activeMonitor: "" });
-  }, [store]);
+    if (appState.activeMonitor) {
+      const target = appState.data.monitors.find(
+        (item) => item.id === appState.activeMonitor,
+      );
+      if (target) {
+        store.setState({
+          type: monitorKind(target.type),
+          detailID: target.id,
+          query: "",
+          group: "",
+          tab: "all",
+          selected: [],
+        });
+        appStore.setState({ activeMonitor: "" });
+      }
+    }
+    if (appState.createMonitorRequested) {
+      openCreate();
+      appStore.setState({ createMonitorRequested: false });
+    }
+  }, [
+    appState.activeMonitor,
+    appState.createMonitorRequested,
+    appState.data.monitors,
+  ]);
   const getDetail = () =>
     appStore
       .getState()
@@ -146,55 +214,63 @@ export default function MonitorsView() {
       active = false;
     };
   }, [historyScope, appState.user, appState.updatedAt]);
+  const getCategoryMonitors = () =>
+    appStore
+      .getState()
+      .data.monitors.filter((item) => item.type === store.getState().type);
+  function changeKind(kind: MonitorKind) {
+    initialCategoryChosen.current = true;
+    store.setState({
+      type: kind,
+      query: "",
+      group: "",
+      tab: "all",
+      selected: [],
+      detailID: "",
+      error: "",
+      availabilityError: "",
+    });
+  }
   const getGroups = () => [
-    ...new Set(appStore.getState().data.monitors.map((m) => m.group)),
+    ...new Set(getCategoryMonitors().map((m) => m.group)),
   ];
   const getTabs = () => [
     {
       key: "all",
       label: t("全部"),
-      count: appStore.getState().data.monitors.length,
+      count: getCategoryMonitors().length,
     },
     {
       key: "healthy",
       label: t("正常"),
-      count: appStore
-        .getState()
-        .data.monitors.filter((m) => m.status === "healthy").length,
+      count: getCategoryMonitors().filter((m) => m.status === "healthy").length,
     },
     {
       key: "attention",
       label: t("需关注"),
-      count: appStore
-        .getState()
-        .data.monitors.filter((m) =>
-          ["failed", "warning", "unknown"].includes(m.status),
-        ).length,
+      count: getCategoryMonitors().filter((m) =>
+        ["failed", "warning", "unknown"].includes(m.status),
+      ).length,
     },
     {
       key: "paused",
       label: t("已暂停"),
-      count: appStore
-        .getState()
-        .data.monitors.filter((m) => m.status === "paused").length,
+      count: getCategoryMonitors().filter((m) => m.status === "paused").length,
     },
   ];
   const getFiltered = () =>
-    appStore
-      .getState()
-      .data.monitors.filter(
-        (m) =>
-          (!store.getState().query ||
-            `${m.name} ${m.target}`
-              .toLowerCase()
-              .includes(store.getState().query.toLowerCase())) &&
-          (!store.getState().type || m.type === store.getState().type) &&
-          matchesGroup(m.group, store.getState().group) &&
-          (store.getState().tab === "all" ||
-            (store.getState().tab === "attention"
-              ? ["failed", "warning", "unknown"].includes(m.status)
-              : m.status === store.getState().tab)),
-      );
+    getCategoryMonitors().filter(
+      (m) =>
+        (!store.getState().query ||
+          `${m.name} ${m.target}`
+            .toLowerCase()
+            .includes(store.getState().query.toLowerCase())) &&
+        matchesGroup(m.group, store.getState().group) &&
+        (store.getState().tab === "all" ||
+          (store.getState().tab === "attention"
+            ? ["failed", "warning", "unknown"].includes(m.status)
+            : m.status === store.getState().tab)),
+    );
   const getAllSelected = () =>
     getFiltered().length > 0 &&
     getFiltered().every((m) => store.getState().selected.includes(m.id));
@@ -216,12 +292,17 @@ export default function MonitorsView() {
     );
   }
   function openCreate() {
+    initialCategoryChosen.current = true;
     store.setState({
       creating: true,
       editing: null,
       clearPassword: false,
       error: "",
-      form: { ...initialState.form },
+      form: {
+        ...initialState.form,
+        type: store.getState().type,
+        interval: defaultMonitorInterval[store.getState().type],
+      },
     });
   }
   function edit(m: Monitor) {
@@ -234,7 +315,7 @@ export default function MonitorsView() {
       form: {
         name: m.name,
         target: m.target,
-        type: m.type,
+        type: monitorKind(m.type),
         group: m.group,
         interval: m.interval,
         timeout: m.timeout,
@@ -280,7 +361,7 @@ export default function MonitorsView() {
       store.setState({ creating: false });
       store.setState({ query: "" });
       store.setState({ tab: "all" });
-      store.setState({ type: "" });
+      store.setState({ type: monitorKind(form.type), selected: [] });
       store.setState({ group: "" });
       store.setState((current) => ({ form: { ...current.form, name: "" } }));
       store.setState((current) => ({ form: { ...current.form, target: "" } }));
@@ -297,7 +378,17 @@ export default function MonitorsView() {
   }
   function exportCSV() {
     const rows = [
-      [t("名称"), t("类型"), t("目标"), t("状态"), t("分组"), t("最近检测")],
+      [
+        t("名称"),
+        t("类型"),
+        t("目标"),
+        t("状态"),
+        t("分组"),
+        t("最近检测"),
+        ...(store.getState().type === "SSL"
+          ? [t("证书到期时间"), t("剩余天数"), t("下次检测")]
+          : []),
+      ],
       ...getFiltered().map((m) => [
         m.name,
         m.type,
@@ -305,6 +396,13 @@ export default function MonitorsView() {
         statusLabel(m.status),
         groupName(m.group),
         dateTime(m.checkedAt),
+        ...(store.getState().type === "SSL"
+          ? [
+              certificateExpiry(m),
+              certificateRemaining(m),
+              m.enabled ? dateTime(m.nextCheck) : t("已暂停"),
+            ]
+          : []),
       ]),
     ];
     const csv =
@@ -336,17 +434,63 @@ export default function MonitorsView() {
   }
   function resetFilter() {
     store.setState({ query: "" });
-    store.setState({ type: "" });
     store.setState({ group: "" });
     store.setState({ tab: "all" });
   }
-  const typeIcon: Record<string, string> = {
-    HTTP: "Globe",
-    TCP: "Network",
-    SSL: "LockKeyhole",
-    MySQL: "HardDrive",
-    Redis: "Box",
+  const certificateExpiry = (item: Monitor) =>
+    item.certificateExpiresAt > 0
+      ? dateTime(item.certificateExpiresAt)
+      : t("尚无证书信息");
+  const certificateDate = (at: number) =>
+    at > 0
+      ? new Date(at).toLocaleDateString(i18nStore.getState().locale, {
+          year: "numeric",
+          month: "2-digit",
+          day: "2-digit",
+        })
+      : t("尚无证书信息");
+  const checkDate = (at: number) =>
+    new Date(at).toLocaleString(i18nStore.getState().locale, {
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+    });
+  const certificateRemaining = (item: Monitor) => {
+    if (!item.certificateExpiresAt) return "—";
+    const days = Math.ceil((item.certificateExpiresAt - Date.now()) / 86400000);
+    return days > 0 ? t("剩余 {p0} 天", { p0: days }) : t("已过期");
   };
+  async function applyIntervals() {
+    const editing = store.getState().periodEditing;
+    if (
+      !editing ||
+      store.getState().busy ||
+      !can("monitor:update") ||
+      !validMonitorInterval(editing.interval)
+    )
+      return;
+    store.setState({ busy: true, error: "" });
+    try {
+      const result = await api<{ ok: boolean; updated: number }>(
+        "/monitors/interval",
+        "POST",
+        editing,
+      );
+      store.setState({ periodEditing: null, selected: [] });
+      await action(
+        async () => {},
+        notice("已更新 {p0} 项检测周期", { p0: result.updated }),
+      );
+    } catch (error) {
+      store.setState({ error: errorMessage(error) });
+      if (error instanceof APIError && error.status === 409)
+        await refreshAll(true);
+    } finally {
+      store.setState({ busy: false });
+    }
+  }
   const timeOnly = (at: number) =>
     at
       ? new Date(at).toLocaleString(i18nStore.getState().locale, {
@@ -365,12 +509,15 @@ export default function MonitorsView() {
         .selected.filter((id) =>
           appStore
             .getState()
-            .data.monitors.some((m) => m.id === id && m.enabled),
+            .data.monitors.some(
+              (m) =>
+                m.id === id && m.type === store.getState().type && m.enabled,
+            ),
         ),
     );
   }
   useEffect(() => {
-    const ids = appStore.getState().data.monitors.map((m) => m.id);
+    const ids = getCategoryMonitors().map((m) => m.id);
     store.setState({
       selected: store.getState().selected.filter((id) => ids.includes(id)),
     });
@@ -381,6 +528,8 @@ export default function MonitorsView() {
     viewState.historyFor === historyScope
       ? viewState.detailHistory
       : detail?.history || [];
+  const categoryMonitors = getCategoryMonitors();
+  const isSSL = viewState.type === "SSL";
   const groups = getGroups();
   const tabs = getTabs();
   const filtered = getFiltered();
@@ -392,7 +541,7 @@ export default function MonitorsView() {
           <h1>{appState.pageTitle}</h1>
           <p>
             {t("{p0} 个检测目标，由当前服务器按设定间隔执行。", {
-              p0: appState.data.monitors.length,
+              p0: categoryMonitors.length,
             })}
           </p>
         </div>
@@ -420,12 +569,61 @@ export default function MonitorsView() {
           ) : null}
         </div>
       </header>
-      {viewState.availabilityError ? (
+      {viewState.availabilityError && !isSSL ? (
         <p role="alert" className="error">
           {viewState.availabilityError}
         </p>
       ) : null}
-      <section className="panel">
+      <div
+        className="monitor-kind-tabs"
+        role="tablist"
+        aria-label={t("按检测类型分类")}
+      >
+        {monitorKinds.map((kind, index) => (
+          <button
+            key={kind}
+            id={`monitor-kind-${kind}`}
+            role="tab"
+            aria-controls="monitor-kind-panel"
+            aria-selected={viewState.type === kind}
+            tabIndex={viewState.type === kind ? 0 : -1}
+            onClick={() => changeKind(kind)}
+            onKeyDown={(event) => {
+              const next =
+                event.key === "ArrowRight"
+                  ? (index + 1) % monitorKinds.length
+                  : event.key === "ArrowLeft"
+                    ? (index + monitorKinds.length - 1) % monitorKinds.length
+                    : event.key === "Home"
+                      ? 0
+                      : event.key === "End"
+                        ? monitorKinds.length - 1
+                        : -1;
+              if (next < 0) return;
+              event.preventDefault();
+              changeKind(monitorKinds[next]);
+              document
+                .getElementById(`monitor-kind-${monitorKinds[next]}`)
+                ?.focus();
+            }}
+          >
+            <Icon name={monitorKindIcon[kind]} size={17} />
+            {t(monitorKindLabel[kind])}
+            <small>
+              {
+                appState.data.monitors.filter((item) => item.type === kind)
+                  .length
+              }
+            </small>
+          </button>
+        ))}
+      </div>
+      <section
+        className="panel"
+        id="monitor-kind-panel"
+        role="tabpanel"
+        aria-labelledby={`monitor-kind-${viewState.type}`}
+      >
         <div className="toolbar">
           <div role="group" aria-label={t("按状态筛选")} className="seg">
             <>
@@ -466,35 +664,23 @@ export default function MonitorsView() {
               </button>
             ) : null}
           </label>
-          <select
-            aria-label={t("可用率周期")}
-            value={viewState.availabilityPeriod}
-            onChange={(event) =>
-              store.setState({
-                availabilityPeriod: event.currentTarget.value,
-                availability: {},
-                availabilityError: "",
-              })
-            }
-          >
-            <option value="24h">{t("24 小时可用率")}</option>
-            <option value="30d">{t("{p0} 天可用率", { p0: 30 })}</option>
-            <option value="90d">{t("{p0} 天可用率", { p0: 90 })}</option>
-          </select>
-          <select
-            aria-label={t("检测类型")}
-            value={viewState.type}
-            onChange={(event) => {
-              store.setState({ type: event.currentTarget.value });
-            }}
-          >
-            <option value="">{t("全部类型")}</option>
-            <>
-              {["HTTP", "TCP", "SSL", "MySQL", "Redis"].map((t) => (
-                <option key={t}>{t}</option>
-              ))}
-            </>
-          </select>
+          {!isSSL ? (
+            <select
+              aria-label={t("可用率周期")}
+              value={viewState.availabilityPeriod}
+              onChange={(event) =>
+                store.setState({
+                  availabilityPeriod: event.currentTarget.value,
+                  availability: {},
+                  availabilityError: "",
+                })
+              }
+            >
+              <option value="24h">{t("24 小时可用率")}</option>
+              <option value="30d">{t("{p0} 天可用率", { p0: 30 })}</option>
+              <option value="90d">{t("{p0} 天可用率", { p0: 90 })}</option>
+            </select>
+          ) : null}
           <select
             aria-label={t("分组")}
             value={viewState.group}
@@ -540,6 +726,26 @@ export default function MonitorsView() {
                 {t("立即检测")}
               </button>
             ) : null}
+            {can("monitor:update") ? (
+              <button
+                className="link"
+                onClick={() => {
+                  const selected = getCategoryMonitors().filter((item) =>
+                    store.getState().selected.includes(item.id),
+                  );
+                  if (selected.length)
+                    store.setState({
+                      periodEditing: {
+                        ids: selected.map((item) => item.id),
+                        interval: selected[0].interval,
+                      },
+                      error: "",
+                    });
+                }}
+              >
+                {t("批量修改周期")}
+              </button>
+            ) : null}
             <button
               className="link"
               onClick={() => {
@@ -552,7 +758,11 @@ export default function MonitorsView() {
         ) : null}
         {filtered.length ? (
           <div className="table-wrap">
-            <table className="table monitor-table">
+            <table
+              className={classNames("table monitor-table", {
+                "certificate-table": isSSL,
+              })}
+            >
               <thead>
                 <tr>
                   <th className="check-cell">
@@ -567,10 +777,20 @@ export default function MonitorsView() {
                   </th>
                   <th>{t("检测目标")}</th>
                   <th>{t("状态")}</th>
-                  <th className="num">{t("响应")}</th>
-                  <th>{t("最近 32 次结果")}</th>
-                  <th className="num">{availabilityLabel}</th>
+                  {isSSL ? (
+                    <>
+                      <th>{t("证书到期时间")}</th>
+                      <th>{t("剩余天数")}</th>
+                    </>
+                  ) : (
+                    <>
+                      <th className="num">{t("响应")}</th>
+                      <th>{t("最近 32 次结果")}</th>
+                      <th className="num">{availabilityLabel}</th>
+                    </>
+                  )}
                   <th>{t("最近检测")}</th>
+                  {isSSL ? <th>{t("下次检测")}</th> : null}
                   <th className="actions">
                     <span className="sr-only">{t("操作")}</span>
                   </th>
@@ -609,7 +829,6 @@ export default function MonitorsView() {
                             store.setState({ detailID: m.id });
                           }}
                         >
-                          <span className="tag">{m.type}</span>
                           <span className="target-text">
                             <strong>{m.name}</strong>
                             <small title={m.target}>{m.target}</small>
@@ -622,21 +841,76 @@ export default function MonitorsView() {
                           label={statusLabel(m.status)}
                         ></StatusBadge>
                       </td>
-                      <td className="num c-latency">
-                        {latencyParts(m.latency)[0]}
-                        <small className="unit">
-                          {latencyParts(m.latency)[1]}
-                        </small>
+                      {isSSL ? (
+                        <>
+                          <td
+                            className="c-expiry"
+                            data-label={t("证书到期时间")}
+                            title={
+                              m.certificateExpiresAt > 0
+                                ? dateTime(m.certificateExpiresAt)
+                                : undefined
+                            }
+                          >
+                            {certificateDate(m.certificateExpiresAt)}
+                          </td>
+                          <td
+                            className="num c-remaining"
+                            data-label={t("剩余天数")}
+                          >
+                            {certificateRemaining(m)}
+                          </td>
+                        </>
+                      ) : (
+                        <>
+                          <td className="num c-latency">
+                            {latencyParts(m.latency)[0]}
+                            <small className="unit">
+                              {latencyParts(m.latency)[1]}
+                            </small>
+                          </td>
+                          <td className="c-trace">
+                            <SignalTrace history={m.history}></SignalTrace>
+                          </td>
+                          <td className="num c-uptime">
+                            {uptime(m) == null
+                              ? "—"
+                              : number(uptime(m), 2) + "%"}
+                          </td>
+                        </>
+                      )}
+                      <td
+                        className="nowrap muted c-last"
+                        data-label={t("最近检测")}
+                        title={
+                          isSSL && m.checkedAt
+                            ? dateTime(m.checkedAt)
+                            : undefined
+                        }
+                      >
+                        {isSSL
+                          ? m.checkedAt
+                            ? checkDate(m.checkedAt)
+                            : t("等待首次检测")
+                          : relative(m.checkedAt)}
                       </td>
-                      <td className="c-trace">
-                        <SignalTrace history={m.history}></SignalTrace>
-                      </td>
-                      <td className="num c-uptime">
-                        {uptime(m) == null ? "—" : number(uptime(m), 2) + "%"}
-                      </td>
-                      <td className="nowrap muted c-last">
-                        {relative(m.checkedAt)}
-                      </td>
+                      {isSSL ? (
+                        <td
+                          className="nowrap muted c-next"
+                          data-label={t("下次检测")}
+                          title={
+                            m.enabled && m.nextCheck
+                              ? dateTime(m.nextCheck)
+                              : undefined
+                          }
+                        >
+                          {m.enabled
+                            ? m.nextCheck
+                              ? checkDate(m.nextCheck)
+                              : t("等待首次检测")
+                            : t("已暂停")}
+                        </td>
+                      ) : null}
                       <td className="actions c-actions">
                         <div className="row-actions tight">
                           {can("monitor:run") ? (
@@ -715,16 +989,16 @@ export default function MonitorsView() {
           <div className="empty">
             <Icon name="Radar" size={28}></Icon>
             <h3>
-              {appState.data.monitors.length
+              {categoryMonitors.length
                 ? t("没有匹配的检测目标")
                 : t("添加第一个检测目标")}
             </h3>
             <p>
-              {appState.data.monitors.length
+              {categoryMonitors.length
                 ? t("换个关键词，或清除筛选条件。")
-                : t("填写网站或服务地址，当前服务器会按设定间隔检测。")}
+                : t("当前分类尚无检测目标。")}
             </p>
-            {appState.data.monitors.length ? (
+            {categoryMonitors.length ? (
               <button
                 className="btn"
                 onClick={() => {
@@ -751,22 +1025,28 @@ export default function MonitorsView() {
             <span>
               {t("显示 {p0} / {p1} 项", {
                 p0: filtered.length,
-                p1: appState.data.monitors.length,
+                p1: categoryMonitors.length,
               })}
             </span>
-            <span>{t("信号条从左到右由旧到新，异常越严重柱越高")}</span>
+            {!isSSL ? (
+              <span>{t("信号条从左到右由旧到新，异常越严重柱越高")}</span>
+            ) : null}
           </footer>
         ) : null}
       </section>
       <p className="note page-note">
         <Icon name="Info" size={14}></Icon>
-        {viewState.availabilityPeriod === "24h"
+        {isSSL
           ? t(
-              "可用率按近 24 小时的成功次数计算，尚无检测时显示“—”。暂停检测不会把未恢复的告警标记为正常。",
+              "证书到期时间来自成功握手；连接失败时显示未知，可在历史查看上次结果。",
             )
-          : t(
-              "长期可用率按实际检测次数加权，窗口起点按 UTC 整点对齐；无采样显示“—”，不会补算为正常。",
-            )}
+          : viewState.availabilityPeriod === "24h"
+            ? t(
+                "可用率按近 24 小时的成功次数计算，尚无检测时显示“—”。暂停检测不会把未恢复的告警标记为正常。",
+              )
+            : t(
+                "长期可用率按实际检测次数加权，窗口起点按 UTC 整点对齐；无采样显示“—”，不会补算为正常。",
+              )}
       </p>
       {viewState.creating ? (
         <Modal
@@ -790,7 +1070,10 @@ export default function MonitorsView() {
               <button
                 form="monitor-form"
                 type="submit"
-                disabled={viewState.busy}
+                disabled={
+                  viewState.busy ||
+                  !validMonitorInterval(viewState.form.interval)
+                }
                 className="btn primary"
               >
                 {viewState.busy
@@ -810,29 +1093,33 @@ export default function MonitorsView() {
               create();
             }}
           >
-            <fieldset className="field">
-              <legend className="field-label">{t("检测类型")}</legend>
-              <div className="choice-group">
-                <>
-                  {["HTTP", "TCP", "SSL", "MySQL", "Redis"].map((t) => (
-                    <label key={t} className="choice">
-                      <input
-                        type="radio"
-                        value={t}
-                        checked={viewState.form.type === t}
-                        onChange={() => {
-                          store.setState((current) => ({
-                            form: { ...current.form, type: t },
-                          }));
-                        }}
-                      />
-                      <Icon name={typeIcon[t]} size={15}></Icon>
-                      {t}
-                    </label>
+            {viewState.editing ? (
+              <label className="field">
+                {t("类型")}
+                <select
+                  value={viewState.form.type}
+                  onChange={(event) =>
+                    store.setState((current) => ({
+                      form: {
+                        ...current.form,
+                        type: monitorKind(event.currentTarget.value),
+                      },
+                    }))
+                  }
+                >
+                  {monitorKinds.map((kind) => (
+                    <option key={kind} value={kind}>
+                      {t(monitorKindLabel[kind])}
+                    </option>
                   ))}
-                </>
+                </select>
+              </label>
+            ) : (
+              <div className="monitor-form-kind">
+                <Icon name={monitorKindIcon[viewState.form.type]} size={18} />
+                <strong>{t(monitorKindLabel[viewState.form.type])}</strong>
               </div>
-            </fieldset>
+            )}
             <div className="form-grid">
               <label className="field">
                 {t("名称")}
@@ -895,24 +1182,16 @@ export default function MonitorsView() {
               </small>
             </label>
             <div className="form-grid three">
-              <label className="field">
-                {t("检测间隔（秒）")}
-                <input
-                  type="number"
-                  min="15"
-                  max="86400"
-                  required
-                  value={viewState.form.interval}
-                  onChange={(event) => {
-                    store.setState((current) => ({
-                      form: {
-                        ...current.form,
-                        interval: Number(event.currentTarget.value),
-                      },
-                    }));
-                  }}
-                />
-              </label>
+              <MonitorIntervalEditor
+                key={`${viewState.editing?.id || "new"}:${viewState.form.type}`}
+                value={viewState.form.interval}
+                disabled={viewState.busy}
+                onChange={(interval) =>
+                  store.setState((current) => ({
+                    form: { ...current.form, interval },
+                  }))
+                }
+              />
               <label className="field">
                 {t("超时（秒）")}
                 <input
@@ -931,24 +1210,26 @@ export default function MonitorsView() {
                   }}
                 />
               </label>
-              <label className="field">
-                {t("连续异常几次告警")}
-                <input
-                  type="number"
-                  min="1"
-                  max="10"
-                  required
-                  value={viewState.form.threshold}
-                  onChange={(event) => {
-                    store.setState((current) => ({
-                      form: {
-                        ...current.form,
-                        threshold: Number(event.currentTarget.value),
-                      },
-                    }));
-                  }}
-                />
-              </label>
+              {viewState.form.type !== "SSL" ? (
+                <label className="field">
+                  {t("连续异常几次告警")}
+                  <input
+                    type="number"
+                    min="1"
+                    max="10"
+                    required
+                    value={viewState.form.threshold}
+                    onChange={(event) => {
+                      store.setState((current) => ({
+                        form: {
+                          ...current.form,
+                          threshold: Number(event.currentTarget.value),
+                        },
+                      }));
+                    }}
+                  />
+                </label>
+              ) : null}
             </div>
             {viewState.form.type === "HTTP" ? (
               <label className="field">
@@ -1127,10 +1408,84 @@ export default function MonitorsView() {
             ) : null}
             <p className="note">
               <Icon name="Info" size={14}></Icon>
-              {t(
-                "连续异常达到设定次数后创建告警，之后一次检测成功即自动恢复。",
-              )}
+              {viewState.form.type === "SSL"
+                ? t(
+                    "SSL 临期立即预警；连接失败后每 60 秒复查，复查两次仍失败才确认故障。",
+                  )
+                : t(
+                    "连续异常达到设定次数后创建告警，之后一次检测成功即自动恢复。",
+                  )}
             </p>
+            {viewState.error ? (
+              <p role="alert" className="form-error">
+                {viewState.error}
+              </p>
+            ) : null}
+          </Form>
+        </Modal>
+      ) : null}
+      {viewState.periodEditing ? (
+        <Modal
+          title={t("批量修改周期")}
+          onClose={() => {
+            if (!viewState.busy) store.setState({ periodEditing: null });
+          }}
+          footer={
+            <>
+              <button
+                type="button"
+                className="btn"
+                disabled={viewState.busy}
+                onClick={() => store.setState({ periodEditing: null })}
+              >
+                {t("取消")}
+              </button>
+              <button
+                type="submit"
+                form="monitor-period-form"
+                className="btn primary"
+                disabled={
+                  viewState.busy ||
+                  !validMonitorInterval(viewState.periodEditing.interval)
+                }
+              >
+                {viewState.busy ? t("正在保存…") : t("应用周期")}
+              </button>
+            </>
+          }
+        >
+          <Form
+            id="monitor-period-form"
+            className="form"
+            onSubmit={(event) => {
+              event.preventDefault();
+              void applyIntervals();
+            }}
+          >
+            <p>
+              {t("修改已选 {p0} 项检测的周期", {
+                p0: viewState.periodEditing.ids.length,
+              })}
+            </p>
+            <MonitorIntervalEditor
+              value={viewState.periodEditing.interval}
+              disabled={viewState.busy}
+              onChange={(interval) =>
+                store.setState((current) => ({
+                  periodEditing: current.periodEditing
+                    ? { ...current.periodEditing, interval }
+                    : null,
+                }))
+              }
+            />
+            <p className="note">
+              {t("修改周期只影响所选目标，不会改变告警阈值。")}
+            </p>
+            {!validMonitorInterval(viewState.periodEditing.interval) ? (
+              <p role="alert" className="form-error">
+                {t("检测周期须为 15 秒至 1 天。")}
+              </p>
+            ) : null}
             {viewState.error ? (
               <p role="alert" className="form-error">
                 {viewState.error}
@@ -1255,28 +1610,52 @@ export default function MonitorsView() {
               <dt>{t("最近诊断")}</dt>
               <dd>{checkDiagnostic(detail.detail) || t("等待首次检测")}</dd>
             </div>
-            <div>
-              <dt>{t("响应时间")}</dt>
-              <dd className="num">{latencyParts(detail.latency).join(" ")}</dd>
-            </div>
-            <div>
-              <dt>{availabilityLabel}</dt>
-              <dd className="num">
-                {uptime(detail) == null ? "—" : number(uptime(detail), 2) + "%"}
-              </dd>
-            </div>
+            {detail.type === "SSL" ? (
+              <>
+                <div>
+                  <dt>{t("证书到期时间")}</dt>
+                  <dd>{certificateExpiry(detail)}</dd>
+                </div>
+                <div>
+                  <dt>{t("剩余天数")}</dt>
+                  <dd>{certificateRemaining(detail)}</dd>
+                </div>
+              </>
+            ) : (
+              <>
+                <div>
+                  <dt>{t("响应时间")}</dt>
+                  <dd className="num">
+                    {latencyParts(detail.latency).join(" ")}
+                  </dd>
+                </div>
+                <div>
+                  <dt>{availabilityLabel}</dt>
+                  <dd className="num">
+                    {uptime(detail) == null
+                      ? "—"
+                      : number(uptime(detail), 2) + "%"}
+                  </dd>
+                </div>
+              </>
+            )}
             <div>
               <dt>{t("检测间隔")}</dt>
-              <dd>
-                {t("每 {p0} 秒，超时 {p1} 秒", {
-                  p0: detail.interval,
-                  p1: detail.timeout,
-                })}
-              </dd>
+              <dd>{monitorIntervalLabel(detail.interval)}</dd>
+            </div>
+            <div>
+              <dt>{t("超时（秒）")}</dt>
+              <dd>{detail.timeout}</dd>
             </div>
             <div>
               <dt>{t("告警条件")}</dt>
-              <dd>{t("连续 {p0} 次异常", { p0: detail.threshold })}</dd>
+              <dd>
+                {detail.type === "SSL"
+                  ? t(
+                      "SSL 临期立即预警；连接失败后每 60 秒复查，复查两次仍失败才确认故障。",
+                    )
+                  : t("连续 {p0} 次异常", { p0: detail.threshold })}
+              </dd>
             </div>
             {detail.type === "HTTP" ? (
               <div>

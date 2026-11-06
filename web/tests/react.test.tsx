@@ -715,6 +715,7 @@ function editableMonitor() {
     detail: "OK",
     checkedAt: 1,
     nextCheck: 2,
+    certificateExpiresAt: 0,
     version: 4,
     uptime: 100,
     history: [],
@@ -1782,6 +1783,7 @@ it("loads full check diagnostics only when opening a detail drawer", async () =>
       state: "healthy",
       latency: 12,
       detail: "Original detailed diagnostic",
+      certificateExpiresAt: 0,
     },
   ];
   fixtures["/monitors"] = [{ ...monitor, history }];

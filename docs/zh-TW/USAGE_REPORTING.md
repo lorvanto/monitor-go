@@ -16,7 +16,7 @@ Monitor Go 與 Monitor Console 是獨立倉庫、服務和資料庫，原始碼�
 
 目的地不變時，升級保留隨機身分、憑證、啟用狀態、歷史確認及活躍日期。減少欄位不補造同意，告知版本仍為 `2`。舊版關閉的安裝須管理員確認目前目的地及規則，登記成功後才啟用；確認等待或 Console 不可用時，本機登入、監控及告警持續運作。變更接收方須先確認新目的地才能傳送。持續回報仍沒有關閉開關，關閉請求回傳 HTTP 403。
 
-先升級 Monitor Console 至結構版本 `3`，再升級 Monitor Go 至結構版本 `11`。新版用戶端使用 `/api/v2/instances/register`、`/api/v2/instances/report`；Console 的 v1 登記/回報相容舊用戶端，保留版本與系統類型，收到架構和部署方式後丟棄，不保存或回傳。綁定介面已退役。Monitor Go v11 實體移除 `usage_settings.account_login` 舊快照；Console v3 移除架構、部署方式、帳號關聯及綁定碼，保留版本/系統分布及匿名計數。
+先升級 Monitor Console 至結構版本 `3`，再升級 Monitor Go 至結構版本 `12`。新版用戶端使用 `/api/v2/instances/register`、`/api/v2/instances/report`；Console 的 v1 登記/回報相容舊用戶端，保留版本與系統類型，收到架構和部署方式後丟棄，不保存或回傳。綁定介面已退役。Monitor Go v11 實體移除 `usage_settings.account_login` 舊快照；Console v3 移除架構、部署方式、帳號關聯及綁定碼，保留版本/系統分布及匿名計數。
 
 升級前正常停止服務並分別完整備份兩套資料目錄；回復時還原各自舊映像/執行檔及整套升級前備份，不能共用資料庫。舊備份可能仍含已退役資料，應私密管理。目的地未變且已確認的安裝，不必清空 Monitor Go 資料重新啟用。
 

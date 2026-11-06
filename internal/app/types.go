@@ -94,9 +94,10 @@ type Role struct {
 	Permissions    []string `json:"permissions"`
 }
 type Monitor struct {
-	Keyword       string `json:"keyword"`
-	KeywordInvert bool   `json:"keywordInvert"`
-	LatencyWarnMS int    `json:"latencyWarnMs"`
+	Keyword              string `json:"keyword"`
+	KeywordInvert        bool   `json:"keywordInvert"`
+	LatencyWarnMS        int    `json:"latencyWarnMs"`
+	CertificateExpiresAt int64  `json:"certificateExpiresAt"`
 
 	ID        int64         `json:"id,string"`
 	Name      string        `json:"name"`
@@ -123,10 +124,11 @@ type Monitor struct {
 	Secret    string        `json:"-"`
 }
 type CheckResult struct {
-	At      int64   `json:"at"`
-	State   string  `json:"state"`
-	Latency float64 `json:"latency"`
-	Detail  string  `json:"detail"`
+	CertificateExpiresAt int64   `json:"certificateExpiresAt"`
+	At                   int64   `json:"at"`
+	State                string  `json:"state"`
+	Latency              float64 `json:"latency"`
+	Detail               string  `json:"detail"`
 }
 type Point struct {
 	At    int64    `json:"at"`

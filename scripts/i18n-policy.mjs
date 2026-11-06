@@ -1,6 +1,8 @@
 // These checks cover application-owned catalog values, never user data.
 // Shared product/protocol names are intentional and need no translation.
 const sharedNames = new Map([
+  ["MySQL", "MySQL"],
+  ["Redis", "Redis"],
   ["钉钉", "DingTalk"],
   ["飞书", "Feishu"],
   ["企业微信", "WeCom"],
@@ -12,6 +14,9 @@ const traditionalTerms =
 const simplifiedCharacters =
   /[这为网页请录设删传输数认账钥码档错证储启应载务获态选权阈户报执标图览连线测内时区关总显检]/u;
 const sharedJapaneseWords = new Set([
+  "MySQL",
+  "Redis",
+  "秒",
   "操作",
   "正常",
   "警告",

@@ -16,7 +16,7 @@ Monitor Go 与 Monitor Console 是独立仓库、服务和数据库，源码与�
 
 目的地不变时，升级保留随机身份、凭据、启用状态、历史确认及活跃日期。减少字段不补造新的同意，告知版本仍为 `2`。旧版关闭的安装须管理员确认当前目的地和规则，登记成功后才启用；等待确认或 Console 不可用时，本地登录、监控和告警继续运行。更换接收方必须先确认新目的地，才会向其发送。激活后的持续上报仍没有关闭开关，关闭请求返回 HTTP 403。
 
-先升级 Monitor Console 到结构版本 `3`，再升级 Monitor Go 到结构版本 `11`。新版客户端使用 `/api/v2/instances/register` 与 `/api/v2/instances/report`；Console v1 登记/上报继续兼容旧客户端，保留版本与系统类型，接收架构和部署方式后丢弃，不持久化或回传。绑定接口已退役。Monitor Go v11 物理删除 `usage_settings.account_login` 旧账号快照；Console v3 移除架构、部署方式、账号关联和绑定码，保留版本/系统分布及匿名计数。
+先升级 Monitor Console 到结构版本 `3`，再升级 Monitor Go 到结构版本 `12`。新版客户端使用 `/api/v2/instances/register` 与 `/api/v2/instances/report`；Console v1 登记/上报继续兼容旧客户端，保留版本与系统类型，接收架构和部署方式后丢弃，不持久化或回传。绑定接口已退役。Monitor Go v11 物理删除 `usage_settings.account_login` 旧账号快照；Console v3 移除架构、部署方式、账号关联和绑定码，保留版本/系统分布及匿名计数。
 
 升级前正常停服并分别完整备份两个服务的数据目录；回退时恢复各自的旧镜像/二进制和整套升级前备份，不能将两者的数据库混用。保留的旧备份可能仍含旧元数据，应按私密备份管理。无需清空 Monitor Go 数据重新激活已确认的同目的地安装。
 

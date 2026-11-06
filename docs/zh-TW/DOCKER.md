@@ -135,7 +135,7 @@ docker compose exec -T monitor tar -C /data/backups/snapshot-001 -czf - . > back
 
 匿名統計僅傳送隨機執行個體編號、產品版本、系統類型及 UTC 活躍日期，獨立憑證只供認證；不蒐集產品使用者帳號、架構或部署方式。首次線上登記前須明確確認確切目的地和持續回報規則，告知版本仍為 `2`，之後沒有關閉開關。Console 故障或舊安裝等待確認時，本機登入、監控及告警持續運作。
 
-先升級 Monitor Console 至結構版本 `3`，再升級 Monitor Go 至結構版本 `11`。新版用戶端使用 `/api/v2/instances/register`、`/api/v2/instances/report`；Console 的 v1 登記/回報相容舊用戶端，保留版本與系統類型，收到架構和部署方式後丟棄，不保存或回傳。綁定介面已退役。Monitor Go v11 實體移除 `usage_settings.account_login` 舊快照；Console v3 移除架構、部署方式、帳號關聯及綁定碼，保留版本/系統分布及匿名計數。
+先升級 Monitor Console 至結構版本 `3`，再升級 Monitor Go 至結構版本 `12`。新版用戶端使用 `/api/v2/instances/register`、`/api/v2/instances/report`；Console 的 v1 登記/回報相容舊用戶端，保留版本與系統類型，收到架構和部署方式後丟棄，不保存或回傳。綁定介面已退役。Monitor Go v11 實體移除 `usage_settings.account_login` 舊快照；Console v3 移除架構、部署方式、帳號關聯及綁定碼，保留版本/系統分布及匿名計數。
 
 升級前正常停止服務並分別完整備份兩套資料目錄；回復時還原各自舊映像/執行檔及整套升級前備份，不能共用資料庫。舊備份可能仍含已退役資料，應私密管理。目的地未變且已確認的安裝，不必清空 Monitor Go 資料重新啟用。
 

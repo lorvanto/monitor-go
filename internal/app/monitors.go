@@ -12,11 +12,11 @@ import (
 	"unicode/utf8"
 )
 
-const monitorColumns = `id,name,type,target,group_name,interval_seconds,timeout_seconds,expected_status,failure_threshold,ssl_days,username,secret,tls,enabled,state,latency,detail,checked_at,next_check,version,keyword,keyword_invert,latency_warn_ms`
+const monitorColumns = `id,name,type,target,group_name,interval_seconds,timeout_seconds,expected_status,failure_threshold,ssl_days,username,secret,tls,enabled,state,latency,detail,checked_at,next_check,version,keyword,keyword_invert,latency_warn_ms,certificate_expires_at`
 
 func scanMonitor(row interface{ Scan(...any) error }) (Monitor, error) {
 	m := Monitor{History: []CheckResult{}}
-	e := row.Scan(&m.ID, &m.Name, &m.Type, &m.Target, &m.Group, &m.Interval, &m.Timeout, &m.Expected, &m.Threshold, &m.SSLDays, &m.Username, &m.Secret, &m.TLS, &m.Enabled, &m.State, &m.Latency, &m.Detail, &m.Checked, &m.NextCheck, &m.Version, &m.Keyword, &m.KeywordInvert, &m.LatencyWarnMS)
+	e := row.Scan(&m.ID, &m.Name, &m.Type, &m.Target, &m.Group, &m.Interval, &m.Timeout, &m.Expected, &m.Threshold, &m.SSLDays, &m.Username, &m.Secret, &m.TLS, &m.Enabled, &m.State, &m.Latency, &m.Detail, &m.Checked, &m.NextCheck, &m.Version, &m.Keyword, &m.KeywordInvert, &m.LatencyWarnMS, &m.CertificateExpiresAt)
 	m.HasSecret = m.Secret != ""
 	if !m.Enabled {
 		m.State = "paused"
@@ -42,8 +42,8 @@ const recentCheckTotals = `WITH boundary AS (SELECT ? AS cutoff), samples AS (
 `
 const monitorUptimeQuery = recentCheckTotals + `SELECT m.id,sum(s.good),sum(s.total)
 FROM samples s JOIN monitors m ON m.id=s.monitor_id WHERE m.deleted_at IS NULL GROUP BY m.id`
-const monitorHistoryQuery = `SELECT monitor_id,at,state,latency,detail FROM (
- SELECT r.monitor_id,r.at,r.state,r.latency,r.detail,
+const monitorHistoryQuery = `SELECT monitor_id,at,state,latency,detail,certificate_expires_at FROM (
+ SELECT r.monitor_id,r.at,r.state,r.latency,r.detail,r.certificate_expires_at,
  ROW_NUMBER() OVER (PARTITION BY r.monitor_id ORDER BY r.at DESC,r.id DESC) AS rank
  FROM monitors m JOIN check_results r ON r.id IN (
   SELECT id FROM check_results WHERE monitor_id=m.id ORDER BY at DESC,id DESC LIMIT 32
@@ -109,7 +109,7 @@ func (s *Server) monitorsWithDetails(ctx context.Context, details bool) ([]Monit
 	for rows.Next() {
 		var id int64
 		var result CheckResult
-		if e = rows.Scan(&id, &result.At, &result.State, &result.Latency, &result.Detail); e != nil {
+		if e = rows.Scan(&id, &result.At, &result.State, &result.Latency, &result.Detail, &result.CertificateExpiresAt); e != nil {
 			rows.Close()
 			return nil, e
 		}
@@ -140,7 +140,7 @@ func (s *Server) monitorHistory(w http.ResponseWriter, r *http.Request, u *User)
 	} else if err != nil {
 		return nil, err
 	}
-	rows, err := s.Store.reader().QueryContext(r.Context(), "SELECT at,state,latency,detail FROM check_results WHERE monitor_id=? ORDER BY at DESC,id DESC LIMIT 32", id)
+	rows, err := s.Store.reader().QueryContext(r.Context(), "SELECT at,state,latency,detail,certificate_expires_at FROM check_results WHERE monitor_id=? ORDER BY at DESC,id DESC LIMIT 32", id)
 	if err != nil {
 		return nil, err
 	}
@@ -148,7 +148,7 @@ func (s *Server) monitorHistory(w http.ResponseWriter, r *http.Request, u *User)
 	out := []CheckResult{}
 	for rows.Next() {
 		var item CheckResult
-		if err = rows.Scan(&item.At, &item.State, &item.Latency, &item.Detail); err != nil {
+		if err = rows.Scan(&item.At, &item.State, &item.Latency, &item.Detail, &item.CertificateExpiresAt); err != nil {
 			return nil, err
 		}
 		out = append(out, item)
@@ -179,6 +179,11 @@ func (i *monitorInput) validate() error {
 	i.Name = strings.TrimSpace(i.Name)
 	i.Target = strings.TrimSpace(i.Target)
 	i.Group = strings.TrimSpace(i.Group)
+	if i.Type == "SSL" {
+		// Certificate expiry warns immediately; connection failures use two
+		// short rechecks, independent of historical user thresholds.
+		i.Threshold = sslFailureThreshold
+	}
 	if len(i.Name) == 0 || len(i.Name) > 100 || len(i.Target) == 0 || len(i.Target) > 2048 || len(i.Group) > 80 || len(i.Username) > 128 || len(i.Password) > 1024 {
 		return bad("检测名称、地址或分组长度不正确")
 	}

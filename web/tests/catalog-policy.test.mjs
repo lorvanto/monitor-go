@@ -19,6 +19,9 @@ test("detects mixed scripts and copied English without rejecting shared names or
       `${code}: ${value}`,
     );
   for (const [code, key, value, english] of [
+    ["ja-JP", "MySQL", "MySQL", "MySQL"],
+    ["ko-KR", "Redis", "Redis", "Redis"],
+    ["ja-JP", "秒", "秒", "Seconds"],
     ["ja-JP", "操作", "操作", "Action"],
     ["ja-JP", "保存", "保存", "Save"],
     ["ja-JP", "Webhook 地址", "Webhook URL", "Webhook URL"],

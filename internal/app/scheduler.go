@@ -9,7 +9,11 @@ import (
 	"time"
 )
 
-const nextQueuedJobQuery = "SELECT id FROM jobs WHERE state='queued' ORDER BY id LIMIT 1"
+const (
+	nextQueuedJobQuery  = "SELECT id FROM jobs WHERE state='queued' ORDER BY id LIMIT 1"
+	sslFailureThreshold = 3
+	sslFailureRetry     = time.Minute
+)
 
 func (s *Server) scheduler(ctx context.Context) {
 	var workers sync.WaitGroup
@@ -96,26 +100,52 @@ func (s *Server) execute(ctx context.Context, job int64) error {
 	if ctx.Err() != nil {
 		return ctx.Err()
 	}
+	return s.completeCheck(ctx, job, m, result)
+}
+
+func (s *Server) completeCheck(ctx context.Context, job int64, m Monitor, result CheckResult) error {
 	return s.Store.write(ctx, func(tx *sql.Tx) error {
 		var version, failures int
 		var enabled bool
 		var deleted sql.NullInt64
-		if e := tx.QueryRow("SELECT version,enabled,deleted_at,failures FROM monitors WHERE id=?", m.ID).Scan(&version, &enabled, &deleted, &failures); e != nil {
+		var previousState string
+		if e := tx.QueryRow("SELECT version,enabled,deleted_at,failures,state FROM monitors WHERE id=?", m.ID).Scan(&version, &enabled, &deleted, &failures, &previousState); e != nil {
 			return e
 		}
 		if !enabled || deleted.Valid || version != m.Version {
 			_, e := tx.Exec("UPDATE jobs SET state='cancelled',finished_at=? WHERE id=?", now(), job)
 			return e
 		}
-		if result.State == "failed" || result.State == "warning" {
+		threshold := m.Threshold
+		nextCheck := now() + int64(m.Interval)*1000
+		if m.Type == "SSL" {
+			threshold = sslFailureThreshold
+			if result.State == "failed" {
+				// Old SSL warnings also accumulated failures. Only a preceding
+				// connection failure can belong to this confirmation sequence.
+				if previousState != "failed" {
+					failures = 0
+				}
+				failures++
+				result.CertificateExpiresAt = 0
+				if failures < threshold {
+					nextCheck = now() + sslFailureRetry.Milliseconds()
+				}
+			} else {
+				failures = 0
+			}
+		} else if result.State == "failed" || result.State == "warning" {
 			failures++
 		} else {
 			failures = 0
 		}
-		if _, e := tx.Exec("INSERT INTO check_results(monitor_id,at,state,latency,detail) VALUES(?,?,?,?,?)", m.ID, result.At, result.State, result.Latency, result.Detail); e != nil {
+		if m.Type != "SSL" {
+			result.CertificateExpiresAt = 0
+		}
+		if _, e := tx.Exec("INSERT INTO check_results(monitor_id,at,state,latency,detail,certificate_expires_at) VALUES(?,?,?,?,?,?)", m.ID, result.At, result.State, result.Latency, result.Detail, result.CertificateExpiresAt); e != nil {
 			return e
 		}
-		if _, e := tx.Exec("UPDATE monitors SET state=?,latency=?,detail=?,checked_at=?,failures=? WHERE id=?", result.State, result.Latency, result.Detail, result.At, failures, m.ID); e != nil {
+		if _, e := tx.Exec("UPDATE monitors SET state=?,latency=?,detail=?,checked_at=?,failures=?,certificate_expires_at=?,next_check=CASE WHEN ? THEN ? ELSE next_check END WHERE id=?", result.State, result.Latency, result.Detail, result.At, failures, result.CertificateExpiresAt, m.Type == "SSL", nextCheck, m.ID); e != nil {
 			return e
 		}
 		state := "succeeded"
@@ -126,7 +156,7 @@ func (s *Server) execute(ctx context.Context, job int64) error {
 			return e
 		}
 		fingerprint := fmt.Sprintf("monitor:%d", m.ID)
-		if failures >= m.Threshold {
+		if failures >= threshold || (m.Type == "SSL" && result.State == "warning") {
 			severity := "critical"
 			title := fmt.Sprintf("%s 连续 %d 次检测异常", m.Name, failures)
 			if result.State == "warning" {

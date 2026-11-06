@@ -2,9 +2,9 @@
 
 **English** · [简体中文](../zh-CN/README.md) · [日本語](../ja-JP/README.md) · [한국어](../ko-KR/README.md) · [繁體中文](../zh-TW/README.md) · [Documentation](../README.md)
 
-> Status: pre-release development baseline `0.4.0-dev`, SQLite schema `11`; no published release is implied. Examples use a POSIX shell; Windows developers can use WSL.
+> Status: pre-release development baseline `0.4.0-dev`, SQLite schema `12`; no published release is implied. Examples use a POSIX shell; Windows developers can use WSL.
 
-Schema 5 adds a partial index for queued scheduler jobs, avoiding scans of completed-job history. Job retention remains seven days. Stop the service and back up the complete data directory before upgrading; binaries without schema 11 support cannot read the upgraded database, and rollback requires that backup.
+Schema 5 adds a partial index for queued scheduler jobs, avoiding scans of completed-job history. Job retention remains seven days. Stop the service and back up the complete data directory before upgrading; binaries without schema 12 support cannot read the upgraded database, and rollback requires that backup.
 
 See the [English screenshot gallery](SCREENSHOTS.md) for a feature tour with synthetic demonstration data. GitHub’s default README and About use Simplified Chinese; the application still starts in English on first use.
 
@@ -71,7 +71,7 @@ Custom names, notes and uploaded text retain their original language. Stored rec
 
 ## Monitoring and remote hosts
 
-The service collects local and remote host metrics approximately every 15 seconds. HTTP, TCP, SSL, MySQL and Redis checks run on the monitoring server. Consecutive failures trigger incidents; a subsequent success resolves them. Acknowledging or silencing an incident does not manufacture recovery.
+The service collects local and remote host metrics approximately every 15 seconds. HTTP, TCP, SSL, MySQL and Redis checks run on the monitoring server. Ordinary checks trigger incidents after their consecutive-failure threshold. SSL near-expiry warnings open incidents on the first warning, while SSL connection failures require three consecutive failures including 60-second rechecks. A subsequent healthy result resolves them. Acknowledging or silencing an incident does not manufacture recovery.
 
 To connect a host, generate a 15-minute enrollment code from Host details.
 
@@ -141,7 +141,7 @@ npm --prefix web run format:check
 
 Stop the service cleanly, then back up the entire data directory: SQLite and any companion files, `master.key`, and original `uploads/` files. Copying only a live `monitor.db` is not a complete backup. Restore the whole directory with a compatible server version.
 
-Database versions 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 → 9 → 10 → 11 migrate transactionally. Binaries without schema 11 support cannot read the upgraded database; rollback requires the entire pre-upgrade backup. New permissions are not silently assigned to custom roles. Schema 9 introduced reporting settings and coarse activity dates; schema 10 adds disclosure version, consent time and activation time. Enabled installations preserve their identity and historical consent; legacy off installations require administrator confirmation before reporting can start. Schema 11 removes the former account snapshot while preserving installation identity, credentials, historical consent and active dates; notice version remains 2.
+Database versions 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 → 9 → 10 → 11 → 12 migrate transactionally. Binaries without schema 12 support cannot read the upgraded database; rollback requires the entire pre-upgrade backup. New permissions are not silently assigned to custom roles. Schema 9 introduced reporting settings and coarse activity dates; schema 10 adds disclosure version, consent time and activation time. Enabled installations preserve their identity and historical consent; legacy off installations require administrator confirmation before reporting can start. Schema 11 removes the former account snapshot while preserving installation identity, credentials, historical consent and active dates; notice version remains 2. Schema 12 adds structured certificate expiry to checks and results while preserving existing intervals, historical results and incidents.
 
 ## Current limits
 
@@ -154,6 +154,24 @@ All current guides use `docs/<locale>/` with English directory and file names. S
 ## Trusted proxies and login limits
 
 `-trusted-proxy` accepts comma-separated proxy CIDRs and defaults to empty (no trusted proxies). Invalid CIDRs prevent startup. Trust only the actual proxy addresses as seen by this process; the proxy must overwrite or safely append `X-Forwarded-For`. The server walks that header from right to left, stopping at the first untrusted address. Headers from other peers are ignored. Login counts only failures: 30 per client IP and 10 per normalized username per five minutes; successful logins neither consume nor reset those budgets. Setup counts every attempt (10 per IP per five minutes).
+
+## Check types, intervals and SSL certificates
+
+Use the single service-check entry and its HTTP, TCP, SSL, MySQL and Redis tabs. These remain categories within one page, not separate navigation entries.
+
+| New check type | Default interval |
+|---|---|
+| HTTP | 60 seconds |
+| TCP | 60 seconds |
+| SSL | 1 day (86400 seconds) |
+| MySQL | 3 minutes (180 seconds) |
+| Redis | 60 seconds |
+
+Choose a preset or a value with seconds/minutes/hours/days. Converted intervals remain within 15–86400 seconds; a day means every 24 hours, not a fixed daily cron time. Editing existing checks or switching tabs preserves their intervals; the defaults apply only to new checks. Members with `monitor:update` can set intervals in bulk. If any selected check has a timeout greater than or equal to the new interval, the whole update is rejected without partial changes. Existing results and incident history are retained.
+
+The SSL list shows structured certificate expiry, days remaining and last/next check times. Expiry comes from a successful handshake; a connection failure shows an unknown expiry, with the previous result available in history. The default warning lead is 14 days. The first near-expiry warning result opens an incident without waiting for the ordinary consecutive-failure threshold. After an SSL connection failure, two rechecks run 60 seconds apart: three consecutive failures including the first confirm the incident. A healthy result resolves it. Other check types still default to three consecutive abnormal results and allow a configurable threshold.
+
+Schema 12 adds `certificate_expires_at` to `monitors` and `check_results`, preserving targets, intervals, historical results and incidents. Unknown expiry dates in old records are not fabricated. Stop the service and back up the complete data directory before upgrading; rollback requires the complete prior data and a compatible binary. Monitor Console remains on schema 3.
 
 ## Monitor editing and archiving
 
@@ -171,7 +189,7 @@ Generic keeps its existing JSON and signature-header contract. Chat formats requ
 
 ## Host alert thresholds
 
-System settings provides installation-wide CPU, memory and disk thresholds (defaults: 90%, 90%, 85%) and a sustained duration of 1–60 minutes (default: 5). Set an individual threshold to 0 to disable that metric alert. Schema 6 adds these validated settings; stop the service and back up the whole data directory before upgrading. Binaries without schema 11 support cannot read the upgraded database.
+System settings provides installation-wide CPU, memory and disk thresholds (defaults: 90%, 90%, 85%) and a sustained duration of 1–60 minutes (default: 5). Set an individual threshold to 0 to disable that metric alert. Schema 6 adds these validated settings; stop the service and back up the whole data directory before upgrading. Binaries without schema 12 support cannot read the upgraded database.
 
 Local and remote hosts use the same rules. CPU/memory must stay at or above the threshold throughout the duration: samples must cover the whole window, including a sample at or before its start, with no missing values or gaps over 45 seconds. Insufficient data does not open an alert or resolve an existing one. The latest valid reading below the threshold resolves it. Disk alerts use the latest available disk readings immediately. Disabling a threshold resolves that metric's incident on the next report; settings changes also take effect on the next report. The 90-second remote-host offline rule is unchanged. Per-host overrides are not implemented.
 
@@ -220,7 +238,7 @@ Network/server failures use a linear delay of 5 seconds per consecutive failure,
 
 ## Long-term availability and retention
 
-Schema 8 adds hourly check summaries (total/good counts and average/maximum latency), transactional consumed-row markers and an index for pending rows. At startup and each hourly maintenance run, closed hours are accumulated before raw data is removed. Repeated runs and late results do not double-count; a failed rollup preserves raw rows. Settings default to 7 days of raw host/check metrics (1–30 configurable) and 90 days of check summaries (90–730 configurable). Cleanup is batched and aligned to UTC hours, so raw retention can exceed the requested duration by an hour plus the maintenance backlog. There is no host summary table. Stop and back up before upgrading; binaries without schema 11 support cannot read the upgraded database.
+Schema 8 adds hourly check summaries (total/good counts and average/maximum latency), transactional consumed-row markers and an index for pending rows. At startup and each hourly maintenance run, closed hours are accumulated before raw data is removed. Repeated runs and late results do not double-count; a failed rollup preserves raw rows. Settings default to 7 days of raw host/check metrics (1–30 configurable) and 90 days of check summaries (90–730 configurable). Cleanup is batched and aligned to UTC hours, so raw retention can exceed the requested duration by an hour plus the maintenance backlog. There is no host summary table. Stop and back up before upgrading; binaries without schema 12 support cannot read the upgraded database.
 
 Overview and Service checks offer 30/90-day availability. GET /api/v1/monitors/availability?hours=720 or 2160 requires monitor:read. Overview accepts the same ranges. Results combine hourly summaries and unconsumed raw rows in one SQLite snapshot, weighted by actual check count. Healthy and warning checks count as available, matching the existing 24-hour definition. Windows start at a UTC hour boundary; the current partial hour is included. Missing samples are not inferred as successes, so no history yields null/“—”. Previously deleted history cannot be reconstructed.
 
@@ -270,7 +288,7 @@ Known system-generated incident titles, timeline events, engine labels and check
 
 Anonymous statistics send a random installation ID, product version, OS family and UTC active dates; a separate credential authenticates requests. Product-user accounts, architectures and deployment types are not collected. Explicit confirmation of the exact destination and ongoing reporting rule is required before first online registration; notice version remains `2`, and reporting then has no off switch. Local login, monitoring and alerts continue during pending confirmation or Console outages.
 
-Upgrade Monitor Console to schema `3` before Monitor Go to schema `11`. New clients use `/api/v2/instances/register` and `/api/v2/instances/report`. Console v1 registration/reporting remains compatible with old clients: version and OS family are retained, while architecture and deployment fields are discarded without storing or returning them. Binding endpoints are retired. Monitor Go v11 physically removes the former `usage_settings.account_login` snapshot; Console v3 removes architectures, deployment types, account associations and binding codes while retaining version/OS distributions and anonymous counts.
+Upgrade Monitor Console to schema `3` before Monitor Go to schema `12`. New clients use `/api/v2/instances/register` and `/api/v2/instances/report`. Console v1 registration/reporting remains compatible with old clients: version and OS family are retained, while architecture and deployment fields are discarded without storing or returning them. Binding endpoints are retired. Monitor Go v11 physically removes the former `usage_settings.account_login` snapshot; Console v3 removes architectures, deployment types, account associations and binding codes while retaining version/OS distributions and anonymous counts.
 
 Stop services normally and make separate complete backups of both data directories before upgrading. Rollback requires each prior image/binary and its complete pre-upgrade backup; never share the databases. Older backups may still contain retired metadata and must remain private. Existing confirmed installations with an unchanged recipient do not require clearing data and activating again.
 

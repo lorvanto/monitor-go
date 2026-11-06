@@ -4078,3 +4078,139 @@ html[lang="ko-KR"] {
 html[lang="zh-TW"] {
   --locale-font: "PingFang TC", "Microsoft JhengHei", sans-serif;
 }
+
+@layer pages {
+  .monitor-kind-tabs {
+    display: flex;
+    gap: 4px;
+    margin: 0 0 16px;
+    padding: 4px;
+    overflow-x: auto;
+    border: 1px solid var(--rule);
+    border-radius: var(--r-md);
+    background: var(--surface-2);
+  }
+  .monitor-kind-tabs button {
+    display: inline-flex;
+    flex: 1 0 auto;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-height: 42px;
+    padding: 8px 14px;
+    border: 1px solid transparent;
+    border-radius: var(--r-sm);
+    color: var(--ink-2);
+    font-size: 13px;
+    font-weight: 500;
+    white-space: nowrap;
+  }
+  .monitor-kind-tabs button[aria-selected="true"] {
+    border-color: var(--rule);
+    background: var(--surface);
+    color: var(--ink);
+    box-shadow: 0 1px 2px #00000008;
+  }
+  .monitor-kind-tabs button:hover {
+    color: var(--ink);
+  }
+  .monitor-kind-tabs small {
+    min-width: 20px;
+    padding: 1px 5px;
+    border-radius: 5px;
+    background: var(--surface-3);
+    color: var(--ink-3);
+    font-size: 11px;
+    font-variant-numeric: tabular-nums;
+  }
+  .monitor-table .target {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .monitor-form-kind {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--rule);
+    font-size: 13px;
+  }
+  .monitor-interval-editor {
+    margin: 0;
+    padding: 0;
+    border: 0;
+  }
+  .monitor-interval-editor > label,
+  .monitor-interval-custom > label {
+    display: block;
+    min-width: 0;
+  }
+  .monitor-interval-editor select,
+  .monitor-interval-editor input {
+    width: 100%;
+  }
+  .monitor-interval-custom {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(74px, 0.8fr);
+    gap: 6px;
+  }
+  .certificate-table .c-expiry,
+  .certificate-table .c-last,
+  .certificate-table .c-next {
+    font-size: 12px;
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+  }
+  .certificate-table .c-remaining {
+    font-size: 13px;
+    white-space: nowrap;
+  }
+  @media (min-width: 761px) and (max-width: 1400px) {
+    .certificate-table :is(th, td) {
+      padding-left: 8px;
+      padding-right: 8px;
+    }
+    .certificate-table .target {
+      min-width: 150px;
+    }
+  }
+  @media (max-width: 760px) {
+    .monitor-kind-tabs {
+      margin-bottom: 12px;
+    }
+    .monitor-kind-tabs button {
+      flex-grow: 0;
+      gap: 6px;
+      min-height: 40px;
+      padding: 8px 10px;
+    }
+    .certificate-table tr {
+      grid-template-areas:
+        "check target target actions"
+        ". status remaining remaining"
+        ". expiry expiry expiry"
+        ". last last last"
+        ". next next next";
+    }
+    .certificate-table .c-expiry {
+      grid-area: expiry;
+    }
+    .certificate-table .c-remaining {
+      grid-area: remaining;
+      text-align: right;
+    }
+    .certificate-table .c-last {
+      display: block;
+      grid-area: last;
+    }
+    .certificate-table .c-next {
+      grid-area: next;
+    }
+    .certificate-table :is(.c-expiry, .c-last, .c-next)::before {
+      display: inline-block;
+      min-width: 115px;
+      margin-right: 8px;
+      color: var(--ink-3);
+      content: attr(data-label);
+    }
+  }
+}

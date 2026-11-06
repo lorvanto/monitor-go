@@ -4,14 +4,14 @@
 
 **简体中文** · [English](docs/en-US/README.md) · [日本語](docs/ja-JP/README.md) · [한국어](docs/ko-KR/README.md) · [繁體中文](docs/zh-TW/README.md)
 
-**当前状态：**预发布开发基线 `0.4.0-dev`，SQLite 结构版本 `11`。公开发布包和目标平台验证仍在准备中；当前版本号不代表已发布 GitHub Release。详见[完整使用指南](docs/zh-CN/README.md)和[路线图](ROADMAP.md)。
+**当前状态：**预发布开发基线 `0.4.0-dev`，SQLite 结构版本 `12`。公开发布包和目标平台验证仍在准备中；当前版本号不代表已发布 GitHub Release。详见[完整使用指南](docs/zh-CN/README.md)和[路线图](ROADMAP.md)。
 
 ## 功能
 
 | 模块 | 已支持的能力 |
 |---|---|
-| 监控 | 监控总览、本机与远程主机指标；HTTP、TCP、SSL、MySQL、Redis 服务检测 |
-| 告警 | 连续失败阈值、认领、静默、自动恢复和持久化历史 |
+| 监控 | 监控总览、本机与远程主机指标；HTTP、TCP、SSL、MySQL、Redis 五类 Tab；周期预设与批量修改；SSL 到期时间和剩余天数 |
+| 告警 | 普通检测默认连续 3 次异常；SSL 临期首次告警、连接失败每 60 秒复核至 3 次确认；认领、静默、自动恢复和持久化历史 |
 | 通知 | SMTP、签名 Webhook、钉钉／飞书／企业微信机器人，持久化重试与投递记录 |
 | 团队管理 | 成员、角色、服务端权限校验、自定义导航与操作审计 |
 | 文件与应用 | 私有文件存储、图片样式、回收站、限定接口范围的应用密钥与安装包分发 |
@@ -55,6 +55,12 @@ SQLite 是唯一的应用存储。MySQL 和 Redis 是检测对象，无需作为
 |---|---|
 | [![按业务模块分组的角色权限](docs/assets/screenshots/zh-CN/permissions.jpg)](docs/assets/screenshots/zh-CN/permissions.jpg) | [![二维码生成与导出](docs/assets/screenshots/zh-CN/code-generator.jpg)](docs/assets/screenshots/zh-CN/code-generator.jpg) |
 | 按模块授权，明确标记敏感操作。 | 在实例内生成二维码和条码，支持 PNG／SVG 导出。 |
+
+## 服务检测与证书
+
+服务检测保留一个入口，通过 HTTP、TCP、SSL、MySQL、Redis 五个 Tab 查看各类目标。新建默认周期依次为 60 秒、60 秒、1 天（86400 秒）、3 分钟（180 秒）和 60 秒。周期支持预设及秒/分/时/天单位，实际范围仍为 15–86400 秒；已有检测周期不会被升级或切换 Tab 改写，可按需批量调整。批量修改需要检测编辑权限，任一选中目标的超时不短于新周期时，整批拒绝且不产生部分修改。
+
+SSL 列表直接展示证书到期时间、剩余天数、上次和下次检测时间。默认提前 14 天提醒，首次检测到临期 warning 即创建告警；连接失败先每 60 秒复核 2 次，合计连续 3 次失败才确认故障。其他类型仍默认连续 3 次异常后告警。一天周期是每 24 小时执行，不是固定时刻的 cron 排程。结构版本 12 在检测和结果中新增结构化证书到期字段，保留既有目标、周期、结果历史和告警；升级前完整备份数据目录。
 
 ## Docker 快速启动
 
@@ -135,7 +141,7 @@ npm --prefix web run format:check
 
 匿名统计仅发送随机实例编号、产品版本、系统类型及 UTC 活跃日期，独立凭据只用于认证；不收集产品用户账号、架构或部署方式。首次在线登记前须明确确认确切目的地及持续上报规则，告知版本仍为 `2`；之后无关闭开关。Console 不可用或旧安装等待确认，不中断本地登录、监控和告警。
 
-先升级 Monitor Console 到结构版本 `3`，再升级 Monitor Go 到结构版本 `11`。新版客户端使用 `/api/v2/instances/register` 与 `/api/v2/instances/report`；Console v1 登记/上报继续兼容旧客户端，保留版本与系统类型，接收架构和部署方式后丢弃，不持久化或回传。绑定接口已退役。Monitor Go v11 物理删除 `usage_settings.account_login` 旧账号快照；Console v3 移除架构、部署方式、账号关联和绑定码，保留版本/系统分布及匿名计数。
+先升级 Monitor Console 到结构版本 `3`，再升级 Monitor Go 到结构版本 `12`。新版客户端使用 `/api/v2/instances/register` 与 `/api/v2/instances/report`；Console v1 登记/上报继续兼容旧客户端，保留版本与系统类型，接收架构和部署方式后丢弃，不持久化或回传。绑定接口已退役。Monitor Go v11 物理删除 `usage_settings.account_login` 旧账号快照；Console v3 移除架构、部署方式、账号关联和绑定码，保留版本/系统分布及匿名计数。
 
 升级前正常停服并分别完整备份两个服务的数据目录；回退时恢复各自的旧镜像/二进制和整套升级前备份，不能将两者的数据库混用。保留的旧备份可能仍含旧元数据，应按私密备份管理。无需清空 Monitor Go 数据重新激活已确认的同目的地安装。
 

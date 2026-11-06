@@ -53,6 +53,10 @@ func init() {
 	mysql.RegisterDialContext("monitor-safe", func(ctx context.Context, addr string) (net.Conn, error) { return safeDial(ctx, "tcp", addr) })
 }
 func probe(ctx context.Context, m Monitor, password string) CheckResult {
+	return probeWithTLSConfig(ctx, m, password, nil)
+}
+
+func probeWithTLSConfig(ctx context.Context, m Monitor, password string, sslConfig *tls.Config) CheckResult {
 	start := time.Now()
 	result := CheckResult{At: now(), State: "healthy"}
 	var err error
@@ -137,12 +141,19 @@ func probe(ctx context.Context, m Monitor, password string) CheckResult {
 		}
 		defer c.Close()
 		host, _, _ := net.SplitHostPort(m.Target)
-		tc := tls.Client(c, &tls.Config{ServerName: host, MinVersion: tls.VersionTLS12})
+		config := &tls.Config{ServerName: host, MinVersion: tls.VersionTLS12}
+		if sslConfig != nil {
+			config = sslConfig.Clone()
+			config.ServerName = host
+			config.MinVersion = tls.VersionTLS12
+		}
+		tc := tls.Client(c, config)
 		err = tc.HandshakeContext(ctx)
 		if err != nil {
 			break
 		}
 		cert := tc.ConnectionState().PeerCertificates[0]
+		result.CertificateExpiresAt = cert.NotAfter.UnixMilli()
 		days := time.Until(cert.NotAfter).Hours() / 24
 		result.Detail = fmt.Sprintf("证书有效至 %s，剩余 %.1f 天", cert.NotAfter.UTC().Format(time.RFC3339), days)
 		if days <= float64(m.SSLDays) {

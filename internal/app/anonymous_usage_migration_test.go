@@ -16,7 +16,9 @@ func TestAnonymousUsageMigrationPreservesConsentIdentityAndActivity(t *testing.T
 	day := time.Now().UTC().Format("2006-01-02")
 	if _, err := s.Store.DB.Exec(`ALTER TABLE usage_settings ADD COLUMN account_login TEXT NOT NULL DEFAULT '';
 		UPDATE usage_settings SET account_login='legacy-console-account';
-		DELETE FROM schema_migrations WHERE version=11;
+		DELETE FROM schema_migrations WHERE version>=11;
+		ALTER TABLE monitors DROP COLUMN certificate_expires_at;
+		ALTER TABLE check_results DROP COLUMN certificate_expires_at;
 		INSERT INTO usage_activity(day) VALUES(?)`, day); err != nil {
 		t.Fatal(err)
 	}
@@ -58,7 +60,9 @@ func TestAnonymousUsageMigrationFailureRollsBackOnRealSQLite(t *testing.T) {
 	}
 	if _, err = store.DB.Exec(`ALTER TABLE usage_settings ADD COLUMN account_login TEXT NOT NULL DEFAULT '';
 		UPDATE usage_settings SET account_login='legacy-account';
-		DELETE FROM schema_migrations WHERE version=11;
+		DELETE FROM schema_migrations WHERE version>=11;
+		ALTER TABLE monitors DROP COLUMN certificate_expires_at;
+		ALTER TABLE check_results DROP COLUMN certificate_expires_at;
 		CREATE TRIGGER reject_anonymous BEFORE INSERT ON schema_migrations WHEN NEW.version=11
 		BEGIN SELECT RAISE(ABORT,'test anonymous migration rollback'); END;`); err != nil {
 		t.Fatal(err)

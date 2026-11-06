@@ -36,6 +36,7 @@ export interface CheckResult {
   state: MonitorStatus;
   latency: number;
   detail: string;
+  certificateExpiresAt: number;
 }
 export interface Monitor {
   keyword: string;
@@ -60,6 +61,7 @@ export interface Monitor {
   detail: string;
   checkedAt: number;
   nextCheck: number;
+  certificateExpiresAt: number;
   version: number;
   uptime: number | null;
   history: CheckResult[];

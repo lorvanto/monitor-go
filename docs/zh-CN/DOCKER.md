@@ -135,7 +135,7 @@ docker compose exec -T monitor tar -C /data/backups/snapshot-001 -czf - . > back
 
 匿名统计仅发送随机实例编号、产品版本、系统类型及 UTC 活跃日期，独立凭据只用于认证；不收集产品用户账号、架构或部署方式。首次在线登记前须明确确认确切目的地及持续上报规则，告知版本仍为 `2`；之后无关闭开关。Console 不可用或旧安装等待确认，不中断本地登录、监控和告警。
 
-先升级 Monitor Console 到结构版本 `3`，再升级 Monitor Go 到结构版本 `11`。新版客户端使用 `/api/v2/instances/register` 与 `/api/v2/instances/report`；Console v1 登记/上报继续兼容旧客户端，保留版本与系统类型，接收架构和部署方式后丢弃，不持久化或回传。绑定接口已退役。Monitor Go v11 物理删除 `usage_settings.account_login` 旧账号快照；Console v3 移除架构、部署方式、账号关联和绑定码，保留版本/系统分布及匿名计数。
+先升级 Monitor Console 到结构版本 `3`，再升级 Monitor Go 到结构版本 `12`。新版客户端使用 `/api/v2/instances/register` 与 `/api/v2/instances/report`；Console v1 登记/上报继续兼容旧客户端，保留版本与系统类型，接收架构和部署方式后丢弃，不持久化或回传。绑定接口已退役。Monitor Go v11 物理删除 `usage_settings.account_login` 旧账号快照；Console v3 移除架构、部署方式、账号关联和绑定码，保留版本/系统分布及匿名计数。
 
 升级前正常停服并分别完整备份两个服务的数据目录；回退时恢复各自的旧镜像/二进制和整套升级前备份，不能将两者的数据库混用。保留的旧备份可能仍含旧元数据，应按私密备份管理。无需清空 Monitor Go 数据重新激活已确认的同目的地安装。
 

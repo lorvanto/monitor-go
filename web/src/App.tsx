@@ -663,7 +663,7 @@ export default function App() {
                   <dt>{t("检测")}</dt>
                   <dd>
                     {t(
-                      "由当前服务器执行 HTTP、TCP、SSL、MySQL 和 Redis 检测。连续异常达到阈值后创建告警，一次成功检测后自动恢复。",
+                      "由当前服务器执行 HTTP、TCP、SSL、MySQL 和 Redis 检测。普通检测连续异常达到阈值后告警；SSL 临期立即预警，连接失败后每 60 秒复查，复查两次仍失败才确认故障。一次成功检测后自动恢复。",
                     )}
                   </dd>
                 </div>

@@ -246,7 +246,7 @@ try {
   compose(["exec", "-T", "monitor", "sh", "-c", "test ! -e /data/setup-token"]);
   const system = await request("/system");
   assert.equal(system.database, "SQLite");
-  assert.equal(system.schema, 11);
+  assert.equal(system.schema, 12);
   const usage = await request("/usage");
   assert.equal(usage.enabled, true);
   assert.equal(usage.required, true);
